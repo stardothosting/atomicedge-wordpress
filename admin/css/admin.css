@@ -1,0 +1,687 @@
+/**
+ * AtomicEdge Admin Styles
+ *
+ * @package AtomicEdge
+ */
+
+/* ==========================================================================
+   Base Styles
+   ========================================================================== */
+
+.atomicedge-wrap {
+	max-width: 1200px;
+}
+
+.atomicedge-wrap h1 {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+/* ==========================================================================
+   Welcome / Not Connected State
+   ========================================================================== */
+
+.atomicedge-welcome {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 30px;
+	margin-top: 20px;
+}
+
+.atomicedge-welcome-header {
+	text-align: center;
+	margin-bottom: 30px;
+}
+
+.atomicedge-welcome-header h2 {
+	font-size: 24px;
+	margin-bottom: 10px;
+}
+
+.atomicedge-connect-box {
+	max-width: 600px;
+	margin: 0 auto 40px;
+	padding: 25px;
+	background: #f6f7f7;
+	border-radius: 4px;
+}
+
+.atomicedge-connect-box h3 {
+	margin-top: 0;
+}
+
+/* Features Grid */
+.atomicedge-features {
+	margin-top: 40px;
+}
+
+.atomicedge-feature-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 20px;
+	margin-top: 20px;
+}
+
+.atomicedge-feature {
+	text-align: center;
+	padding: 20px;
+	background: #f6f7f7;
+	border-radius: 4px;
+}
+
+.atomicedge-feature .dashicons {
+	font-size: 40px;
+	width: 40px;
+	height: 40px;
+	color: #2271b1;
+}
+
+.atomicedge-feature h4 {
+	margin: 15px 0 10px;
+}
+
+.atomicedge-feature p {
+	margin: 0;
+	color: #646970;
+}
+
+/* ==========================================================================
+   Dashboard
+   ========================================================================== */
+
+.atomicedge-status-bar {
+	display: flex;
+	align-items: center;
+	gap: 20px;
+	padding: 15px 20px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	margin: 20px 0;
+}
+
+.atomicedge-status {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: 600;
+}
+
+.atomicedge-status-connected {
+	color: #00a32a;
+}
+
+.atomicedge-status-connected .dashicons {
+	color: #00a32a;
+}
+
+.atomicedge-domain,
+.atomicedge-plan {
+	color: #646970;
+}
+
+/* Dashboard Widgets */
+.atomicedge-dashboard-widgets {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+	gap: 20px;
+	margin: 20px 0;
+}
+
+.atomicedge-widget {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 20px;
+}
+
+.atomicedge-widget h3 {
+	margin: 0 0 15px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.atomicedge-widget-chart {
+	min-height: 300px;
+}
+
+/* Quick Actions */
+.atomicedge-quick-actions {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 20px;
+	margin: 20px 0;
+}
+
+.atomicedge-quick-actions h3 {
+	margin-top: 0;
+}
+
+.atomicedge-action-buttons {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.atomicedge-action-buttons .button {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+}
+
+/* ==========================================================================
+   Analytics
+   ========================================================================== */
+
+.atomicedge-period-selector {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 20px 0;
+	padding: 15px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+}
+
+.atomicedge-stats-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 20px;
+	margin: 20px 0;
+}
+
+.atomicedge-stat-box {
+	display: flex;
+	align-items: center;
+	gap: 15px;
+	padding: 20px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+}
+
+.atomicedge-stat-icon {
+	font-size: 32px;
+	width: 32px;
+	height: 32px;
+	color: #2271b1;
+}
+
+.atomicedge-stat-value {
+	display: block;
+	font-size: 24px;
+	font-weight: 600;
+	line-height: 1.2;
+}
+
+.atomicedge-stat-label {
+	display: block;
+	color: #646970;
+	font-size: 13px;
+}
+
+.atomicedge-charts {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+	gap: 20px;
+	margin: 20px 0;
+}
+
+.atomicedge-chart-container {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 20px;
+}
+
+.atomicedge-chart-container h3 {
+	margin-top: 0;
+}
+
+.atomicedge-chart-wrapper {
+	position: relative;
+	height: 300px;
+}
+
+/* ==========================================================================
+   Tables
+   ========================================================================== */
+
+.atomicedge-table-container {
+	margin: 20px 0;
+}
+
+.atomicedge-loading-row td {
+	text-align: center;
+	padding: 30px !important;
+}
+
+.atomicedge-loading-row .spinner {
+	float: none;
+	margin: 0 10px 0 0;
+}
+
+/* ==========================================================================
+   Access Control
+   ========================================================================== */
+
+.atomicedge-tabs {
+	margin-bottom: 0;
+}
+
+.atomicedge-tab-content {
+	display: none;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-top: none;
+	padding: 20px;
+}
+
+.atomicedge-tab-active {
+	display: block;
+}
+
+.atomicedge-section-header {
+	margin-bottom: 20px;
+}
+
+.atomicedge-section-header h2 {
+	margin-bottom: 5px;
+}
+
+.atomicedge-section-header p {
+	margin: 0;
+	color: #646970;
+}
+
+.atomicedge-ip-form {
+	margin-bottom: 20px;
+}
+
+.atomicedge-form-row {
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.atomicedge-form-row input[type="text"] {
+	flex: 1;
+	min-width: 200px;
+}
+
+.atomicedge-geo-form .atomicedge-form-section {
+	margin-bottom: 20px;
+}
+
+.atomicedge-country-selector {
+	margin-top: 15px;
+}
+
+.atomicedge-country-selector select {
+	width: 100%;
+	max-width: 400px;
+}
+
+/* ==========================================================================
+   Scanner
+   ========================================================================== */
+
+.atomicedge-scanner-controls {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 20px;
+	margin: 20px 0;
+	padding: 20px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+}
+
+.atomicedge-scanner-actions {
+	display: flex;
+	gap: 10px;
+}
+
+.atomicedge-scan-progress {
+	padding: 30px;
+	text-align: center;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	margin: 20px 0;
+}
+
+.atomicedge-progress-bar {
+	height: 20px;
+	background: #f0f0f1;
+	border-radius: 10px;
+	overflow: hidden;
+	margin-bottom: 15px;
+}
+
+.atomicedge-progress-fill {
+	height: 100%;
+	background: #2271b1;
+	width: 0;
+	transition: width 0.3s ease;
+	animation: progress-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes progress-pulse {
+	0%, 100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.7;
+	}
+}
+
+.atomicedge-results-summary {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 20px;
+	margin: 20px 0;
+}
+
+.atomicedge-summary-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 20px;
+	margin-top: 15px;
+}
+
+.atomicedge-summary-item {
+	display: flex;
+	align-items: center;
+	gap: 15px;
+	padding: 20px;
+	border-radius: 4px;
+}
+
+.atomicedge-summary-item .dashicons {
+	font-size: 32px;
+	width: 32px;
+	height: 32px;
+}
+
+.atomicedge-summary-count {
+	font-size: 28px;
+	font-weight: 600;
+	line-height: 1;
+}
+
+.atomicedge-summary-label {
+	display: block;
+	color: #646970;
+}
+
+.atomicedge-ok {
+	background: #edfaef;
+}
+
+.atomicedge-ok .dashicons {
+	color: #00a32a;
+}
+
+.atomicedge-warning {
+	background: #fcf9e8;
+}
+
+.atomicedge-warning .dashicons {
+	color: #dba617;
+}
+
+.atomicedge-critical {
+	background: #fcf0f1;
+}
+
+.atomicedge-critical .dashicons {
+	color: #d63638;
+}
+
+.atomicedge-results-section {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 20px;
+	margin: 20px 0;
+}
+
+.atomicedge-results-section h3 {
+	margin-top: 0;
+}
+
+.atomicedge-severity {
+	display: inline-block;
+	padding: 3px 8px;
+	border-radius: 3px;
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+}
+
+.atomicedge-severity-high {
+	background: #fcf9e8;
+	color: #996800;
+}
+
+.atomicedge-severity-critical {
+	background: #fcf0f1;
+	color: #8a1116;
+}
+
+.atomicedge-all-clear {
+	text-align: center;
+	padding: 40px;
+	background: #edfaef;
+	border-radius: 4px;
+	margin: 20px 0;
+}
+
+.atomicedge-all-clear .dashicons {
+	font-size: 60px;
+	width: 60px;
+	height: 60px;
+	color: #00a32a;
+}
+
+.atomicedge-all-clear h3 {
+	margin: 15px 0 10px;
+	color: #00a32a;
+}
+
+.atomicedge-scanner-info-box {
+	background: #f6f7f7;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 20px;
+	margin: 20px 0;
+}
+
+.atomicedge-scanner-info-box h3 {
+	margin-top: 0;
+}
+
+.atomicedge-scanner-info-box ul {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.atomicedge-scanner-info-box li {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 5px 0;
+}
+
+.atomicedge-scanner-info-box .dashicons {
+	color: #00a32a;
+}
+
+/* ==========================================================================
+   Settings
+   ========================================================================== */
+
+.atomicedge-settings-section {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 20px;
+	margin: 20px 0;
+}
+
+.atomicedge-settings-section h2 {
+	margin-top: 0;
+	padding-bottom: 10px;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.atomicedge-connection-status {
+	display: flex;
+	align-items: flex-start;
+	gap: 15px;
+	padding: 15px;
+	border-radius: 4px;
+}
+
+.atomicedge-connected {
+	background: #edfaef;
+}
+
+.atomicedge-connected .dashicons {
+	color: #00a32a;
+	font-size: 24px;
+	width: 24px;
+	height: 24px;
+}
+
+.atomicedge-disconnected {
+	background: #fcf9e8;
+}
+
+.atomicedge-disconnected .dashicons {
+	color: #dba617;
+	font-size: 24px;
+	width: 24px;
+	height: 24px;
+}
+
+.atomicedge-connection-info {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+
+.atomicedge-connection-domain,
+.atomicedge-connection-key {
+	color: #646970;
+	font-size: 13px;
+}
+
+.atomicedge-info-table th {
+	width: 200px;
+}
+
+/* ==========================================================================
+   Common States
+   ========================================================================== */
+
+.atomicedge-loading {
+	text-align: center;
+	padding: 30px;
+	color: #646970;
+}
+
+.atomicedge-loading .spinner {
+	float: none;
+	margin: 0 10px 0 0;
+}
+
+.atomicedge-error {
+	text-align: center;
+	padding: 30px;
+	color: #d63638;
+}
+
+.atomicedge-error .dashicons {
+	font-size: 40px;
+	width: 40px;
+	height: 40px;
+	display: block;
+	margin: 0 auto 10px;
+}
+
+.atomicedge-no-results {
+	text-align: center;
+	padding: 40px;
+	background: #f6f7f7;
+	border-radius: 4px;
+}
+
+.atomicedge-no-results .dashicons {
+	font-size: 50px;
+	width: 50px;
+	height: 50px;
+	color: #c3c4c7;
+}
+
+.atomicedge-no-results h3 {
+	margin: 15px 0 10px;
+}
+
+.atomicedge-no-results p {
+	color: #646970;
+	margin: 0;
+}
+
+/* ==========================================================================
+   Pagination
+   ========================================================================== */
+
+.atomicedge-pagination {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 15px;
+	margin: 20px 0;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media screen and (max-width: 782px) {
+	.atomicedge-status-bar {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.atomicedge-form-row {
+		flex-direction: column;
+	}
+
+	.atomicedge-form-row input[type="text"] {
+		width: 100%;
+	}
+
+	.atomicedge-scanner-controls {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.atomicedge-scanner-actions {
+		flex-direction: column;
+	}
+
+	.atomicedge-charts {
+		grid-template-columns: 1fr;
+	}
+}

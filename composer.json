@@ -1,0 +1,54 @@
+{
+    "name": "atomicedge/wordpress-plugin",
+    "description": "WordPress plugin for AtomicEdge WAF/CDN integration",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "AtomicEdge",
+            "email": "support@atomicedge.io",
+            "homepage": "https://atomicedge.io"
+        }
+    ],
+    "require": {
+        "php": ">=7.4"
+    },
+    "require-dev": {
+        "brain/monkey": "^2.6",
+        "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+        "phpcompatibility/phpcompatibility-wp": "^2.1",
+        "phpunit/phpunit": "^9.6",
+        "roave/security-advisories": "dev-latest",
+        "wp-coding-standards/wpcs": "^3.0",
+        "yoast/phpunit-polyfills": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "AtomicEdge\\": "includes/"
+        },
+        "classmap": [
+            "includes/"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "AtomicEdge\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit --testdox",
+        "test:unit": "phpunit --testsuite=unit --testdox",
+        "test:integration": "phpunit --testsuite=integration --testdox",
+        "test:coverage": "phpunit --coverage-text",
+        "test:coverage-html": "phpunit --coverage-html tests/coverage/html",
+        "cs:check": "phpcs",
+        "cs:fix": "phpcbf"
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        },
+        "optimize-autoloader": true,
+        "sort-packages": true
+    }
+}

@@ -3,7 +3,7 @@
  * Plugin Name: AtomicEdge Security
  * Plugin URI: https://atomicedge.io/wordpress
  * Description: Connect your WordPress site to AtomicEdge WAF/CDN for advanced security protection, analytics, and access control management.
- * Version: 1.0.5
+ * Version: 1.0.6
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Tested up to: 6.7
@@ -23,7 +23,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'ATOMICEDGE_VERSION', '1.0.5' );
+define( 'ATOMICEDGE_VERSION', '1.0.6' );
 define( 'ATOMICEDGE_PLUGIN_FILE', __FILE__ );
 define( 'ATOMICEDGE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ATOMICEDGE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );

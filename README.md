@@ -7,7 +7,7 @@ Connect your WordPress site to AtomicEdge for enterprise-grade WAF protection, r
 | Requires at least | WordPress 5.8 |
 | Tested up to | WordPress 6.9 |
 | Requires PHP | 7.4 |
-| Stable tag | 1.0.5 |
+| Stable tag | 1.0.6 |
 | License | GPLv2 or later |
 | License URI | https://www.gnu.org/licenses/gpl-2.0.html |
 
@@ -22,6 +22,7 @@ AtomicEdge Security connects your WordPress site to the AtomicEdge WAF/CDN servi
 - **IP Access Control** - Easily whitelist or blacklist IP addresses and CIDR ranges
 - **Geographic Blocking** - Block or allow access based on visitor country
 - **Malware Scanner** - Scan WordPress files for modifications and suspicious code patterns
+- **Vulnerability Scanner** - Check WordPress core, plugins, and themes for known vulnerabilities (requires AtomicEdge connection)
 - **WAF Log Viewer** - See exactly what threats are being blocked
 
 ## How It Works
@@ -30,6 +31,8 @@ AtomicEdge Security connects your WordPress site to the AtomicEdge WAF/CDN servi
 2. Add your site to AtomicEdge and get your API key
 3. Install this plugin and enter your API key
 4. Manage your security settings directly from WordPress
+
+Vulnerability scanning is available when connected and uses AtomicEdge's vulnerability data feed.
 
 ## Requirements
 
@@ -63,6 +66,10 @@ After creating your AtomicEdge account and adding your site, you can generate an
 
 No. The AtomicEdge WAF runs on our edge servers, not on your WordPress installation. The plugin only communicates with our API for configuration and analytics.
 
+### Does the plugin include vulnerability scanning?
+
+Yes. When your site is connected to AtomicEdge, you can run a vulnerability scan of WordPress core, plugins, and themes from the AtomicEdge admin menu.
+
 ### What attacks does the WAF block?
 
 AtomicEdge uses the OWASP Core Rule Set to block:
@@ -80,8 +87,15 @@ AtomicEdge uses the OWASP Core Rule Set to block:
 3. WAF logs showing blocked attacks
 4. IP access control management
 5. Malware scanner results
+6. Vulnerability scanner results
 
 ## Changelog
+
+### 1.0.6
+
+- Updated malware scanner results to show full file paths
+- Improved vulnerability scanner UX (scan summary jump links and consistent “More Info” links)
+- Simplified Settings page to focus on connection and core configuration
 
 ### 1.0.0
 

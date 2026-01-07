@@ -64,7 +64,6 @@ Thumbs.db
 .cursorrules
 /vendor
 .phpunit*
-/assets
 /svn
 svn/
 .cursor/rules/codacy.mdc

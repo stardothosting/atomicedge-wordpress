@@ -51,8 +51,8 @@ class AtomicEdge_Scanner {
 		'theme-check',
 		'plugin-check',
 		'phpunit',
-		'atomicedge', // Our own plugin.
 	);
+
 
 	/**
 	 * Whitelisted theme slugs.
@@ -1079,6 +1079,15 @@ class AtomicEdge_Scanner {
 	 * @return bool True if path should be skipped.
 	 */
 	public function is_whitelisted_path( $relative_path ) {
+		// Exclude the scanner implementation file itself to prevent self-triggering
+		// on its own signature strings. This is intentionally narrow.
+		$scanner_suffix = 'includes/class-atomicedge-scanner.php';
+		if ( strlen( $relative_path ) >= strlen( $scanner_suffix )
+			&& substr( $relative_path, -strlen( $scanner_suffix ) ) === $scanner_suffix
+		) {
+			return true;
+		}
+
 		// Check excluded paths (vendor, node_modules, tests, etc.).
 		foreach ( $this->excluded_paths as $excluded ) {
 			if ( false !== strpos( $relative_path, $excluded ) ) {

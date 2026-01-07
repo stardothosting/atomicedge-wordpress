@@ -114,6 +114,16 @@ class AtomicEdge_Admin {
 			array( $this, 'render_scanner_page' )
 		);
 
+		// Vulnerability Scanner submenu.
+		add_submenu_page(
+			'atomicedge',
+			__( 'Vulnerability Scanner', 'atomicedge' ),
+			__( 'Vulnerability Scanner', 'atomicedge' ),
+			'manage_options',
+			'atomicedge-vulnerabilities',
+			array( $this, 'render_vulnerability_scanner_page' )
+		);
+
 		// Settings submenu.
 		add_submenu_page(
 			'atomicedge',
@@ -356,6 +366,19 @@ class AtomicEdge_Admin {
 	}
 
 	/**
+	 * Render vulnerability scanner page.
+	 *
+	 * @return void
+	 */
+	public function render_vulnerability_scanner_page() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'atomicedge' ) );
+		}
+
+		include ATOMICEDGE_PLUGIN_DIR . 'admin/views/vulnerability-scanner.php';
+	}
+
+	/**
 	 * Render settings page.
 	 *
 	 * @return void
@@ -375,8 +398,8 @@ class AtomicEdge_Admin {
 	 */
 	private function render_not_connected_notice() {
 		?>
-		<div class="wrap">
-			<h1><?php esc_html_e( 'AtomicEdge Security', 'atomicedge' ); ?></h1>
+		<div class="wrap atomicedge-wrap">
+			<h1><img src="<?php echo esc_url( ATOMICEDGE_PLUGIN_URL . 'assets/images/logo.svg' ); ?>" alt="<?php esc_attr_e( 'AtomicEdge', 'atomicedge' ); ?>" class="atomicedge-logo" /></h1>
 			<div class="notice notice-warning">
 				<p>
 					<?php
@@ -386,7 +409,7 @@ class AtomicEdge_Admin {
 							__( 'Please <a href="%s">connect your site</a> to AtomicEdge to access this feature.', 'atomicedge' ),
 							array( 'a' => array( 'href' => array() ) )
 						),
-						esc_url( admin_url( 'admin.php?page=atomicedge-settings' ) )
+						esc_url( admin_url( 'admin.php?page=atomicedge' ) )
 					);
 					?>
 				</p>

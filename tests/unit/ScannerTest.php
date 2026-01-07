@@ -2,8 +2,8 @@
 /**
  * AtomicEdge Scanner Class Tests
  *
- * Tests for the AtomicEdge_Scanner class including file scanning,
- * pattern detection, and baseline comparison.
+ * Tests for the AtomicEdge_Scanner class including file scanning
+ * and pattern detection.
  *
  * @package AtomicEdge\Tests\Unit
  */
@@ -100,44 +100,6 @@ class ScannerTest extends TestCase {
 		$this->set_option( 'atomicedge_scan_results', $results );
 
 		$this->assertEquals( $results, $this->scanner->get_last_results() );
-	}
-
-	// =========================================================================
-	// Baseline Tests
-	// =========================================================================
-
-	/**
-	 * Test compare_to_baseline returns error when no baseline exists.
-	 */
-	public function test_compare_to_baseline_returns_error_when_no_baseline() {
-		$result = $this->scanner->compare_to_baseline();
-
-		$this->assertArrayHasKey( 'error', $result );
-		$this->assertStringContainsString( 'No baseline exists', $result['error'] );
-	}
-
-	/**
-	 * Test compare_to_baseline returns change arrays when baseline exists.
-	 */
-	public function test_compare_to_baseline_returns_change_arrays() {
-		// Setup baseline.
-		$baseline = array(
-			'created_at' => '2026-01-01 00:00:00',
-			'files'      => array(
-				'wp-content/plugins/test/test.php' => 'abc123',
-			),
-		);
-		$this->set_option( 'atomicedge_scan_baseline', $baseline );
-
-		$result = $this->scanner->compare_to_baseline();
-
-		// Should have change arrays (files won't exist in test environment).
-		$this->assertArrayHasKey( 'modified', $result );
-		$this->assertArrayHasKey( 'added', $result );
-		$this->assertArrayHasKey( 'removed', $result );
-		$this->assertIsArray( $result['modified'] );
-		$this->assertIsArray( $result['added'] );
-		$this->assertIsArray( $result['removed'] );
 	}
 
 	// =========================================================================

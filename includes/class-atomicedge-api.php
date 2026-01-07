@@ -185,7 +185,7 @@ class AtomicEdge_API {
 			return $cached;
 		}
 
-		$response = $this->request( 'GET', '/analytics/summary', array( 'period' => $period ) );
+		$response = $this->request( 'GET', '/analytics', array( 'period' => $period ) );
 
 		if ( $response['success'] ) {
 			$cache_duration = apply_filters( 'atomicedge_analytics_cache_duration', 15 * MINUTE_IN_SECONDS );
@@ -205,18 +205,22 @@ class AtomicEdge_API {
 		$defaults = array(
 			'page'     => 1,
 			'per_page' => 50,
-			'search'   => '',
 		);
 		$args     = wp_parse_args( $args, $defaults );
 
-		$cache_key = 'atomicedge_waf_logs_' . md5( wp_json_encode( $args ) );
+		// Only include search if it has a value.
+		if ( isset( $args['search'] ) && '' === $args['search'] ) {
+			unset( $args['search'] );
+		}
+
+		$cache_key = 'atomicedge_waf_logs_' . hash( 'sha256', (string) wp_json_encode( $args ) );
 		$cached    = get_transient( $cache_key );
 
 		if ( false !== $cached ) {
 			return $cached;
 		}
 
-		$response = $this->request( 'GET', '/waf/logs', $args );
+		$response = $this->request( 'GET', '/waf-logs', $args );
 
 		if ( $response['success'] ) {
 			$cache_duration = apply_filters( 'atomicedge_waf_cache_duration', 5 * MINUTE_IN_SECONDS );
@@ -239,7 +243,7 @@ class AtomicEdge_API {
 			return $cached;
 		}
 
-		$response = $this->request( 'GET', '/access/ip' );
+		$response = $this->request( 'GET', '/ip-rules' );
 
 		if ( $response['success'] ) {
 			$cache_duration = apply_filters( 'atomicedge_ip_rules_cache_duration', 5 * MINUTE_IN_SECONDS );
@@ -262,7 +266,7 @@ class AtomicEdge_API {
 			'description' => $description,
 		);
 
-		$response = $this->request( 'POST', '/access/ip/whitelist', $data );
+		$response = $this->request( 'POST', '/ip-rules/whitelist', $data );
 
 		if ( $response['success'] ) {
 			delete_transient( 'atomicedge_ip_rules' );
@@ -285,7 +289,7 @@ class AtomicEdge_API {
 			'description' => $description,
 		);
 
-		$response = $this->request( 'POST', '/access/ip/blacklist', $data );
+		$response = $this->request( 'POST', '/ip-rules/blacklist', $data );
 
 		if ( $response['success'] ) {
 			delete_transient( 'atomicedge_ip_rules' );
@@ -327,7 +331,7 @@ class AtomicEdge_API {
 			return $cached;
 		}
 
-		$response = $this->request( 'GET', '/access/geo' );
+		$response = $this->request( 'GET', '/geo-rules' );
 
 		if ( $response['success'] ) {
 			$cache_duration = apply_filters( 'atomicedge_geo_rules_cache_duration', 5 * MINUTE_IN_SECONDS );
@@ -344,7 +348,7 @@ class AtomicEdge_API {
 	 * @return array Result.
 	 */
 	public function update_geo_rules( $rules ) {
-		$response = $this->request( 'PUT', '/access/geo', $rules );
+		$response = $this->request( 'PUT', '/geo-rules', $rules );
 
 		if ( $response['success'] ) {
 			delete_transient( 'atomicedge_geo_rules' );
@@ -366,11 +370,26 @@ class AtomicEdge_API {
 			return $cached;
 		}
 
-		$response = $this->request( 'GET', '/site' );
+		$response = $this->request( 'GET', '/connect' );
 
 		if ( $response['success'] ) {
 			set_transient( $cache_key, $response, HOUR_IN_SECONDS );
 		}
+
+		return $response;
+	}
+
+	/**
+	 * Check vulnerabilities for WordPress installation.
+	 *
+	 * Sends WordPress core version, plugins, and themes to AtomicEdge API
+	 * for vulnerability checking against the Wordfence vulnerability database.
+	 *
+	 * @param array $installation_data Installation data with wordpress_version, plugins, themes.
+	 * @return array Response with success status and vulnerability data.
+	 */
+	public function check_vulnerabilities( $installation_data ) {
+		$response = $this->request( 'POST', '/wp/vulnerabilities/check', $installation_data );
 
 		return $response;
 	}
@@ -439,6 +458,9 @@ class AtomicEdge_API {
 		// Handle HTTP errors.
 		if ( $code >= 400 ) {
 			$error_message = isset( $data['error'] ) ? $data['error'] : __( 'An error occurred.', 'atomicedge' );
+			if ( isset( $data['message'] ) ) {
+				$error_message = $data['message'];
+			}
 			AtomicEdge::log( "API Error ({$code})", $error_message );
 			return array(
 				'success' => false,
@@ -447,6 +469,28 @@ class AtomicEdge_API {
 			);
 		}
 
+		// Extract nested data if API returns standard response format.
+		// The API returns {"success": true, "data": {...}}, so we extract the inner data.
+		if ( isset( $data['success'] ) && true === $data['success'] && isset( $data['data'] ) ) {
+			return array(
+				'success' => true,
+				'data'    => $data['data'],
+			);
+		}
+
+		// Handle API-level errors.
+		if ( isset( $data['success'] ) && false === $data['success'] ) {
+			$error_message = isset( $data['message'] ) ? $data['message'] : __( 'An error occurred.', 'atomicedge' );
+			if ( isset( $data['error'] ) ) {
+				$error_message = $data['error'];
+			}
+			return array(
+				'success' => false,
+				'error'   => $error_message,
+			);
+		}
+
+		// Fallback for non-standard responses.
 		return array(
 			'success' => true,
 			'data'    => $data,

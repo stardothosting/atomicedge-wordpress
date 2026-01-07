@@ -18,6 +18,12 @@
 	gap: 10px;
 }
 
+.atomicedge-logo {
+	height: 32px;
+	width: auto;
+	vertical-align: middle;
+}
+
 /* ==========================================================================
    Welcome / Not Connected State
    ========================================================================== */
@@ -75,7 +81,7 @@
 	font-size: 40px;
 	width: 40px;
 	height: 40px;
-	color: #2271b1;
+	color: #666AE5;
 }
 
 .atomicedge-feature h4 {
@@ -208,7 +214,7 @@
 	font-size: 32px;
 	width: 32px;
 	height: 32px;
-	color: #2271b1;
+	color: #666AE5;
 }
 
 .atomicedge-stat-value {
@@ -367,7 +373,7 @@
 
 .atomicedge-progress-fill {
 	height: 100%;
-	background: #2271b1;
+	background: #666AE5;
 	width: 0;
 	transition: width 0.3s ease;
 	animation: progress-pulse 1.5s ease-in-out infinite;
@@ -403,6 +409,20 @@
 	gap: 15px;
 	padding: 20px;
 	border-radius: 4px;
+	text-decoration: none;
+	color: inherit;
+	transition: transform 0.15s ease, box-shadow 0.15s ease;
+	cursor: pointer;
+}
+
+.atomicedge-summary-item:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.atomicedge-summary-item:focus {
+	outline: 2px solid #2271b1;
+	outline-offset: 2px;
 }
 
 .atomicedge-summary-item .dashicons {
@@ -456,6 +476,50 @@
 
 .atomicedge-results-section h3 {
 	margin-top: 0;
+}
+
+.atomicedge-results-count {
+	font-weight: normal;
+	color: #646970;
+	font-size: 14px;
+}
+
+/* Pagination */
+.atomicedge-pagination {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-top: 15px;
+	padding-top: 15px;
+	border-top: 1px solid #c3c4c7;
+}
+
+.atomicedge-pagination:empty {
+	display: none;
+}
+
+.atomicedge-pagination-info {
+	color: #646970;
+	font-size: 13px;
+}
+
+.atomicedge-pagination-buttons {
+	display: flex;
+	gap: 5px;
+}
+
+.atomicedge-pagination-buttons button {
+	min-width: 36px;
+}
+
+.atomicedge-pagination-buttons button.current {
+	background: #666AE5;
+	border-color: #5558c8;
+	color: #fff;
+}
+
+.atomicedge-paginated-table tbody tr.hidden-row {
+	display: none;
 }
 
 .atomicedge-severity {
@@ -655,6 +719,60 @@
 }
 
 /* ==========================================================================
+   Buttons - AtomicEdge Purple Theme
+   ========================================================================== */
+
+.atomicedge-wrap .button-primary,
+.atomicedge-wrap .button-hero.button-primary {
+	background: #666AE5;
+	border-color: #5558c8;
+	color: #fff;
+}
+
+/* Button with icon - use flexbox for proper alignment */
+.atomicedge-wrap .button-hero.button-primary {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+}
+
+.atomicedge-wrap .button-hero .dashicons {
+	font-size: 20px;
+	width: 20px;
+	height: 20px;
+	line-height: 1;
+}
+
+.atomicedge-wrap .button-primary:hover,
+.atomicedge-wrap .button-primary:focus,
+.atomicedge-wrap .button-hero.button-primary:hover,
+.atomicedge-wrap .button-hero.button-primary:focus {
+	background: #5558c8;
+	border-color: #4a4db0;
+	color: #fff;
+}
+
+.atomicedge-wrap .button-primary:active,
+.atomicedge-wrap .button-hero.button-primary:active {
+	background: #4a4db0;
+	border-color: #3f4298;
+}
+
+.atomicedge-wrap .nav-tab-active,
+.atomicedge-wrap .nav-tab-active:hover,
+.atomicedge-wrap .nav-tab-active:focus {
+	border-bottom-color: #fff;
+	background: #fff;
+	color: #666AE5;
+}
+
+.atomicedge-wrap .nav-tab:hover,
+.atomicedge-wrap .nav-tab:focus {
+	color: #666AE5;
+}
+
+/* ==========================================================================
    Responsive
    ========================================================================== */
 
@@ -685,3 +803,232 @@
 		grid-template-columns: 1fr;
 	}
 }
+
+/* ==========================================================================
+   Vulnerability Scanner
+   ========================================================================== */
+
+.atomicedge-vulnerability-scanner {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 20px;
+	margin: 30px 0 20px;
+}
+
+.atomicedge-vulnerability-scanner h2 {
+	margin-top: 0;
+	padding-bottom: 10px;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.atomicedge-notice {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	padding: 15px;
+	background: #f0f6fc;
+	border-left: 4px solid #72aee6;
+	border-radius: 0 4px 4px 0;
+}
+
+.atomicedge-notice-info {
+	background: #f0f6fc;
+	border-left-color: #72aee6;
+}
+
+.atomicedge-notice .dashicons {
+	flex-shrink: 0;
+	color: #72aee6;
+}
+
+.atomicedge-notice p {
+	margin: 0;
+}
+
+.atomicedge-vuln-item {
+	padding: 15px;
+	margin: 10px 0;
+	background: #fcf9e8;
+	border-left: 4px solid #dba617;
+	border-radius: 0 4px 4px 0;
+}
+
+.atomicedge-vuln-item.atomicedge-severity-critical {
+	background: #fcf0f1;
+	border-left-color: #d63638;
+}
+
+.atomicedge-vuln-item.atomicedge-severity-high {
+	background: #fcf0f1;
+	border-left-color: #d63638;
+}
+
+.atomicedge-vuln-item.atomicedge-severity-medium {
+	background: #fcf9e8;
+	border-left-color: #dba617;
+}
+
+.atomicedge-vuln-item.atomicedge-severity-low {
+	background: #f0f6fc;
+	border-left-color: #72aee6;
+}
+
+.atomicedge-vuln-header {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.atomicedge-vuln-fix {
+	margin: 8px 0 0;
+	font-size: 13px;
+	color: #50575e;
+}
+
+.atomicedge-vuln-refs {
+	margin: 8px 0 0;
+	font-size: 12px;
+	display: flex;
+	gap: 12px;
+	flex-wrap: wrap;
+	align-items: center;
+}
+
+.atomicedge-vuln-refs a {
+	text-decoration: none;
+}
+
+.atomicedge-vuln-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 10px;
+	background: #f0f0f1;
+	border-radius: 3px;
+	font-size: 12px;
+	color: #2271b1;
+	text-decoration: none;
+	transition: background 0.2s, color 0.2s;
+}
+
+.atomicedge-vuln-link:hover {
+	background: #2271b1;
+	color: #fff;
+}
+
+.atomicedge-vuln-link .dashicons {
+	font-size: 14px;
+	width: 14px;
+	height: 14px;
+}
+
+.atomicedge-cve-link {
+	background: #fef7e8;
+	color: #8a6d3b;
+}
+
+.atomicedge-cve-link:hover {
+	background: #8a6d3b;
+	color: #fff;
+}
+
+.atomicedge-vuln-plugin,
+.atomicedge-vuln-theme {
+	margin-bottom: 25px;
+}
+
+.atomicedge-vuln-plugin h4,
+.atomicedge-vuln-theme h4 {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	margin: 0 0 10px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.atomicedge-version {
+	font-size: 12px;
+	font-weight: normal;
+	color: #646970;
+	background: #f0f0f1;
+	padding: 2px 8px;
+	border-radius: 3px;
+}
+
+/* WPScan Settings */
+.atomicedge-wpscan-connected {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.atomicedge-wpscan-connected .dashicons {
+	flex-shrink: 0;
+}
+
+#atomicedge-wpscan-status {
+	font-size: 13px;
+	color: #646970;
+}
+
+#atomicedge-wpscan-token-status {
+	margin-top: 8px;
+}
+
+/* Environment Info Box */
+.atomicedge-environment-info {
+	background: #f6f7f7;
+}
+
+.atomicedge-environment-info ul {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.atomicedge-environment-info li {
+	margin: 8px 0;
+}
+
+.atomicedge-environment-info li strong {
+	display: inline-block;
+	min-width: 140px;
+}
+
+/* Attribution Notice */
+.atomicedge-attribution-notice {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 12px 16px;
+	background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+	border: 1px solid #dee2e6;
+	border-radius: 6px;
+	margin-bottom: 20px;
+}
+
+.atomicedge-attribution-logo {
+	width: 24px;
+	height: 24px;
+	flex-shrink: 0;
+}
+
+.atomicedge-attribution-text {
+	font-size: 13px;
+	color: #495057;
+	line-height: 1.4;
+}
+
+.atomicedge-attribution-text a {
+	color: #2271b1;
+	text-decoration: none;
+	font-weight: 500;
+}
+
+.atomicedge-attribution-text a:hover {
+	text-decoration: underline;
+}
+

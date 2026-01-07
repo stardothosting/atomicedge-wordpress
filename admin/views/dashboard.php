@@ -14,7 +14,7 @@ $is_connected = $this->api->is_connected();
 $site_data    = get_option( 'atomicedge_site_data', array() );
 ?>
 <div class="wrap atomicedge-wrap">
-	<h1><?php esc_html_e( 'AtomicEdge Security', 'atomicedge' ); ?></h1>
+	<h1><img src="<?php echo esc_url( ATOMICEDGE_PLUGIN_URL . 'assets/images/logo.svg' ); ?>" alt="<?php esc_attr_e( 'AtomicEdge', 'atomicedge' ); ?>" class="atomicedge-logo" /></h1>
 
 	<?php if ( ! $is_connected ) : ?>
 		<div class="atomicedge-welcome">
@@ -46,7 +46,7 @@ $site_data    = get_option( 'atomicedge_site_data', array() );
 									printf(
 										/* translators: %s: AtomicEdge dashboard URL */
 										esc_html__( 'Get your API key from your %s.', 'atomicedge' ),
-										'<a href="https://atomicedge.io/dashboard" target="_blank">' . esc_html__( 'AtomicEdge dashboard', 'atomicedge' ) . '</a>'
+										'<a href="https://dashboard.atomicedge.io" target="_blank">' . esc_html__( 'AtomicEdge dashboard', 'atomicedge' ) . '</a>'
 									);
 									?>
 								</p>
@@ -138,19 +138,27 @@ $site_data    = get_option( 'atomicedge_site_data', array() );
 				<div class="atomicedge-action-buttons">
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=atomicedge-analytics' ) ); ?>" class="button">
 						<span class="dashicons dashicons-chart-area"></span>
-						<?php esc_html_e( 'View Analytics', 'atomicedge' ); ?>
+						<?php esc_html_e( 'Analytics', 'atomicedge' ); ?>
 					</a>
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=atomicedge-waf-logs' ) ); ?>" class="button">
 						<span class="dashicons dashicons-shield"></span>
-						<?php esc_html_e( 'View WAF Logs', 'atomicedge' ); ?>
+						<?php esc_html_e( 'WAF Logs', 'atomicedge' ); ?>
 					</a>
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=atomicedge-access-control' ) ); ?>" class="button">
 						<span class="dashicons dashicons-admin-network"></span>
-						<?php esc_html_e( 'Manage Access', 'atomicedge' ); ?>
+						<?php esc_html_e( 'Access Control', 'atomicedge' ); ?>
 					</a>
 					<a href="<?php echo esc_url( admin_url( 'admin.php?page=atomicedge-scanner' ) ); ?>" class="button">
 						<span class="dashicons dashicons-search"></span>
-						<?php esc_html_e( 'Run Scan', 'atomicedge' ); ?>
+						<?php esc_html_e( 'Malware Scanner', 'atomicedge' ); ?>
+					</a>
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=atomicedge-vulnerabilities' ) ); ?>" class="button">
+						<span class="dashicons dashicons-shield-alt"></span>
+						<?php esc_html_e( 'Vulnerability Scanner', 'atomicedge' ); ?>
+					</a>
+					<a href="<?php echo esc_url( admin_url( 'admin.php?page=atomicedge-settings' ) ); ?>" class="button">
+						<span class="dashicons dashicons-admin-generic"></span>
+						<?php esc_html_e( 'Settings', 'atomicedge' ); ?>
 					</a>
 				</div>
 			</div>

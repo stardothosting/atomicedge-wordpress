@@ -54,6 +54,11 @@ class AjaxTest extends TestCase {
 	protected function set_up() {
 		parent::set_up();
 
+		// Reset request globals to avoid state leakage across tests.
+		$_POST    = array();
+		$_GET     = array();
+		$_REQUEST = array();
+
 		// Reset response capture.
 		$this->json_response      = null;
 		$this->json_response_type = null;

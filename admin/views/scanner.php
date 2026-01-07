@@ -15,7 +15,7 @@ $last_scan    = $scanner->get_last_scan_time();
 $last_results = $scanner->get_last_results();
 ?>
 <div class="wrap atomicedge-wrap">
-	<h1><?php esc_html_e( 'Malware Scanner', 'atomicedge' ); ?></h1>
+	<h1><img src="<?php echo esc_url( ATOMICEDGE_PLUGIN_URL . 'assets/images/logo.svg' ); ?>" alt="<?php esc_attr_e( 'AtomicEdge', 'atomicedge' ); ?>" class="atomicedge-logo" /></h1>
 
 	<div class="atomicedge-scanner">
 		<!-- Scanner Controls -->
@@ -40,9 +40,6 @@ $last_results = $scanner->get_last_results();
 				<button type="button" id="atomicedge-run-scan" class="button button-primary button-hero">
 					<span class="dashicons dashicons-search"></span>
 					<?php esc_html_e( 'Run Full Scan', 'atomicedge' ); ?>
-				</button>
-				<button type="button" id="atomicedge-create-baseline" class="button">
-					<?php esc_html_e( 'Create Baseline', 'atomicedge' ); ?>
 				</button>
 			</div>
 		</div>
@@ -78,10 +75,13 @@ $last_results = $scanner->get_last_results();
 
 				<!-- Modified Core Files -->
 				<?php if ( ! empty( $last_results['core_files'] ) ) : ?>
-					<div class="atomicedge-results-section">
-						<h3><?php esc_html_e( 'Modified Core Files', 'atomicedge' ); ?></h3>
+					<div class="atomicedge-results-section" data-paginate="true" data-per-page="10">
+						<h3>
+							<?php esc_html_e( 'Modified Core Files', 'atomicedge' ); ?>
+							<span class="atomicedge-results-count">(<?php echo esc_html( count( $last_results['core_files'] ) ); ?>)</span>
+						</h3>
 						<p class="description"><?php esc_html_e( 'These WordPress core files have been modified from their original versions.', 'atomicedge' ); ?></p>
-						<table class="wp-list-table widefat fixed striped">
+						<table class="wp-list-table widefat fixed striped atomicedge-paginated-table">
 							<thead>
 								<tr>
 									<th><?php esc_html_e( 'File', 'atomicedge' ); ?></th>
@@ -91,7 +91,7 @@ $last_results = $scanner->get_last_results();
 							<tbody>
 								<?php foreach ( $last_results['core_files'] as $issue ) : ?>
 									<tr>
-										<td><code><?php echo esc_html( $issue['file'] ); ?></code></td>
+										<td><code><?php echo esc_html( $issue['file_path'] ?? $issue['file'] ); ?></code></td>
 										<td>
 											<span class="atomicedge-severity atomicedge-severity-<?php echo esc_attr( $issue['severity'] ); ?>">
 												<?php echo esc_html( ucfirst( $issue['severity'] ) ); ?>
@@ -101,15 +101,19 @@ $last_results = $scanner->get_last_results();
 								<?php endforeach; ?>
 							</tbody>
 						</table>
+						<div class="atomicedge-pagination"></div>
 					</div>
 				<?php endif; ?>
 
 				<!-- Suspicious Files -->
 				<?php if ( ! empty( $last_results['suspicious'] ) ) : ?>
-					<div class="atomicedge-results-section">
-						<h3><?php esc_html_e( 'Suspicious Files', 'atomicedge' ); ?></h3>
+					<div class="atomicedge-results-section" data-paginate="true" data-per-page="10">
+						<h3>
+							<?php esc_html_e( 'Suspicious Files', 'atomicedge' ); ?>
+							<span class="atomicedge-results-count">(<?php echo esc_html( count( $last_results['suspicious'] ) ); ?>)</span>
+						</h3>
 						<p class="description"><?php esc_html_e( 'These files contain potentially malicious code patterns.', 'atomicedge' ); ?></p>
-						<table class="wp-list-table widefat fixed striped">
+						<table class="wp-list-table widefat fixed striped atomicedge-paginated-table">
 							<thead>
 								<tr>
 									<th><?php esc_html_e( 'File', 'atomicedge' ); ?></th>
@@ -120,7 +124,7 @@ $last_results = $scanner->get_last_results();
 							<tbody>
 								<?php foreach ( $last_results['suspicious'] as $issue ) : ?>
 									<tr>
-										<td><code><?php echo esc_html( $issue['file'] ); ?></code></td>
+										<td><code><?php echo esc_html( $issue['file_path'] ?? $issue['file'] ); ?></code></td>
 										<td>
 											<?php
 											if ( isset( $issue['pattern'] ) ) {
@@ -139,6 +143,7 @@ $last_results = $scanner->get_last_results();
 								<?php endforeach; ?>
 							</tbody>
 						</table>
+						<div class="atomicedge-pagination"></div>
 					</div>
 				<?php endif; ?>
 
@@ -170,6 +175,14 @@ $last_results = $scanner->get_last_results();
 				</li>
 				<li>
 					<span class="dashicons dashicons-yes"></span>
+					<?php esc_html_e( 'WordPress root directory for unknown PHP files', 'atomicedge' ); ?>
+				</li>
+				<li>
+					<span class="dashicons dashicons-yes"></span>
+					<?php esc_html_e( 'wp-admin and wp-includes for malware patterns', 'atomicedge' ); ?>
+				</li>
+				<li>
+					<span class="dashicons dashicons-yes"></span>
 					<?php esc_html_e( 'PHP files in uploads directory (should not exist)', 'atomicedge' ); ?>
 				</li>
 				<li>
@@ -178,7 +191,26 @@ $last_results = $scanner->get_last_results();
 				</li>
 				<li>
 					<span class="dashicons dashicons-yes"></span>
-					<?php esc_html_e( 'Obfuscated code detection', 'atomicedge' ); ?>
+					<?php esc_html_e( 'Obfuscated code and known webshell signatures', 'atomicedge' ); ?>
+				</li>
+			</ul>
+		</div>
+
+		<!-- PHP Environment Info -->
+		<div class="atomicedge-scanner-info-box atomicedge-environment-info">
+			<h3><?php esc_html_e( 'Environment', 'atomicedge' ); ?></h3>
+			<ul>
+				<li>
+					<strong><?php esc_html_e( 'Memory Limit:', 'atomicedge' ); ?></strong>
+					<?php echo esc_html( ini_get( 'memory_limit' ) ); ?>
+				</li>
+				<li>
+					<strong><?php esc_html_e( 'Max Execution Time:', 'atomicedge' ); ?></strong>
+					<?php echo esc_html( ini_get( 'max_execution_time' ) ); ?>s
+				</li>
+				<li>
+					<strong><?php esc_html_e( 'PHP Version:', 'atomicedge' ); ?></strong>
+					<?php echo esc_html( PHP_VERSION ); ?>
 				</li>
 			</ul>
 		</div>

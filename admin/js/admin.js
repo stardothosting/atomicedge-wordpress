@@ -38,6 +38,7 @@
             this.initWafLogs();
             this.initAccessControl();
             this.initScanner();
+            this.initSettings();
         },
 
         /**
@@ -597,27 +598,191 @@
         },
 
         /**
-         * Initialize scanner page
+         * Initialize scanner page (malware scanner)
          */
         initScanner: function() {
             var self = this;
 
-            if ($('#atomicedge-run-scan').length === 0) {
-                return;
+            // Initialize pagination for results tables (works on both scanner pages)
+            this.initScannerPagination();
+
+            // Malware scan button
+            if ($('#atomicedge-run-scan').length > 0) {
+                $('#atomicedge-run-scan').on('click', function() {
+                    self.runScan();
+                });
             }
 
-            // Run scan button
-            $('#atomicedge-run-scan').on('click', function() {
-                self.runScan();
-            });
+            // Vulnerability scanner button (on separate page)
+            if ($('#atomicedge-run-vuln-scan').length > 0) {
+                $('#atomicedge-run-vuln-scan').on('click', function() {
+                    self.runVulnerabilityScan();
+                });
+            }
+        },
 
-            // Create baseline button
-            $('#atomicedge-create-baseline').on('click', function() {
-                if (confirm('This will create a baseline of all current files. Continue?')) {
-                    // TODO: Implement baseline creation
-                    alert('Baseline feature coming soon.');
+        /**
+         * Initialize settings page
+         */
+        initSettings: function() {
+            // Settings page initialization
+            // WPScan token functionality removed - vulnerability scanning now uses AtomicEdge API
+        },
+
+        /**
+         * Run vulnerability scan
+         */
+        runVulnerabilityScan: function() {
+            var self = this;
+            var $button = $('#atomicedge-run-vuln-scan');
+            var $progress = $('#atomicedge-vuln-progress');
+            var $results = $('#atomicedge-vuln-results');
+
+            $button.prop('disabled', true);
+            $progress.show();
+
+            // Animate progress bar
+            var $progressFill = $progress.find('.atomicedge-progress-fill');
+            $progressFill.css('width', '0%');
+            
+            var progress = 0;
+            var progressInterval = setInterval(function() {
+                progress = Math.min(progress + Math.random() * 8, 90);
+                $progressFill.css('width', progress + '%');
+            }, 600);
+
+            this.ajax('atomicedge_run_vulnerability_scan', { force_refresh: 'true' }, function(data) {
+                clearInterval(progressInterval);
+                $progressFill.css('width', '100%');
+                
+                setTimeout(function() {
+                    $progress.hide();
+                    $button.prop('disabled', false);
+                    // Reload page to show results
+                    location.reload();
+                }, 500);
+            }, function(data) {
+                clearInterval(progressInterval);
+                $progress.hide();
+                $button.prop('disabled', false);
+                
+                if (data && data.need_connection) {
+                    alert('Please connect your site to AtomicEdge in the Settings page first.');
+                } else {
+                    alert(data.message || atomicedgeAdmin.strings.error);
                 }
             });
+        },
+
+        /**
+         * Initialize pagination for scanner results tables
+         */
+        initScannerPagination: function() {
+            var self = this;
+            
+            $('[data-paginate="true"]').each(function() {
+                var $section = $(this);
+                var $table = $section.find('.atomicedge-paginated-table');
+                var $pagination = $section.find('.atomicedge-pagination');
+                var perPage = parseInt($section.data('per-page'), 10) || 10;
+                var $rows = $table.find('tbody tr');
+                var totalRows = $rows.length;
+                var totalPages = Math.ceil(totalRows / perPage);
+                
+                if (totalPages <= 1) {
+                    return; // No pagination needed
+                }
+                
+                // Store pagination state
+                $section.data('currentPage', 1);
+                $section.data('totalPages', totalPages);
+                $section.data('perPage', perPage);
+                
+                // Build pagination UI
+                self.buildPaginationUI($section, $pagination, totalRows, perPage, totalPages);
+                
+                // Show first page
+                self.showPage($section, 1);
+            });
+        },
+
+        /**
+         * Build pagination UI
+         */
+        buildPaginationUI: function($section, $pagination, totalRows, perPage, totalPages) {
+            var self = this;
+            var html = '<div class="atomicedge-pagination-info">';
+            html += 'Showing <span class="showing-start">1</span>-<span class="showing-end">' + Math.min(perPage, totalRows) + '</span> of ' + totalRows + ' items';
+            html += '</div>';
+            html += '<div class="atomicedge-pagination-buttons">';
+            html += '<button type="button" class="button pagination-prev" disabled>&laquo; Prev</button>';
+            
+            for (var i = 1; i <= totalPages; i++) {
+                html += '<button type="button" class="button pagination-page' + (i === 1 ? ' current' : '') + '" data-page="' + i + '">' + i + '</button>';
+            }
+            
+            html += '<button type="button" class="button pagination-next"' + (totalPages <= 1 ? ' disabled' : '') + '>Next &raquo;</button>';
+            html += '</div>';
+            
+            $pagination.html(html);
+            
+            // Bind events
+            $pagination.find('.pagination-prev').on('click', function() {
+                var currentPage = $section.data('currentPage');
+                if (currentPage > 1) {
+                    self.showPage($section, currentPage - 1);
+                }
+            });
+            
+            $pagination.find('.pagination-next').on('click', function() {
+                var currentPage = $section.data('currentPage');
+                var totalPages = $section.data('totalPages');
+                if (currentPage < totalPages) {
+                    self.showPage($section, currentPage + 1);
+                }
+            });
+            
+            $pagination.find('.pagination-page').on('click', function() {
+                var page = parseInt($(this).data('page'), 10);
+                self.showPage($section, page);
+            });
+        },
+
+        /**
+         * Show specific page of results
+         */
+        showPage: function($section, page) {
+            var $table = $section.find('.atomicedge-paginated-table');
+            var $pagination = $section.find('.atomicedge-pagination');
+            var perPage = $section.data('perPage');
+            var totalPages = $section.data('totalPages');
+            var $rows = $table.find('tbody tr');
+            var totalRows = $rows.length;
+            
+            // Update current page
+            $section.data('currentPage', page);
+            
+            // Show/hide rows
+            var startIndex = (page - 1) * perPage;
+            var endIndex = startIndex + perPage;
+            
+            $rows.each(function(index) {
+                if (index >= startIndex && index < endIndex) {
+                    $(this).removeClass('hidden-row');
+                } else {
+                    $(this).addClass('hidden-row');
+                }
+            });
+            
+            // Update pagination info
+            $pagination.find('.showing-start').text(startIndex + 1);
+            $pagination.find('.showing-end').text(Math.min(endIndex, totalRows));
+            
+            // Update button states
+            $pagination.find('.pagination-prev').prop('disabled', page === 1);
+            $pagination.find('.pagination-next').prop('disabled', page === totalPages);
+            $pagination.find('.pagination-page').removeClass('current');
+            $pagination.find('.pagination-page[data-page="' + page + '"]').addClass('current');
         },
 
         /**

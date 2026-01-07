@@ -62,6 +62,10 @@ class AtomicEdge_Ajax {
 		add_action( 'wp_ajax_atomicedge_run_scan', array( $this, 'ajax_run_scan' ) );
 		add_action( 'wp_ajax_atomicedge_get_scan_results', array( $this, 'ajax_get_scan_results' ) );
 
+		// Vulnerability Scanner.
+		add_action( 'wp_ajax_atomicedge_run_vulnerability_scan', array( $this, 'ajax_run_vulnerability_scan' ) );
+		add_action( 'wp_ajax_atomicedge_get_vulnerability_results', array( $this, 'ajax_get_vulnerability_results' ) );
+
 		// Cache.
 		add_action( 'wp_ajax_atomicedge_clear_cache', array( $this, 'ajax_clear_cache' ) );
 	}
@@ -345,5 +349,51 @@ class AtomicEdge_Ajax {
 		$this->api->clear_cache();
 
 		wp_send_json_success( array( 'message' => __( 'Cache cleared successfully.', 'atomicedge' ) ) );
+	}
+
+	/**
+	 * Run vulnerability scan via AJAX.
+	 *
+	 * @return void
+	 */
+	public function ajax_run_vulnerability_scan() {
+		$this->verify_ajax_request();
+
+		$vuln_scanner = AtomicEdge::get_instance()->vulnerability_scanner;
+
+		if ( ! $vuln_scanner->is_available() ) {
+			wp_send_json_error( array(
+				'message' => __( 'Vulnerability scanning requires an AtomicEdge API connection. Please connect your site in the Settings page.', 'atomicedge' ),
+				'need_connection' => true,
+			) );
+		}
+
+		$force_refresh = isset( $_POST['force_refresh'] ) && 'true' === sanitize_text_field( wp_unslash( $_POST['force_refresh'] ) );
+		$results = $vuln_scanner->run_full_scan( $force_refresh );
+
+		if ( isset( $results['error'] ) ) {
+			wp_send_json_error( array( 'message' => $results['error'] ) );
+		}
+
+		wp_send_json_success( $results );
+	}
+
+	/**
+	 * Get last vulnerability scan results via AJAX.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_vulnerability_results() {
+		$this->verify_ajax_request();
+
+		$vuln_scanner = AtomicEdge::get_instance()->vulnerability_scanner;
+		$results = $vuln_scanner->get_last_results();
+		$last_scan = $vuln_scanner->get_last_scan_time();
+
+		wp_send_json_success( array(
+			'results'   => $results,
+			'last_scan' => $last_scan,
+			'available' => $vuln_scanner->is_available(),
+		) );
 	}
 }

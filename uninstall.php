@@ -18,7 +18,6 @@ $options_to_delete = array(
 	'atomicedge_api_url',
 	'atomicedge_connected',
 	'atomicedge_site_data',
-	'atomicedge_scan_baseline',
 	'atomicedge_last_scan',
 	'atomicedge_scan_results',
 );

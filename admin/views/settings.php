@@ -16,7 +16,7 @@ $site_data    = get_option( 'atomicedge_site_data', array() );
 $masked_key   = $this->get_masked_api_key();
 ?>
 <div class="wrap atomicedge-wrap">
-	<h1><?php esc_html_e( 'AtomicEdge Settings', 'atomicedge' ); ?></h1>
+	<h1><img src="<?php echo esc_url( ATOMICEDGE_PLUGIN_URL . 'assets/images/logo.svg' ); ?>" alt="<?php esc_attr_e( 'AtomicEdge', 'atomicedge' ); ?>" class="atomicedge-logo" /></h1>
 
 	<div class="atomicedge-settings">
 		<!-- Connection Status -->
@@ -130,16 +130,6 @@ $masked_key   = $this->get_masked_api_key();
 					</button>
 				</p>
 			</form>
-		</div>
-
-		<!-- Cache Management -->
-		<div class="atomicedge-settings-section">
-			<h2><?php esc_html_e( 'Cache Management', 'atomicedge' ); ?></h2>
-			<p><?php esc_html_e( 'Clear cached API data if you are experiencing issues with outdated information.', 'atomicedge' ); ?></p>
-			<button type="button" id="atomicedge-clear-cache" class="button">
-				<?php esc_html_e( 'Clear Cache', 'atomicedge' ); ?>
-			</button>
-			<span id="atomicedge-cache-status"></span>
 		</div>
 
 		<!-- Plugin Info -->

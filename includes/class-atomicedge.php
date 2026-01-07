@@ -55,6 +55,13 @@ class AtomicEdge {
 	public $scanner;
 
 	/**
+	 * Vulnerability scanner instance.
+	 *
+	 * @var AtomicEdge_Vulnerability_Scanner
+	 */
+	public $vulnerability_scanner;
+
+	/**
 	 * Cron handler instance.
 	 *
 	 * @var AtomicEdge_Cron
@@ -101,11 +108,12 @@ class AtomicEdge {
 	 * @return void
 	 */
 	private function init_components() {
-		$this->api     = new AtomicEdge_API();
-		$this->admin   = new AtomicEdge_Admin( $this->api );
-		$this->ajax    = new AtomicEdge_Ajax( $this->api );
-		$this->scanner = new AtomicEdge_Scanner();
-		$this->cron    = new AtomicEdge_Cron( $this->api, $this->scanner );
+		$this->api                   = new AtomicEdge_API();
+		$this->admin                 = new AtomicEdge_Admin( $this->api );
+		$this->ajax                  = new AtomicEdge_Ajax( $this->api );
+		$this->scanner               = new AtomicEdge_Scanner();
+		$this->vulnerability_scanner = new AtomicEdge_Vulnerability_Scanner( $this->api );
+		$this->cron                  = new AtomicEdge_Cron( $this->api, $this->scanner );
 	}
 
 	/**

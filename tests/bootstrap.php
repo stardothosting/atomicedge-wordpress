@@ -57,6 +57,44 @@ if ( ! defined( 'ATOMICEDGE_PLUGIN_BASENAME' ) ) {
 	define( 'ATOMICEDGE_PLUGIN_BASENAME', 'atomicedge/atomicedge.php' );
 }
 
+// WordPress core constants.
+if ( ! defined( 'WPINC' ) ) {
+	define( 'WPINC', 'wp-includes' );
+}
+
+if ( ! defined( 'WP_CONTENT_DIR' ) ) {
+	define( 'WP_CONTENT_DIR', '/tmp/wordpress/wp-content' );
+}
+
+if ( ! defined( 'WP_PLUGIN_DIR' ) ) {
+	define( 'WP_PLUGIN_DIR', '/tmp/wordpress/wp-content/plugins' );
+}
+
+// WordPress time constants.
+if ( ! defined( 'MINUTE_IN_SECONDS' ) ) {
+	define( 'MINUTE_IN_SECONDS', 60 );
+}
+
+if ( ! defined( 'HOUR_IN_SECONDS' ) ) {
+	define( 'HOUR_IN_SECONDS', 60 * MINUTE_IN_SECONDS );
+}
+
+if ( ! defined( 'DAY_IN_SECONDS' ) ) {
+	define( 'DAY_IN_SECONDS', 24 * HOUR_IN_SECONDS );
+}
+
+if ( ! defined( 'WEEK_IN_SECONDS' ) ) {
+	define( 'WEEK_IN_SECONDS', 7 * DAY_IN_SECONDS );
+}
+
+if ( ! defined( 'MONTH_IN_SECONDS' ) ) {
+	define( 'MONTH_IN_SECONDS', 30 * DAY_IN_SECONDS );
+}
+
+if ( ! defined( 'YEAR_IN_SECONDS' ) ) {
+	define( 'YEAR_IN_SECONDS', 365 * DAY_IN_SECONDS );
+}
+
 // WordPress encryption constants for API key tests.
 if ( ! defined( 'AUTH_KEY' ) ) {
 	define( 'AUTH_KEY', 'test_auth_key_1234567890abcdefghijklmnopqrstuvwxyz' );
@@ -146,9 +184,17 @@ function setup_default_mocks() {
 	);
 
 	// Sanitization functions.
+	Functions\when( 'wp_strip_all_tags' )->alias(
+		function ( $text ) {
+			// Minimal tag stripper for tests (avoid strip_tags() per WP standards).
+			$sanitized = preg_replace( '/<[^>]*>/', '', (string) $text );
+			return is_string( $sanitized ) ? $sanitized : '';
+		}
+	);
+
 	Functions\when( 'sanitize_text_field' )->alias(
 		function ( $str ) {
-			return htmlspecialchars( strip_tags( (string) $str ), ENT_QUOTES, 'UTF-8' );
+			return trim( wp_strip_all_tags( (string) $str ) );
 		}
 	);
 
@@ -166,13 +212,13 @@ function setup_default_mocks() {
 
 	Functions\when( 'esc_html' )->alias(
 		function ( $text ) {
-			return htmlspecialchars( (string) $text, ENT_QUOTES, 'UTF-8' );
+			return (string) filter_var( (string) $text, FILTER_SANITIZE_FULL_SPECIAL_CHARS );
 		}
 	);
 
 	Functions\when( 'esc_attr' )->alias(
 		function ( $text ) {
-			return htmlspecialchars( (string) $text, ENT_QUOTES, 'UTF-8' );
+			return (string) filter_var( (string) $text, FILTER_SANITIZE_FULL_SPECIAL_CHARS );
 		}
 	);
 
@@ -197,13 +243,13 @@ function setup_default_mocks() {
 
 	Functions\when( 'esc_html__' )->alias(
 		function ( $text, $domain = 'default' ) {
-			return htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
+			return esc_html( $text );
 		}
 	);
 
 	Functions\when( 'esc_html_e' )->alias(
 		function ( $text, $domain = 'default' ) {
-			echo htmlspecialchars( $text, ENT_QUOTES, 'UTF-8' );
+			echo esc_html( $text );
 		}
 	);
 
@@ -367,6 +413,7 @@ if ( ! class_exists( 'WP_Error' ) ) {
 // Include plugin classes for testing.
 require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-api.php';
 require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-scanner.php';
+require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-vulnerability-scanner.php';
 require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-ajax.php';
 require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-admin.php';
 require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-cron.php';

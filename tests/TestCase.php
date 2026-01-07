@@ -84,6 +84,27 @@ abstract class TestCase extends PolyfillTestCase {
 	}
 
 	/**
+	 * Get a test transient value.
+	 *
+	 * @param string $key Transient key.
+	 * @return mixed|false
+	 */
+	protected function get_transient( string $key ) {
+		global $_test_transients;
+		return $_test_transients[ $key ] ?? false;
+	}
+
+	/**
+	 * Clear all test transients.
+	 *
+	 * @return void
+	 */
+	protected function clear_transients(): void {
+		global $_test_transients;
+		$_test_transients = array();
+	}
+
+	/**
 	 * Mock a successful HTTP response.
 	 *
 	 * @param array  $body Response body data.

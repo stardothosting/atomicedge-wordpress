@@ -1,7 +1,7 @@
 # AtomicEdge WordPress Plugin - Development Status
 
 > **Status**: Frontend Complete, Awaiting Backend API
-> **Last Updated**: January 5, 2026
+> **Last Updated**: January 6, 2026
 > **WordPress Dev Environment**: http://shift8.local
 
 ## Overview
@@ -11,7 +11,8 @@ This WordPress plugin connects sites to the AtomicEdge WAF/CDN service, providin
 - WAF security log viewing
 - IP whitelist/blacklist management
 - Geographic access control
-- Local malware scanning
+- **Full-site malware scanning** (root, wp-admin, wp-includes, wp-content)
+- **Vulnerability scanner** using WPScan API (free tier supported)
 
 ## File Structure (Complete)
 
@@ -28,7 +29,8 @@ atomicedge/
 │   ├── class-atomicedge-api.php      # API client (encrypted key storage)
 │   ├── class-atomicedge-admin.php    # Admin pages & menus
 │   ├── class-atomicedge-ajax.php     # AJAX handlers
-│   ├── class-atomicedge-scanner.php  # Malware scanner
+│   ├── class-atomicedge-scanner.php  # Malware scanner (full-site)
+│   ├── class-atomicedge-vulnerability-scanner.php  # WPScan API integration
 │   └── class-atomicedge-cron.php     # Scheduled tasks
 ├── admin/
 │   ├── css/
@@ -37,11 +39,11 @@ atomicedge/
 │   │   └── admin.js                  # AJAX handlers, Chart.js integration
 │   └── views/
 │       ├── dashboard.php             # Main dashboard with widgets
-│       ├── settings.php              # Connection settings
+│       ├── settings.php              # Connection settings + WPScan token
 │       ├── analytics.php             # Traffic analytics with charts
 │       ├── waf-logs.php              # WAF log viewer
 │       ├── access-control.php        # IP & Geo management (tabbed)
-│       └── scanner.php               # Malware scanner UI
+│       └── scanner.php               # Malware + Vulnerability scanner UI
 ├── assets/
 │   ├── js/
 │   │   └── chart.min.js              # Chart.js 4.4.1
@@ -94,14 +96,32 @@ https://atomicedge.io/api/v1/wp
 | `atomicedge_get_geo_rules` | `ajax_get_geo_rules()` | Get geo access rules |
 | `atomicedge_update_geo_rules` | `ajax_update_geo_rules()` | Update geo rules |
 | `atomicedge_run_scan` | `ajax_run_scan()` | Run malware scan |
+| `atomicedge_run_vulnerability_scan` | `ajax_run_vulnerability_scan()` | Check plugins/themes against WPScan |
+| `atomicedge_get_vulnerability_results` | `ajax_get_vulnerability_results()` | Get cached vulnerability results |
+| `atomicedge_save_wpscan_token` | `ajax_save_wpscan_token()` | Save WPScan API token |
+| `atomicedge_get_wpscan_status` | `ajax_get_wpscan_status()` | Check WPScan API status |
 | `atomicedge_clear_cache` | `ajax_clear_cache()` | Clear API cache |
 
 ## Malware Scanner Features
 
 1. **WordPress Core Integrity**: Compares core files against WordPress.org checksums
-2. **Suspicious Patterns**: Detects base64_decode, eval, shell_exec patterns
-3. **PHP in Uploads**: Finds PHP files in wp-content/uploads
-4. **File Baseline**: Creates baseline for change detection (future feature)
+2. **Full-Site Scanning**: Scans WordPress root, wp-admin, wp-includes, and all wp-content directories
+3. **Root File Detection**: Flags unknown PHP files in WordPress root (not part of core)
+4. **Suspicious Patterns**: Detects base64_decode, eval, shell_exec, webshell signatures
+5. **PHP in Uploads**: Finds PHP files in wp-content/uploads (should not exist)
+6. **Memory-Aware**: Monitors memory usage and stops gracefully if approaching limits
+7. **Time-Aware**: Extends execution time on hosts that allow it
+
+## Vulnerability Scanner Features
+
+1. **WPScan Integration**: Uses WPScan Vulnerability Database API
+2. **Free Tier Support**: Works with free API token (25 calls/day)
+3. **WordPress Core Check**: Checks current WP version for known vulnerabilities
+4. **Plugin Scanning**: Scans all installed plugins for CVEs
+5. **Theme Scanning**: Scans all installed themes for vulnerabilities
+6. **Version Filtering**: Only shows vulnerabilities affecting installed versions
+7. **12-Hour Caching**: Caches results to minimize API calls
+8. **Severity Levels**: Categorizes as critical, high, medium, or low
 
 ## Cron Jobs
 
@@ -118,8 +138,10 @@ https://atomicedge.io/api/v1/wp
 | `atomicedge_site_domain` | Connected domain |
 | `atomicedge_api_url` | API base URL |
 | `atomicedge_cache_ttl` | Cache duration (seconds) |
-| `atomicedge_last_scan` | Last scan results |
-| `atomicedge_file_baseline` | File checksums baseline |
+| `atomicedge_last_scan` | Last malware scan results |
+| `atomicedge_wpscan_api_token` | WPScan API token |
+| `atomicedge_vuln_scan_results` | Last vulnerability scan results |
+| `atomicedge_vuln_scan_time` | Last vulnerability scan timestamp |
 
 ## Testing Checklist
 

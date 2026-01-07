@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 ?>
 <div class="wrap atomicedge-wrap">
-	<h1><?php esc_html_e( 'WAF Security Logs', 'atomicedge' ); ?></h1>
+	<h1><img src="<?php echo esc_url( ATOMICEDGE_PLUGIN_URL . 'assets/images/logo.svg' ); ?>" alt="<?php esc_attr_e( 'AtomicEdge', 'atomicedge' ); ?>" class="atomicedge-logo" /></h1>
 
 	<div class="atomicedge-waf-logs">
 		<!-- Filters -->

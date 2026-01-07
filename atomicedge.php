@@ -14,6 +14,8 @@
  * Text Domain: atomicedge
  * Domain Path: /languages
  *
+ * GitHub Plugin URI: https://github.com/stardothosting/atomicedge-wordpress
+ * Primary Branch: main
  * @package AtomicEdge
  */
 

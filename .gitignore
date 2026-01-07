@@ -75,3 +75,16 @@ svn/
 
 # Snyk Security Extension - AI Rules (auto-generated)
 .github/instructions/snyk_rules.instructions.md
+
+# Snyk artifacts (user preference: do not track)
+.snyk
+.snyk.d/
+.snyk_policy
+
+# Codacy artifacts (user preference: do not track)
+.codacy.yml
+.codacy.yaml
+.codacyrc
+codacy-results.sarif
+codacy-results.json
+*.sarif

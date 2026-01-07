@@ -140,7 +140,7 @@ function atomicedge_activate() {
 
 	// Set default options.
 	$defaults = array(
-		'api_url'   => 'https://atomicedge.io/api/v1',
+		'api_url'   => 'https://dashboard.atomicedge.io/api/v1',
 		'connected' => false,
 	);
 

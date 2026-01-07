@@ -102,11 +102,13 @@
                     if (data.hourly_data) {
                         self.initDashboardCharts(data.hourly_data);
                     }
+                } else {
+                    $widget.html('<p class="atomicedge-error">' + atomicedgeAdmin.strings.error + '</p>');
                 }
-            }, function() {
+            }, function(errorData) {
                 $('#atomicedge-summary-widget .atomicedge-widget-content')
                     .removeClass('atomicedge-loading')
-                    .html('<p class="atomicedge-error">' + atomicedgeAdmin.strings.error + '</p>');
+                    .html('<p class="atomicedge-error">' + (errorData && errorData.message ? errorData.message : atomicedgeAdmin.strings.error) + '</p>');
             });
         },
 
@@ -202,8 +204,11 @@
                 $('#atomicedge-analytics-loading').hide();
                 self.updateAnalyticsStats(data);
                 self.updateAnalyticsCharts(data.hourly_data || []);
-            }, function() {
+            }, function(errorData) {
                 $('#atomicedge-analytics-loading').hide();
+                if (errorData && errorData.message) {
+                    $('#atomicedge-analytics-error').find('span').last().text(errorData.message);
+                }
                 $('#atomicedge-analytics-error').show();
             });
         },

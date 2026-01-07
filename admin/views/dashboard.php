@@ -39,9 +39,11 @@ $site_data    = get_option( 'atomicedge_site_data', array() );
 									   id="atomicedge_api_key"
 									   name="atomicedge_api_key"
 									   class="regular-text"
-									   placeholder="ae_xxxxxxxxxxxxxxxxxxxx"
+									   placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 									   required />
 								<p class="description">
+									<?php esc_html_e( 'Paste the API key exactly as shown in the Atomic Edge dashboard (32–64 letters/numbers, no prefix).', 'atomicedge' ); ?>
+									<br />
 									<?php
 									printf(
 										/* translators: %s: AtomicEdge dashboard URL */

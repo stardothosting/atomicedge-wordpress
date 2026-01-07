@@ -37,7 +37,7 @@ class AtomicEdge_API {
 	 * Constructor.
 	 */
 	public function __construct() {
-		$this->api_url = get_option( 'atomicedge_api_url', 'https://atomicedge.io/api/v1' );
+		$this->api_url = get_option( 'atomicedge_api_url', 'https://dashboard.atomicedge.io/api/v1' );
 		$this->timeout = apply_filters( 'atomicedge_api_timeout', 30 );
 	}
 

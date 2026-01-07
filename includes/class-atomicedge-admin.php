@@ -206,9 +206,19 @@ class AtomicEdge_Admin {
 
 		// Get and validate API key.
 		$api_key = isset( $_POST['atomicedge_api_key'] ) ? sanitize_text_field( wp_unslash( $_POST['atomicedge_api_key'] ) ) : '';
+		$api_key = trim( $api_key );
 
 		if ( empty( $api_key ) ) {
 			$this->add_admin_notice( 'error', __( 'Please enter an API key.', 'atomicedge' ) );
+			return;
+		}
+
+		// AtomicEdge keys are 32-64 alphanumeric characters (no prefixes).
+		if ( ! preg_match( '/^[A-Za-z0-9]{32,64}$/', $api_key ) ) {
+			$this->add_admin_notice(
+				'error',
+				__( 'Invalid API key format. Paste the key exactly as shown in the Atomic Edge dashboard (32–64 letters/numbers, no prefix).', 'atomicedge' )
+			);
 			return;
 		}
 

@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 $is_connected = $this->api->is_connected();
-$api_url      = get_option( 'atomicedge_api_url', 'https://atomicedge.io/api/v1' );
+$api_url      = get_option( 'atomicedge_api_url', 'https://dashboard.atomicedge.io/api/v1' );
 $site_data    = get_option( 'atomicedge_site_data', array() );
 $masked_key   = $this->get_masked_api_key();
 ?>
@@ -78,14 +78,16 @@ $masked_key   = $this->get_masked_api_key();
 									   id="atomicedge_api_key"
 									   name="atomicedge_api_key"
 									   class="regular-text"
-									   placeholder="ae_xxxxxxxxxxxxxxxxxxxx"
+									   placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 									   required />
 								<p class="description">
+									<?php esc_html_e( 'Paste the API key exactly as shown in the Atomic Edge dashboard (32–64 letters/numbers, no prefix).', 'atomicedge' ); ?>
+									<br />
 									<?php
 									printf(
 										/* translators: %s: AtomicEdge dashboard URL */
 										esc_html__( 'Get your API key from your %s.', 'atomicedge' ),
-										'<a href="https://atomicedge.io/dashboard" target="_blank">' . esc_html__( 'Atomic Edge dashboard', 'atomicedge' ) . '</a>'
+										'<a href="https://dashboard.atomicedge.io" target="_blank">' . esc_html__( 'Atomic Edge dashboard', 'atomicedge' ) . '</a>'
 									);
 									?>
 								</p>

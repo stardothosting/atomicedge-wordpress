@@ -14,18 +14,18 @@ $is_connected = $this->api->is_connected();
 $site_data    = get_option( 'atomicedge_site_data', array() );
 ?>
 <div class="wrap atomicedge-wrap">
-	<h1><img src="<?php echo esc_url( ATOMICEDGE_PLUGIN_URL . 'assets/images/logo.svg' ); ?>" alt="<?php esc_attr_e( 'AtomicEdge', 'atomicedge' ); ?>" class="atomicedge-logo" /></h1>
+	<h1><img src="<?php echo esc_url( ATOMICEDGE_PLUGIN_URL . 'assets/images/logo.svg' ); ?>" alt="<?php esc_attr_e( 'Atomic Edge', 'atomicedge' ); ?>" class="atomicedge-logo" /></h1>
 
 	<?php if ( ! $is_connected ) : ?>
 		<div class="atomicedge-welcome">
 			<div class="atomicedge-welcome-header">
-				<h2><?php esc_html_e( 'Welcome to AtomicEdge Security', 'atomicedge' ); ?></h2>
+				<h2><?php esc_html_e( 'Welcome to Atomic Edge Security', 'atomicedge' ); ?></h2>
 				<p><?php esc_html_e( 'Protect your WordPress site with enterprise-grade WAF protection, analytics, and security tools.', 'atomicedge' ); ?></p>
 			</div>
 
 			<div class="atomicedge-connect-box">
 				<h3><?php esc_html_e( 'Connect Your Site', 'atomicedge' ); ?></h3>
-				<p><?php esc_html_e( 'Enter your AtomicEdge API key to get started.', 'atomicedge' ); ?></p>
+				<p><?php esc_html_e( 'Enter your Atomic Edge API key to get started.', 'atomicedge' ); ?></p>
 
 				<form method="post" action="">
 					<?php wp_nonce_field( 'atomicedge_connect' ); ?>
@@ -46,7 +46,7 @@ $site_data    = get_option( 'atomicedge_site_data', array() );
 									printf(
 										/* translators: %s: AtomicEdge dashboard URL */
 										esc_html__( 'Get your API key from your %s.', 'atomicedge' ),
-										'<a href="https://dashboard.atomicedge.io" target="_blank">' . esc_html__( 'AtomicEdge dashboard', 'atomicedge' ) . '</a>'
+										'<a href="https://dashboard.atomicedge.io" target="_blank">' . esc_html__( 'Atomic Edge dashboard', 'atomicedge' ) . '</a>'
 									);
 									?>
 								</p>
@@ -55,7 +55,7 @@ $site_data    = get_option( 'atomicedge_site_data', array() );
 					</table>
 					<p class="submit">
 						<button type="submit" name="atomicedge_connect" class="button button-primary button-hero">
-							<?php esc_html_e( 'Connect to AtomicEdge', 'atomicedge' ); ?>
+							<?php esc_html_e( 'Connect to Atomic Edge', 'atomicedge' ); ?>
 						</button>
 					</p>
 				</form>
@@ -93,7 +93,7 @@ $site_data    = get_option( 'atomicedge_site_data', array() );
 			<div class="atomicedge-status-bar">
 				<div class="atomicedge-status atomicedge-status-connected">
 					<span class="dashicons dashicons-yes-alt"></span>
-					<?php esc_html_e( 'Connected to AtomicEdge', 'atomicedge' ); ?>
+					<?php esc_html_e( 'Connected to Atomic Edge', 'atomicedge' ); ?>
 				</div>
 				<?php if ( ! empty( $site_data['domain'] ) ) : ?>
 					<div class="atomicedge-domain">

@@ -137,11 +137,11 @@ class AtomicEdge_API {
 		// Fire action hook.
 		do_action( 'atomicedge_connected', $response['data'] );
 
-		AtomicEdge::log( 'Successfully connected to AtomicEdge', array( 'site_url' => $site_url ) );
+		AtomicEdge::log( 'Successfully connected to Atomic Edge', array( 'site_url' => $site_url ) );
 
 		return array(
 			'success' => true,
-			'message' => __( 'Successfully connected to AtomicEdge!', 'atomicedge' ),
+			'message' => __( 'Successfully connected to Atomic Edge!', 'atomicedge' ),
 			'data'    => $response['data'],
 		);
 	}
@@ -163,11 +163,11 @@ class AtomicEdge_API {
 		// Fire action hook.
 		do_action( 'atomicedge_disconnected' );
 
-		AtomicEdge::log( 'Disconnected from AtomicEdge' );
+		AtomicEdge::log( 'Disconnected from Atomic Edge' );
 
 		return array(
 			'success' => true,
-			'message' => __( 'Successfully disconnected from AtomicEdge.', 'atomicedge' ),
+			'message' => __( 'Successfully disconnected from Atomic Edge.', 'atomicedge' ),
 		);
 	}
 
@@ -409,7 +409,7 @@ class AtomicEdge_API {
 		if ( ! $api_key && '/connect' !== $endpoint ) {
 			return array(
 				'success' => false,
-				'error'   => __( 'Not connected to AtomicEdge.', 'atomicedge' ),
+				'error'   => __( 'Not connected to Atomic Edge.', 'atomicedge' ),
 			);
 		}
 

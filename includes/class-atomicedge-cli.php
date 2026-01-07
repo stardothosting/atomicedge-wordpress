@@ -94,7 +94,7 @@ class AtomicEdge_CLI {
 		$severity = isset( $assoc_args['severity'] ) ? $assoc_args['severity'] : 'low';
 		$type     = isset( $assoc_args['type'] ) ? $assoc_args['type'] : 'full';
 
-		WP_CLI::log( 'Starting AtomicEdge security scan...' );
+		WP_CLI::log( 'Starting Atomic Edge security scan...' );
 		WP_CLI::log( '' );
 
 		$results = array();
@@ -206,7 +206,7 @@ class AtomicEdge_CLI {
 	public function stats( $args, $assoc_args ) {
 		$stats = $this->scanner->get_scan_statistics();
 
-		WP_CLI::log( 'AtomicEdge Scanner Statistics' );
+		WP_CLI::log( 'Atomic Edge Scanner Statistics' );
 		WP_CLI::log( '==============================' );
 		WP_CLI::log( '' );
 		WP_CLI::log( sprintf( 'Total Patterns: %d', $stats['total_patterns'] ) );

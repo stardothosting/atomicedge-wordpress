@@ -1,6 +1,6 @@
-# AtomicEdge Security
+# Atomic Edge Security
 
-Connect your WordPress site to AtomicEdge for enterprise-grade WAF protection, real-time analytics, and advanced security tools.
+Connect your WordPress site to Atomic Edge for enterprise-grade WAF protection, real-time analytics, and advanced security tools.
 
 | Field | Value |
 |---|---|
@@ -13,7 +13,7 @@ Connect your WordPress site to AtomicEdge for enterprise-grade WAF protection, r
 
 ## Description
 
-AtomicEdge Security connects your WordPress site to the AtomicEdge WAF/CDN service, providing enterprise-grade security protection without the complexity.
+Atomic Edge Security connects your WordPress site to the Atomic Edge WAF/CDN service, providing enterprise-grade security protection without the complexity.
 
 ## Features
 
@@ -22,57 +22,57 @@ AtomicEdge Security connects your WordPress site to the AtomicEdge WAF/CDN servi
 - **IP Access Control** - Easily whitelist or blacklist IP addresses and CIDR ranges
 - **Geographic Blocking** - Block or allow access based on visitor country
 - **Malware Scanner** - Scan WordPress files for modifications and suspicious code patterns
-- **Vulnerability Scanner** - Check WordPress core, plugins, and themes for known vulnerabilities (requires AtomicEdge connection)
+- **Vulnerability Scanner** - Check WordPress core, plugins, and themes for known vulnerabilities (requires Atomic Edge connection)
 - **WAF Log Viewer** - See exactly what threats are being blocked
 
 ## How It Works
 
-1. Sign up for an AtomicEdge account at https://atomicedge.io
-2. Add your site to AtomicEdge and get your API key
+1. Sign up for an Atomic Edge account at https://atomicedge.io
+2. Add your site to Atomic Edge and get your API key
 3. Install this plugin and enter your API key
 4. Manage your security settings directly from WordPress
 
-Vulnerability scanning is available when connected and uses AtomicEdge's vulnerability data feed.
+Vulnerability scanning is available when connected and uses Atomic Edge's vulnerability data feed.
 
 ## Requirements
 
 - PHP 7.4 or higher
 - WordPress 5.8 or higher
-- An AtomicEdge account (free tier available)
+- An Atomic Edge account (free tier available)
 - OpenSSL PHP extension
 
 ## Installation
 
 1. Upload the `atomicedge` folder to the `/wp-content/plugins/` directory
 2. Activate the plugin through the “Plugins” menu in WordPress
-3. Go to AtomicEdge > Settings and enter your API key
+3. Go to Atomic Edge > Settings and enter your API key
 4. Your site is now protected
 
 ## Frequently Asked Questions
 
-### Do I need an AtomicEdge account?
+### Do I need an Atomic Edge account?
 
-Yes, this plugin requires an AtomicEdge account to function. You can sign up for free at https://atomicedge.io.
+Yes, this plugin requires an Atomic Edge account to function. You can sign up for free at https://atomicedge.io.
 
 ### Is there a free tier?
 
-Yes. AtomicEdge offers a free tier with basic WAF protection. Advanced features are available on paid plans.
+Yes. Atomic Edge offers a free tier with basic WAF protection. Advanced features are available on paid plans.
 
 ### How do I get my API key?
 
-After creating your AtomicEdge account and adding your site, you can generate an API key from the site settings page in your AtomicEdge dashboard.
+After creating your Atomic Edge account and adding your site, you can generate an API key from the site settings page in your Atomic Edge dashboard.
 
 ### Does this plugin slow down my site?
 
-No. The AtomicEdge WAF runs on our edge servers, not on your WordPress installation. The plugin only communicates with our API for configuration and analytics.
+No. The Atomic Edge WAF runs on our edge servers, not on your WordPress installation. The plugin only communicates with our API for configuration and analytics.
 
 ### Does the plugin include vulnerability scanning?
 
-Yes. When your site is connected to AtomicEdge, you can run a vulnerability scan of WordPress core, plugins, and themes from the AtomicEdge admin menu.
+Yes. When your site is connected to Atomic Edge, you can run a vulnerability scan of WordPress core, plugins, and themes from the Atomic Edge admin menu.
 
 ### What attacks does the WAF block?
 
-AtomicEdge uses the OWASP Core Rule Set to block:
+Atomic Edge uses the OWASP Core Rule Set to block:
 
 - SQL Injection
 - Cross-Site Scripting (XSS)
@@ -110,4 +110,4 @@ AtomicEdge uses the OWASP Core Rule Set to block:
 
 ### 1.0.0
 
-Initial release of AtomicEdge Security plugin.
+Initial release of Atomic Edge Security plugin.

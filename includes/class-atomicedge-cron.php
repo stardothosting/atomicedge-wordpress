@@ -116,7 +116,7 @@ class AtomicEdge_Cron {
 			return;
 		}
 
-		AtomicEdge::log( 'Syncing settings with AtomicEdge' );
+		AtomicEdge::log( 'Syncing settings with Atomic Edge' );
 
 		// Refresh site info.
 		$site_info = $this->api->get_site_info();

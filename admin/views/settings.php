@@ -16,7 +16,7 @@ $site_data    = get_option( 'atomicedge_site_data', array() );
 $masked_key   = $this->get_masked_api_key();
 ?>
 <div class="wrap atomicedge-wrap">
-	<h1><img src="<?php echo esc_url( ATOMICEDGE_PLUGIN_URL . 'assets/images/logo.svg' ); ?>" alt="<?php esc_attr_e( 'AtomicEdge', 'atomicedge' ); ?>" class="atomicedge-logo" /></h1>
+	<h1><img src="<?php echo esc_url( ATOMICEDGE_PLUGIN_URL . 'assets/images/logo.svg' ); ?>" alt="<?php esc_attr_e( 'Atomic Edge', 'atomicedge' ); ?>" class="atomicedge-logo" /></h1>
 
 	<div class="atomicedge-settings">
 		<!-- Connection Status -->
@@ -52,7 +52,7 @@ $masked_key   = $this->get_masked_api_key();
 					<button type="submit"
 							name="atomicedge_disconnect"
 							class="button button-secondary"
-							onclick="return confirm('<?php esc_attr_e( 'Are you sure you want to disconnect from AtomicEdge?', 'atomicedge' ); ?>');">
+							onclick="return confirm('<?php esc_attr_e( 'Are you sure you want to disconnect from Atomic Edge?', 'atomicedge' ); ?>');">
 						<?php esc_html_e( 'Disconnect', 'atomicedge' ); ?>
 					</button>
 				</form>
@@ -62,7 +62,7 @@ $masked_key   = $this->get_masked_api_key();
 					<span class="dashicons dashicons-warning"></span>
 					<div class="atomicedge-connection-info">
 						<strong><?php esc_html_e( 'Not Connected', 'atomicedge' ); ?></strong>
-						<span><?php esc_html_e( 'Enter your API key to connect to AtomicEdge.', 'atomicedge' ); ?></span>
+						<span><?php esc_html_e( 'Enter your API key to connect to Atomic Edge.', 'atomicedge' ); ?></span>
 					</div>
 				</div>
 
@@ -85,7 +85,7 @@ $masked_key   = $this->get_masked_api_key();
 									printf(
 										/* translators: %s: AtomicEdge dashboard URL */
 										esc_html__( 'Get your API key from your %s.', 'atomicedge' ),
-										'<a href="https://atomicedge.io/dashboard" target="_blank">' . esc_html__( 'AtomicEdge dashboard', 'atomicedge' ) . '</a>'
+										'<a href="https://atomicedge.io/dashboard" target="_blank">' . esc_html__( 'Atomic Edge dashboard', 'atomicedge' ) . '</a>'
 									);
 									?>
 								</p>
@@ -119,7 +119,7 @@ $masked_key   = $this->get_masked_api_key();
 								   class="regular-text"
 								   value="<?php echo esc_attr( $api_url ); ?>" />
 							<p class="description">
-								<?php esc_html_e( 'Only change this if instructed by AtomicEdge support.', 'atomicedge' ); ?>
+								<?php esc_html_e( 'Only change this if instructed by Atomic Edge support.', 'atomicedge' ); ?>
 							</p>
 						</td>
 					</tr>

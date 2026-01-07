@@ -1,7 +1,7 @@
-AtomicEdge Security WordPress Plugin
+Atomic Edge Security WordPress Plugin
 =====================================
 
-This directory contains translation files for the AtomicEdge Security plugin.
+This directory contains translation files for the Atomic Edge Security plugin.
 
 To generate translation files:
 1. Use a tool like Poedit or the WP-CLI i18n commands

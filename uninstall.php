@@ -1,6 +1,6 @@
 <?php
 /**
- * Uninstall AtomicEdge Security
+ * Uninstall Atomic Edge Security
  *
  * Removes all plugin data when the plugin is deleted.
  *

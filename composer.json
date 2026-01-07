@@ -1,11 +1,11 @@
 {
     "name": "atomicedge/wordpress-plugin",
-    "description": "WordPress plugin for AtomicEdge WAF/CDN integration",
+    "description": "WordPress plugin for Atomic Edge WAF/CDN integration",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
     "authors": [
         {
-            "name": "AtomicEdge",
+            "name": "Atomic Edge",
             "email": "support@atomicedge.io",
             "homepage": "https://atomicedge.io"
         }

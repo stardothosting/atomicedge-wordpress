@@ -363,7 +363,7 @@ class AtomicEdge_Ajax {
 
 		if ( ! $vuln_scanner->is_available() ) {
 			wp_send_json_error( array(
-				'message' => __( 'Vulnerability scanning requires an AtomicEdge API connection. Please connect your site in the Settings page.', 'atomicedge' ),
+				'message' => __( 'Vulnerability scanning requires an Atomic Edge API connection. Please connect your site in the Settings page.', 'atomicedge' ),
 				'need_connection' => true,
 			) );
 		}

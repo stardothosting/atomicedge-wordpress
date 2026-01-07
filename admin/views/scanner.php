@@ -15,7 +15,7 @@ $last_scan    = $scanner->get_last_scan_time();
 $last_results = $scanner->get_last_results();
 ?>
 <div class="wrap atomicedge-wrap">
-	<h1><img src="<?php echo esc_url( ATOMICEDGE_PLUGIN_URL . 'assets/images/logo.svg' ); ?>" alt="<?php esc_attr_e( 'AtomicEdge', 'atomicedge' ); ?>" class="atomicedge-logo" /></h1>
+	<h1><img src="<?php echo esc_url( ATOMICEDGE_PLUGIN_URL . 'assets/images/logo.svg' ); ?>" alt="<?php esc_attr_e( 'Atomic Edge', 'atomicedge' ); ?>" class="atomicedge-logo" /></h1>
 
 	<div class="atomicedge-scanner">
 		<!-- Scanner Controls -->

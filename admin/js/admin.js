@@ -4,7 +4,8 @@
  * @package AtomicEdge
  */
 
-/* global atomicedgeAdmin, Chart */
+/* eslint-env browser */
+/* global atomicedgeAdmin, Chart, jQuery, document, setTimeout, clearTimeout, setInterval, clearInterval, confirm, alert, location */
 
 (function($) {
     'use strict';
@@ -541,8 +542,6 @@
          * Load geo rules
          */
         loadGeoRules: function() {
-            var self = this;
-
             // Populate countries list
             this.populateCountries();
 
@@ -590,7 +589,6 @@
          * Update geo rules
          */
         updateGeoRules: function() {
-            var self = this;
             var data = {
                 enabled: $('#geo-enabled').is(':checked') ? 'true' : 'false',
                 mode: $('#geo-mode').val(),
@@ -618,11 +616,33 @@
                 });
             }
 
+            if ($('#atomicedge-cancel-scan').length > 0) {
+                $('#atomicedge-cancel-scan').on('click', function() {
+                    self.cancelScan();
+                });
+            }
+
+            if ($('#atomicedge-reset-scan').length > 0) {
+                $('#atomicedge-reset-scan').on('click', function() {
+                    self.resetScan();
+                });
+            }
+
             // Vulnerability scanner button (on separate page)
             if ($('#atomicedge-run-vuln-scan').length > 0) {
                 $('#atomicedge-run-vuln-scan').on('click', function() {
                     self.runVulnerabilityScan();
                 });
+            }
+
+            if ($('#atomicedge-reset-vuln-results').length > 0) {
+                $('#atomicedge-reset-vuln-results').on('click', function() {
+                    self.resetVulnerabilityResults();
+                });
+            }
+
+            if ($('.atomicedge-vuln-filter').length > 0) {
+                self.initVulnerabilitySeverityFilters();
             }
         },
 
@@ -638,10 +658,8 @@
          * Run vulnerability scan
          */
         runVulnerabilityScan: function() {
-            var self = this;
             var $button = $('#atomicedge-run-vuln-scan');
             var $progress = $('#atomicedge-vuln-progress');
-            var $results = $('#atomicedge-vuln-results');
 
             $button.prop('disabled', true);
             $progress.show();
@@ -656,7 +674,7 @@
                 $progressFill.css('width', progress + '%');
             }, 600);
 
-            this.ajax('atomicedge_run_vulnerability_scan', { force_refresh: 'true' }, function(data) {
+            this.ajax('atomicedge_run_vulnerability_scan', { force_refresh: 'true' }, function() {
                 clearInterval(progressInterval);
                 $progressFill.css('width', '100%');
                 
@@ -677,6 +695,62 @@
                     alert(data.message || atomicedgeAdmin.strings.error);
                 }
             });
+        },
+
+        /**
+         * Reset vulnerability scan results (options + transient).
+         */
+        resetVulnerabilityResults: function() {
+            var $resetButton = $('#atomicedge-reset-vuln-results');
+
+            if ($resetButton.prop('disabled')) {
+                return;
+            }
+
+            if (!confirm('Reset vulnerability scan results? This will clear saved results.')) {
+                return;
+            }
+
+            $resetButton.prop('disabled', true);
+
+            this.ajax('atomicedge_reset_vulnerability_results', {}, function() {
+                location.reload();
+            }, function(err) {
+                $resetButton.prop('disabled', false);
+                alert((err && err.message) ? err.message : atomicedgeAdmin.strings.error);
+            });
+        },
+
+        /**
+         * Client-side severity filtering for vulnerability items.
+         */
+        initVulnerabilitySeverityFilters: function() {
+            var applyFilters = function() {
+                var allowed = {};
+                $('.atomicedge-vuln-filter:checked').each(function() {
+                    allowed[$(this).val()] = true;
+                });
+
+                $('.atomicedge-vuln-item').each(function() {
+                    var $item = $(this);
+                    var match = false;
+
+                    for (var sev in allowed) {
+                        if (Object.prototype.hasOwnProperty.call(allowed, sev) && $item.hasClass('atomicedge-severity-' + sev)) {
+                            match = true;
+                            break;
+                        }
+                    }
+
+                    $item.toggle(match);
+                });
+            };
+
+            $('.atomicedge-vuln-filter').on('change', function() {
+                applyFilters();
+            });
+
+            applyFilters();
         },
 
         /**
@@ -796,38 +870,237 @@
         runScan: function() {
             var self = this;
             var $button = $('#atomicedge-run-scan');
+            var $cancelButton = $('#atomicedge-cancel-scan');
+            var $resetButton = $('#atomicedge-reset-scan');
+            var $mode = $('#atomicedge-scan-mode');
+            var $verifyIntegrity = $('#atomicedge-verify-integrity');
             var $progress = $('#atomicedge-scan-progress');
             var $results = $('#atomicedge-scan-results');
+            var $logSection = $('#atomicedge-scan-log');
+            var $logLines = $logSection.find('.atomicedge-scan-log-lines');
+            var $progressText = $progress.find('.atomicedge-progress-text');
+
+            var hasRealProgress = false;
+            var lastDisplayedProgress = 0;
+
+            if (!this.state.scan) {
+                this.state.scan = {};
+            }
+            this.state.scan.cancelled = false;
+            this.state.scan.runId = null;
+            this.state.scan.pollTimeout = null;
+            this.state.scan.progressInterval = null;
 
             $button.prop('disabled', true);
+            $cancelButton.prop('disabled', false);
+            $resetButton.prop('disabled', true);
             $progress.show();
             $results.hide();
+            $logSection.show();
+            $logLines.text('');
 
-            // Animate progress bar
+            // Animate progress bar until we get real progress values.
             var $progressFill = $progress.find('.atomicedge-progress-fill');
             $progressFill.css('width', '0%');
             
             var progress = 0;
             var progressInterval = setInterval(function() {
                 progress = Math.min(progress + Math.random() * 10, 90);
-                $progressFill.css('width', progress + '%');
+                lastDisplayedProgress = Math.max(lastDisplayedProgress, progress);
+                $progressFill.css('width', lastDisplayedProgress + '%');
             }, 500);
 
-            this.ajax('atomicedge_run_scan', {}, function(data) {
-                clearInterval(progressInterval);
-                $progressFill.css('width', '100%');
-                
-                setTimeout(function() {
+            this.state.scan.progressInterval = progressInterval;
+
+            var runId = null;
+
+            var renderStatus = function(stepData) {
+                if (!stepData) {
+                    return;
+                }
+
+                if (stepData.progress !== undefined) {
+                    var p = parseInt(stepData.progress, 10);
+                    if (!isNaN(p)) {
+                        if (!hasRealProgress) {
+                            hasRealProgress = true;
+                            clearInterval(progressInterval);
+                        }
+
+                        p = Math.min(Math.max(p, 0), 100);
+                        lastDisplayedProgress = Math.max(lastDisplayedProgress, p);
+                        $progressFill.css('width', lastDisplayedProgress + '%');
+                    }
+                }
+
+                var stage = stepData.stage || '';
+                var counts = stepData.queue_counts || null;
+                var currentItem = stepData.current_item || null;
+                var scanMode = stepData.scan_mode || '';
+
+                var parts = [];
+                if (stage) {
+                    parts.push('Stage: ' + stage);
+                }
+                if (scanMode) {
+                    parts.push('Mode: ' + scanMode);
+                }
+                if (counts && counts.total !== undefined) {
+                    parts.push('Queue: ' + (counts.done || 0) + '/' + (counts.total || 0) + ' done');
+                    if (counts.pending !== undefined) {
+                        parts.push((counts.pending || 0) + ' pending');
+                    }
+                }
+                if (currentItem && currentItem.path) {
+                    parts.push('Now: ' + currentItem.path);
+                }
+                if (parts.length) {
+                    $progressText.text(parts.join(' · '));
+                }
+
+                if (stepData.log && Array.isArray(stepData.log) && stepData.log.length) {
+                    $logLines.text(stepData.log.join('\n'));
+                    var el = $logLines.get(0);
+                    if (el && el.scrollHeight !== undefined) {
+                        el.scrollTop = el.scrollHeight;
+                    }
+                }
+            };
+
+            var pollStep = function() {
+                if (self.state.scan && self.state.scan.cancelled) {
+                    return;
+                }
+                self.ajax('atomicedge_scan_step', { run_id: runId || '' }, function(stepData) {
+                    renderStatus(stepData);
+
+                    if (stepData && stepData.status === 'complete') {
+                        clearInterval(progressInterval);
+                        lastDisplayedProgress = 100;
+                        $progressFill.css('width', '100%');
+                        setTimeout(function() {
+                            $progress.hide();
+                            $logSection.hide();
+                            $button.prop('disabled', false);
+                            $cancelButton.prop('disabled', true);
+                            $resetButton.prop('disabled', false);
+                            location.reload();
+                        }, 500);
+                        return;
+                    }
+
+                    // Continue stepping until complete.
+                    self.state.scan.pollTimeout = setTimeout(pollStep, 500);
+                }, function(err) {
+                    clearInterval(progressInterval);
                     $progress.hide();
+                    $logSection.hide();
                     $button.prop('disabled', false);
-                    // Reload page to show results
-                    location.reload();
-                }, 500);
-            }, function() {
+                    $cancelButton.prop('disabled', true);
+                    $resetButton.prop('disabled', false);
+                    alert((err && err.message) ? err.message : atomicedgeAdmin.strings.error);
+                });
+            };
+
+            var selectedMode = ($mode.length ? String($mode.val() || '') : '');
+            if (selectedMode !== 'php' && selectedMode !== 'all') {
+                selectedMode = 'all';
+            }
+
+            var verifyIntegrity = ($verifyIntegrity.length && $verifyIntegrity.is(':checked')) ? 1 : 0;
+
+            this.ajax('atomicedge_run_scan', { scan_mode: selectedMode, verify_integrity: verifyIntegrity }, function(data) {
+                runId = data && data.run_id ? data.run_id : null;
+                if (self.state.scan) {
+                    self.state.scan.runId = runId;
+                }
+                renderStatus(data);
+                pollStep();
+            }, function(err) {
                 clearInterval(progressInterval);
                 $progress.hide();
+                $logSection.hide();
                 $button.prop('disabled', false);
-                alert(atomicedgeAdmin.strings.error);
+                $cancelButton.prop('disabled', true);
+                $resetButton.prop('disabled', false);
+                alert((err && err.message) ? err.message : atomicedgeAdmin.strings.error);
+            });
+        },
+
+        /**
+         * Cancel an in-progress scan.
+         */
+        cancelScan: function() {
+            var $button = $('#atomicedge-run-scan');
+            var $cancelButton = $('#atomicedge-cancel-scan');
+            var $resetButton = $('#atomicedge-reset-scan');
+            var $progress = $('#atomicedge-scan-progress');
+            var $logSection = $('#atomicedge-scan-log');
+
+            if (!confirm('Cancel the current scan?')) {
+                return;
+            }
+
+            if (this.state.scan) {
+                this.state.scan.cancelled = true;
+                if (this.state.scan.pollTimeout) {
+                    clearTimeout(this.state.scan.pollTimeout);
+                }
+                if (this.state.scan.progressInterval) {
+                    clearInterval(this.state.scan.progressInterval);
+                }
+            }
+
+            $cancelButton.prop('disabled', true);
+
+            this.ajax('atomicedge_cancel_scan', { run_id: (this.state.scan && this.state.scan.runId) ? this.state.scan.runId : '' }, function() {
+                $progress.hide();
+                $logSection.hide();
+                $button.prop('disabled', false);
+                $resetButton.prop('disabled', false);
+                location.reload();
+            }, function(err) {
+                $progress.hide();
+                $logSection.hide();
+                $button.prop('disabled', false);
+                $resetButton.prop('disabled', false);
+                alert((err && err.message) ? err.message : atomicedgeAdmin.strings.error);
+            });
+        },
+
+        /**
+         * Reset scan state/cache (transients + queue) so a new scan starts fresh.
+         */
+        resetScan: function() {
+            var $button = $('#atomicedge-run-scan');
+            var $cancelButton = $('#atomicedge-cancel-scan');
+            var $resetButton = $('#atomicedge-reset-scan');
+
+            if (!confirm('Reset the scan state? This will clear any in-progress scan and start fresh.')) {
+                return;
+            }
+
+            if (this.state.scan) {
+                this.state.scan.cancelled = true;
+                if (this.state.scan.pollTimeout) {
+                    clearTimeout(this.state.scan.pollTimeout);
+                }
+                if (this.state.scan.progressInterval) {
+                    clearInterval(this.state.scan.progressInterval);
+                }
+            }
+
+            $button.prop('disabled', true);
+            $cancelButton.prop('disabled', true);
+            $resetButton.prop('disabled', true);
+
+            this.ajax('atomicedge_reset_scan', {}, function() {
+                location.reload();
+            }, function(err) {
+                $button.prop('disabled', false);
+                $cancelButton.prop('disabled', true);
+                $resetButton.prop('disabled', false);
+                alert((err && err.message) ? err.message : atomicedgeAdmin.strings.error);
             });
         },
 

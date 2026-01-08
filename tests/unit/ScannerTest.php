@@ -102,6 +102,24 @@ class ScannerTest extends TestCase {
 		$this->assertEquals( $results, $this->scanner->get_last_results() );
 	}
 
+	/**
+	 * Reset should also clear any saved scan results.
+	 */
+	public function test_reset_resumable_scan_clears_saved_results() {
+		$this->set_option( 'atomicedge_scan_results', array( 'success' => true ) );
+		$this->set_option( 'atomicedge_last_scan', '2026-01-06 12:00:00' );
+		$this->set_transient( 'atomicedge_scan_run_state', array( 'status' => 'running' ) );
+		$this->set_transient( 'atomicedge_scan_state', array( 'legacy' => true ) );
+
+		$result = $this->scanner->reset_resumable_scan();
+		$this->assertIsArray( $result );
+		$this->assertEquals( 'reset', $result['status'] );
+		$this->assertNull( $this->get_option( 'atomicedge_scan_results', null ) );
+		$this->assertNull( $this->get_option( 'atomicedge_last_scan', null ) );
+		$this->assertFalse( $this->get_transient( 'atomicedge_scan_run_state' ) );
+		$this->assertFalse( $this->get_transient( 'atomicedge_scan_state' ) );
+	}
+
 	// =========================================================================
 	// Pattern Detection Tests (Using Reflection)
 	// =========================================================================
@@ -191,6 +209,48 @@ class ScannerTest extends TestCase {
 				"Pattern should NOT match safe code: {$code}"
 			);
 		}
+	}
+
+	/**
+	 * Refined plugin/theme patterns should avoid common false positives.
+	 */
+	public function test_refined_plugin_patterns_do_not_flag_generic_filesman_string() {
+		$ref = new \ReflectionClass( $this->scanner );
+		$method = $ref->getMethod( 'get_refined_patterns_for_plugins' );
+		$method->setAccessible( true );
+		$groups = $method->invoke( $this->scanner );
+
+		$this->assertIsArray( $groups );
+		$this->assertArrayHasKey( 'webshells', $groups );
+		$this->assertArrayNotHasKey( 'FilesMan', $groups['webshells'] );
+
+		$content = "<?php\n// FilesMan mentioned in documentation\n\$x = 'FilesMan';\n";
+		foreach ( $groups as $patterns ) {
+			foreach ( array_keys( $patterns ) as $pattern ) {
+				$this->assertFalse(
+					(bool) preg_match( '#' . $pattern . '#i', $content ),
+					"Pattern '{$pattern}' should not match generic FilesMan content"
+				);
+			}
+		}
+	}
+
+	/**
+	 * Refined plugin/theme patterns should still catch strong webshell signatures.
+	 */
+	public function test_refined_plugin_patterns_still_flag_c99shell_signature() {
+		$ref = new \ReflectionClass( $this->scanner );
+		$method = $ref->getMethod( 'get_refined_patterns_for_plugins' );
+		$method->setAccessible( true );
+		$groups = $method->invoke( $this->scanner );
+
+		$this->assertIsArray( $groups );
+		$this->assertArrayHasKey( 'webshells', $groups );
+		$this->assertArrayHasKey( 'c99shell', $groups['webshells'] );
+
+		$content = "<?php\n// c99shell signature present\necho 'c99shell';\n";
+		$pattern = 'c99shell';
+		$this->assertTrue( (bool) preg_match( '#' . $pattern . '#i', $content ) );
 	}
 
 	// =========================================================================

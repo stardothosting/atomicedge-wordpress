@@ -4,7 +4,7 @@ Tags: security, firewall, waf, malware, protection
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.1.1
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -88,6 +88,13 @@ Atomic Edge uses the OWASP Core Rule Set to block:
 6. Vulnerability scanner results
 
 == Changelog ==
+
+= 1.2.0 =
+* Malware scanner: resumable scanning with DB-backed queue, improved progress reporting, and live activity log
+* Malware scanner: quick (PHP-only) vs thorough (all files) scan modes (quick is default)
+* Malware scanner: added Cancel Scan and Reset Scan controls (reset clears both state and saved results)
+* Malware scanner: added optional AtomicEdge plugin integrity verification via shipped SHA-256 manifest
+* Scanner diagnostics: clearer warnings for unreadable/partial scans and improved false-positive tuning
 
 = 1.0.6 =
 * Updated malware scanner results to show full file paths

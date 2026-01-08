@@ -21,6 +21,26 @@ if ( ! defined( 'ABSPATH' ) ) {
 class AtomicEdge_Scanner {
 
 	/**
+	 * Transient key for the active resumable scan run.
+	 */
+	private const RESUMABLE_SCAN_STATE_KEY = 'atomicedge_scan_run_state';
+
+	/**
+	 * Prefix for cached WordPress core checksums used by a run.
+	 */
+	private const CORE_CHECKSUMS_KEY_PREFIX = 'atomicedge_core_checksums_';
+
+	/**
+	 * Prefix for cached integrity manifest used by a run.
+	 */
+	private const INTEGRITY_MANIFEST_KEY_PREFIX = 'atomicedge_integrity_manifest_';
+
+	/**
+	 * Relative path (from plugin dir) to the shipped integrity manifest.
+	 */
+	private const INTEGRITY_MANIFEST_REL_PATH = 'assets/integrity/atomicedge-manifest.json';
+
+	/**
 	 * Whitelisted plugin slugs known to use suspicious-looking but legitimate code.
 	 * These plugins use eval/exec/shell functions legitimately.
 	 *
@@ -123,6 +143,34 @@ class AtomicEdge_Scanner {
 	);
 
 	/**
+	 * Cached pattern groups to avoid rebuilding arrays per file.
+	 *
+	 * @var array|null
+	 */
+	private $patterns_cache = null;
+
+	/**
+	 * Cached refined plugin/theme patterns.
+	 *
+	 * @var array|null
+	 */
+	private $refined_patterns_cache = null;
+
+	/**
+	 * Cached critical-only patterns for core directories.
+	 *
+	 * @var array|null
+	 */
+	private $critical_patterns_cache = null;
+
+	/**
+	 * Diagnostics collected during the most recent scan.
+	 *
+	 * @var array
+	 */
+	private $scan_diagnostics = array();
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
@@ -138,6 +186,8 @@ class AtomicEdge_Scanner {
 		// Extend time limit for long-running scan, respecting server limits.
 		$this->extend_time_limit();
 
+		$this->scan_diagnostics = $this->get_default_scan_diagnostics();
+
 		// Initialize scan state for resumability.
 		$scan_state = $this->get_scan_state();
 
@@ -148,6 +198,7 @@ class AtomicEdge_Scanner {
 			'plugin_files'   => array(),
 			'theme_files'    => array(),
 			'suspicious'     => array(),
+			'scan_diagnostics' => array(),
 			'summary'        => array(),
 			'scan_stats'     => array(
 				'files_scanned'  => 0,
@@ -167,6 +218,8 @@ class AtomicEdge_Scanner {
 		if ( false !== $suspicious ) {
 			$results['suspicious'] = $suspicious;
 		}
+
+		$results['scan_diagnostics'] = $this->scan_diagnostics;
 
 		// Generate summary.
 		$results['summary'] = array(
@@ -191,6 +244,86 @@ class AtomicEdge_Scanner {
 		AtomicEdge::log( 'Scan completed', $results['summary'] );
 
 		return $results;
+	}
+
+	/**
+	 * Default diagnostics structure for a scan.
+	 *
+	 * @return array
+	 */
+	private function get_default_scan_diagnostics() {
+		return array(
+			'complete' => true,
+			'stopped_early' => false,
+			'stopped_early_reason' => '',
+			'warnings' => array(),
+			'counts' => array(
+				'dirs_unreadable' => 0,
+				'dirs_missing' => 0,
+				'files_partially_scanned' => 0,
+				'files_stat_failed' => 0,
+				'files_read_failed' => 0,
+				'files_skipped_whitelist' => 0,
+			),
+			'samples' => array(
+				'unreadable_dirs' => array(),
+				'oversized_files' => array(),
+				'read_failed_files' => array(),
+			),
+			'areas' => array(
+				'root' => array( 'php_files_found' => 0, 'php_files_scanned' => 0 ),
+				'wp-admin' => array( 'php_files_found' => 0, 'php_files_scanned' => 0 ),
+				'wp-includes' => array( 'php_files_found' => 0, 'php_files_scanned' => 0 ),
+				'uploads' => array( 'php_files_found' => 0, 'php_files_scanned' => 0 ),
+				'themes' => array( 'php_files_found' => 0, 'php_files_scanned' => 0 ),
+				'plugins' => array( 'php_files_found' => 0, 'php_files_scanned' => 0 ),
+			),
+		);
+	}
+
+	/**
+	 * Record a scan warning.
+	 *
+	 * @param string $message Warning message.
+	 * @return void
+	 */
+	private function add_scan_warning( $message ) {
+		$this->scan_diagnostics['warnings'][] = $message;
+		$this->scan_diagnostics['complete']   = false;
+	}
+
+	/**
+	 * Mark scan as stopped early.
+	 *
+	 * @param string $reason Reason code.
+	 * @return void
+	 */
+	private function mark_stopped_early( $reason ) {
+		$this->scan_diagnostics['complete']             = false;
+		$this->scan_diagnostics['stopped_early']        = true;
+		$this->scan_diagnostics['stopped_early_reason'] = $reason;
+		$this->add_scan_warning( __( 'Scan stopped early; results may be incomplete.', 'atomicedge' ) );
+	}
+
+	/**
+	 * Increment a diagnostics count and optionally store a sample path.
+	 *
+	 * @param string      $key Count key.
+	 * @param string|null $sampleKey Sample list key.
+	 * @param string|null $sampleValue Sample value.
+	 * @return void
+	 */
+	private function bump_diag_count( $key, $sampleKey = null, $sampleValue = null ) {
+		if ( ! isset( $this->scan_diagnostics['counts'][ $key ] ) ) {
+			$this->scan_diagnostics['counts'][ $key ] = 0;
+		}
+		$this->scan_diagnostics['counts'][ $key ]++;
+
+		if ( $sampleKey && $sampleValue && isset( $this->scan_diagnostics['samples'][ $sampleKey ] ) ) {
+			if ( count( $this->scan_diagnostics['samples'][ $sampleKey ] ) < 5 ) {
+				$this->scan_diagnostics['samples'][ $sampleKey ][] = $sampleValue;
+			}
+		}
 	}
 
 	/**
@@ -249,6 +382,1139 @@ class AtomicEdge_Scanner {
 	}
 
 	/**
+	 * Start (or resume) a resumable scan run.
+	 *
+	 * @return array Run state.
+	 */
+	public function start_resumable_scan( $scan_mode = 'php', $options = array() ) {
+		$this->ensure_queue_table_exists();
+
+		$scan_mode = is_string( $scan_mode ) ? $scan_mode : 'all';
+		$scan_mode = in_array( $scan_mode, array( 'php', 'all' ), true ) ? $scan_mode : 'all';
+		$options = is_array( $options ) ? $options : array();
+		$verify_integrity = ! empty( $options['verify_integrity'] );
+
+		$state = $this->get_resumable_scan_state();
+		if ( is_array( $state ) && isset( $state['run_id'], $state['status'] ) && 'running' === $state['status'] ) {
+			return $state;
+		}
+
+		$this->scan_diagnostics = $this->get_default_scan_diagnostics();
+
+		$run_id = function_exists( 'wp_generate_uuid4' ) ? wp_generate_uuid4() : hash( 'sha256', uniqid( 'atomicedge_scan_', true ) );
+
+		$results = array(
+			'started_at'       => current_time( 'mysql' ),
+			'completed_at'     => '',
+			'core_files'       => array(),
+			'plugin_files'     => array(),
+			'theme_files'      => array(),
+			'suspicious'       => array(),
+			'scan_diagnostics' => $this->scan_diagnostics,
+			'summary'          => array(),
+			'scan_stats'       => array(
+				'files_scanned' => 0,
+				'time_elapsed'  => 0,
+				'memory_peak'   => 0,
+			),
+		);
+
+		$state = array(
+			'run_id'     => $run_id,
+			'status'     => 'running',
+			'stage'      => $verify_integrity ? 'integrity' : ( ( 'php' === $scan_mode ) ? 'queue' : 'core' ),
+			'scan_mode'  => $scan_mode,
+			'verify_integrity' => (bool) $verify_integrity,
+			'started_at' => $results['started_at'],
+			'updated_at' => time(),
+			'core_offset' => 0,
+			'core_total'  => 0,
+			'integrity_offset' => 0,
+			'integrity_total'  => 0,
+			'progress_floor' => 0,
+			'results'     => $results,
+			'diagnostics' => $this->scan_diagnostics,
+		);
+
+		if ( $verify_integrity ) {
+			$manifest = $this->get_integrity_manifest();
+			if ( ! is_array( $manifest ) || empty( $manifest['files'] ) || ! is_array( $manifest['files'] ) ) {
+				$this->add_scan_warning( __( 'Integrity verification was enabled but the manifest could not be loaded; integrity checks were skipped.', 'atomicedge' ) );
+				$state['verify_integrity'] = false;
+				$state['stage'] = ( 'php' === $scan_mode ) ? 'queue' : 'core';
+			} else {
+				set_transient( self::INTEGRITY_MANIFEST_KEY_PREFIX . $run_id, $manifest, HOUR_IN_SECONDS );
+				$state['integrity_total'] = count( array_keys( $manifest['files'] ) );
+				$state['results']['integrity_issues'] = array();
+			}
+		}
+
+		if ( 'all' === $scan_mode ) {
+			// Fetch and cache core checksums for incremental scanning.
+			global $wp_version;
+			$checksums = $this->get_core_checksums( $wp_version );
+			if ( false === $checksums || ! is_array( $checksums ) ) {
+				$this->add_scan_warning( __( 'Could not fetch WordPress core checksums; core integrity checks were skipped.', 'atomicedge' ) );
+				if ( ! $state['verify_integrity'] ) {
+					$state['stage'] = 'queue';
+				}
+			} else {
+				set_transient( self::CORE_CHECKSUMS_KEY_PREFIX . $run_id, $checksums, HOUR_IN_SECONDS );
+				$state['core_total'] = count( $checksums );
+			}
+		}
+
+		// Seed the DB-backed queue.
+		$this->seed_queue_for_run( $run_id, $scan_mode );
+
+		$state['diagnostics'] = $this->scan_diagnostics;
+		$state['results']['scan_diagnostics'] = $this->scan_diagnostics;
+
+		$this->save_resumable_scan_state( $state );
+		return $state;
+	}
+
+	/**
+	 * Perform a single time-sliced scan step.
+	 *
+	 * @param string $run_id Optional run id.
+	 * @param int    $time_budget_seconds Time budget.
+	 * @return array Updated run state.
+	 */
+	public function step_resumable_scan( $run_id = '', $time_budget_seconds = 8 ) {
+		$this->ensure_queue_table_exists();
+
+		$state = $this->get_resumable_scan_state();
+		if ( ! is_array( $state ) || ! isset( $state['run_id'] ) ) {
+			return $this->start_resumable_scan();
+		}
+
+		if ( $run_id && $run_id !== $state['run_id'] ) {
+			// If the caller is referencing an old run, just return the current run state.
+			return $state;
+		}
+
+		if ( isset( $state['status'] ) && 'running' !== $state['status'] ) {
+			return $state;
+		}
+
+		$this->scan_diagnostics = isset( $state['diagnostics'] ) && is_array( $state['diagnostics'] )
+			? $state['diagnostics']
+			: $this->get_default_scan_diagnostics();
+
+		$started = microtime( true );
+		$time_budget_seconds = max( 1, (int) $time_budget_seconds );
+
+		if ( ! isset( $state['log'] ) || ! is_array( $state['log'] ) ) {
+			$state['log'] = array();
+		}
+		if ( ! isset( $state['current_item'] ) || ! is_array( $state['current_item'] ) ) {
+			$state['current_item'] = array();
+		}
+
+		$this->append_scan_log( $state, sprintf( '[%s] Step start (stage=%s)', current_time( 'mysql' ), isset( $state['stage'] ) ? (string) $state['stage'] : '' ) );
+
+		try {
+			$work_iterations = 0;
+			while ( $work_iterations < 10 && ( microtime( true ) - $started ) < $time_budget_seconds ) {
+				$work_iterations++;
+
+				if ( 'integrity' === $state['stage'] ) {
+					$did_integrity_work = $this->process_integrity_step( $state, $started, $time_budget_seconds );
+					if ( ! $did_integrity_work ) {
+						$this->append_scan_log( $state, sprintf( '[%s] Integrity verification complete', current_time( 'mysql' ) ) );
+						$state['stage'] = ( isset( $state['scan_mode'] ) && 'all' === $state['scan_mode'] ) ? 'core' : 'queue';
+					}
+					continue;
+				}
+
+				if ( 'core' === $state['stage'] ) {
+					$did_core_work = $this->process_core_checksums_step( $state, $started, $time_budget_seconds );
+					if ( ! $did_core_work ) {
+						$this->append_scan_log( $state, sprintf( '[%s] Core checksums complete', current_time( 'mysql' ) ) );
+						$state['stage'] = 'queue';
+					}
+					continue;
+				}
+
+				$item = $this->claim_next_queue_item( $state['run_id'] );
+				if ( ! $item ) {
+					// No more work.
+					$state = $this->finalize_run_if_done( $state );
+					break;
+				}
+
+				$this->process_queue_item( $item, $state, $started, $time_budget_seconds );
+			}
+		} catch ( \Throwable $e ) {
+			$state['status'] = 'error';
+			$state['error']  = $e->getMessage();
+			$this->add_scan_warning( __( 'Scan failed due to an unexpected error; results may be incomplete.', 'atomicedge' ) );
+			$this->append_scan_log( $state, sprintf( '[%s] Error: %s', current_time( 'mysql' ), $e->getMessage() ) );
+		}
+
+		$state['updated_at'] = time();
+		$state['diagnostics'] = $this->scan_diagnostics;
+		$state['results']['scan_diagnostics'] = $this->scan_diagnostics;
+
+		$counts = $this->get_queue_counts( $state['run_id'] );
+		$state['queue_counts'] = $counts;
+
+		$progress = $this->calculate_resumable_progress( $state, $counts );
+		if ( ! isset( $state['progress_floor'] ) ) {
+			$state['progress_floor'] = 0;
+		}
+		$progress = max( (int) $state['progress_floor'], (int) $progress );
+		$state['progress_floor'] = $progress;
+		$state['progress'] = $progress;
+
+		$this->save_resumable_scan_state( $state );
+		return $state;
+	}
+
+	/**
+	 * Append a scan log entry to the run state.
+	 *
+	 * @param array  $state Run state (by reference).
+	 * @param string $message Log message.
+	 * @return void
+	 */
+	private function append_scan_log( &$state, $message ) {
+		if ( ! isset( $state['log'] ) || ! is_array( $state['log'] ) ) {
+			$state['log'] = array();
+		}
+
+		$state['log'][] = (string) $message;
+		if ( count( $state['log'] ) > 50 ) {
+			$state['log'] = array_slice( $state['log'], -50 );
+		}
+	}
+
+	/**
+	 * Get the current resumable scan status.
+	 *
+	 * @param string $run_id Optional run id.
+	 * @return array
+	 */
+	public function get_resumable_scan_status( $run_id = '' ) {
+		$state = $this->get_resumable_scan_state();
+		if ( ! is_array( $state ) ) {
+			return array( 'status' => 'idle' );
+		}
+
+		if ( $run_id && isset( $state['run_id'] ) && $run_id !== $state['run_id'] ) {
+			return $state;
+		}
+
+		$counts = $this->get_queue_counts( $state['run_id'] );
+		$state['queue_counts'] = $counts;
+
+		$progress = $this->calculate_resumable_progress( $state, $counts );
+		if ( isset( $state['progress_floor'] ) ) {
+			$progress = max( (int) $state['progress_floor'], (int) $progress );
+			$state['progress_floor'] = $progress;
+		}
+		$state['progress'] = $progress;
+
+		return $state;
+	}
+
+	/**
+	 * Calculate resumable scan progress across integrity/core/queue stages.
+	 *
+	 * @param array $state Run state.
+	 * @param array $counts Queue counts.
+	 * @return int Progress 0-99.
+	 */
+	private function calculate_resumable_progress( $state, $counts ) {
+		$stage = isset( $state['stage'] ) ? (string) $state['stage'] : '';
+		$scan_mode = isset( $state['scan_mode'] ) ? (string) $state['scan_mode'] : 'php';
+		$verify_integrity = ! empty( $state['verify_integrity'] );
+
+		$base = 0;
+
+		if ( $verify_integrity ) {
+			$span = 5;
+			$total = isset( $state['integrity_total'] ) ? (int) $state['integrity_total'] : 0;
+			$offset = isset( $state['integrity_offset'] ) ? (int) $state['integrity_offset'] : 0;
+			if ( 'integrity' === $stage && $total > 0 ) {
+				return (int) min( 99, floor( min( $span - 1, ( $offset / max( 1, $total ) ) * $span ) ) );
+			}
+			$base += $span;
+		}
+
+		if ( 'all' === $scan_mode ) {
+			$span = 30;
+			$total = isset( $state['core_total'] ) ? (int) $state['core_total'] : 0;
+			$offset = isset( $state['core_offset'] ) ? (int) $state['core_offset'] : 0;
+			if ( 'core' === $stage && $total > 0 ) {
+				return (int) min( 99, $base + floor( min( $span - 1, ( $offset / max( 1, $total ) ) * $span ) ) );
+			}
+			if ( 'core' !== $stage ) {
+				$base += $span;
+			}
+		}
+
+		$remaining = 99 - $base;
+		if ( $remaining < 0 ) {
+			$remaining = 0;
+		}
+
+		$progress = $base;
+		if ( isset( $counts['total'] ) && (int) $counts['total'] > 0 ) {
+			$ratio = (int) $counts['done'] / max( 1, (int) $counts['total'] );
+			$progress += (int) floor( min( $remaining, $ratio * $remaining ) );
+		}
+
+		return (int) max( 0, min( 99, $progress ) );
+	}
+
+	/**
+	 * Load the shipped integrity manifest.
+	 *
+	 * @return array|false
+	 */
+	private function get_integrity_manifest() {
+		if ( ! defined( 'ATOMICEDGE_PLUGIN_DIR' ) ) {
+			return false;
+		}
+
+		$path = rtrim( ATOMICEDGE_PLUGIN_DIR, '/' ) . '/' . self::INTEGRITY_MANIFEST_REL_PATH;
+		if ( ! file_exists( $path ) || ! is_readable( $path ) ) {
+			return false;
+		}
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents
+		$raw = @file_get_contents( $path );
+		if ( false === $raw ) {
+			return false;
+		}
+
+		$manifest = json_decode( $raw, true );
+		if ( ! is_array( $manifest ) ) {
+			return false;
+		}
+
+		return $manifest;
+	}
+
+	/**
+	 * Process an incremental chunk of integrity verification.
+	 */
+	private function process_integrity_step( &$state, $started, $time_budget_seconds ) {
+		$manifest = get_transient( self::INTEGRITY_MANIFEST_KEY_PREFIX . $state['run_id'] );
+		if ( ! is_array( $manifest ) || empty( $manifest['files'] ) || ! is_array( $manifest['files'] ) ) {
+			return false;
+		}
+		if ( ! defined( 'ATOMICEDGE_PLUGIN_DIR' ) ) {
+			return false;
+		}
+
+		$files = array_keys( $manifest['files'] );
+		$total = count( $files );
+		$offset = isset( $state['integrity_offset'] ) ? (int) $state['integrity_offset'] : 0;
+		if ( $offset >= $total ) {
+			delete_transient( self::INTEGRITY_MANIFEST_KEY_PREFIX . $state['run_id'] );
+			return false;
+		}
+
+		$batch = array_slice( $files, $offset, 50 );
+		foreach ( $batch as $rel_path ) {
+			if ( ( microtime( true ) - $started ) >= $time_budget_seconds ) {
+				break;
+			}
+
+			$expected = isset( $manifest['files'][ $rel_path ] ) ? (string) $manifest['files'][ $rel_path ] : '';
+			$abs_path = rtrim( ATOMICEDGE_PLUGIN_DIR, '/' ) . '/' . ltrim( (string) $rel_path, '/' );
+
+			if ( ! file_exists( $abs_path ) ) {
+				$state['results']['integrity_issues'][] = array(
+					'file'     => (string) $rel_path,
+					'type'     => 'missing',
+					'severity' => 'high',
+					'reason'   => __( 'File missing', 'atomicedge' ),
+				);
+				$offset++;
+				continue;
+			}
+
+			if ( ! is_readable( $abs_path ) ) {
+				$state['results']['integrity_issues'][] = array(
+					'file'     => (string) $rel_path,
+					'type'     => 'unreadable',
+					'severity' => 'high',
+					'reason'   => __( 'File not readable', 'atomicedge' ),
+				);
+				$offset++;
+				continue;
+			}
+
+			$actual = hash_file( 'sha256', $abs_path );
+			if ( false === $actual ) {
+				$state['results']['integrity_issues'][] = array(
+					'file'     => (string) $rel_path,
+					'type'     => 'hash_failed',
+					'severity' => 'high',
+					'reason'   => __( 'Could not compute file hash', 'atomicedge' ),
+				);
+				$offset++;
+				continue;
+			}
+
+			if ( $expected && $expected !== $actual ) {
+				$state['results']['integrity_issues'][] = array(
+					'file'          => (string) $rel_path,
+					'type'          => 'mismatch',
+					'severity'      => 'high',
+					'reason'        => __( 'Hash mismatch', 'atomicedge' ),
+					'expected_hash' => $expected,
+					'actual_hash'   => $actual,
+				);
+			}
+
+			$offset++;
+		}
+
+		$state['integrity_offset'] = $offset;
+		$state['integrity_total'] = $total;
+		if ( $offset >= $total ) {
+			delete_transient( self::INTEGRITY_MANIFEST_KEY_PREFIX . $state['run_id'] );
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Stop the current resumable scan.
+	 *
+	 * @return array
+	 */
+	public function stop_resumable_scan() {
+		$state = $this->get_resumable_scan_state();
+		if ( ! is_array( $state ) ) {
+			return array( 'status' => 'idle' );
+		}
+
+		$state['status'] = 'stopped';
+		$state['updated_at'] = time();
+		$this->scan_diagnostics = isset( $state['diagnostics'] ) ? $state['diagnostics'] : $this->get_default_scan_diagnostics();
+		$this->mark_stopped_early( 'manual_stop' );
+		$state['diagnostics'] = $this->scan_diagnostics;
+		$state['results']['scan_diagnostics'] = $this->scan_diagnostics;
+		$this->save_resumable_scan_state( $state );
+		return $state;
+	}
+
+	/**
+	 * Cancel the current scan run and clear its cached state.
+	 *
+	 * @param string $run_id Optional run id (for safety).
+	 * @return array
+	 */
+	public function cancel_resumable_scan( $run_id = '' ) {
+		$state = $this->get_resumable_scan_state();
+		if ( ! is_array( $state ) ) {
+			return array( 'status' => 'idle' );
+		}
+
+		$current_run_id = isset( $state['run_id'] ) ? (string) $state['run_id'] : '';
+		if ( '' !== $run_id && $current_run_id && $run_id !== $current_run_id ) {
+			return array(
+				'status'  => 'error',
+				'message' => __( 'Run id does not match the active scan.', 'atomicedge' ),
+			);
+		}
+
+		$this->scan_diagnostics = isset( $state['diagnostics'] ) && is_array( $state['diagnostics'] )
+			? $state['diagnostics']
+			: $this->get_default_scan_diagnostics();
+		$this->mark_stopped_early( 'manual_cancel' );
+
+		// Cleanup artifacts and clear state.
+		if ( $current_run_id ) {
+			$this->cleanup_run_artifacts( $current_run_id );
+		}
+		$this->clear_resumable_scan_state();
+		// Legacy transient key (older scanner versions).
+		delete_transient( 'atomicedge_scan_state' );
+
+		return array(
+			'status' => 'cancelled',
+			'run_id' => $current_run_id,
+		);
+	}
+
+	/**
+	 * Reset scan state/cache so a new scan starts fresh.
+	 *
+	 * @return array
+	 */
+	public function reset_resumable_scan() {
+		$state = $this->get_resumable_scan_state();
+		$run_id = is_array( $state ) && isset( $state['run_id'] ) ? (string) $state['run_id'] : '';
+		if ( $run_id ) {
+			$this->cleanup_run_artifacts( $run_id );
+		}
+
+		$this->clear_resumable_scan_state();
+		delete_transient( 'atomicedge_scan_state' );
+		delete_option( 'atomicedge_scan_results' );
+		delete_option( 'atomicedge_last_scan' );
+
+		return array( 'status' => 'reset' );
+	}
+
+	/**
+	 * Cleanup cached transients and DB queue rows for a run.
+	 *
+	 * @param string $run_id Run id.
+	 * @return void
+	 */
+	private function cleanup_run_artifacts( $run_id ) {
+		if ( ! $run_id ) {
+			return;
+		}
+
+		delete_transient( self::CORE_CHECKSUMS_KEY_PREFIX . $run_id );
+		delete_transient( self::INTEGRITY_MANIFEST_KEY_PREFIX . $run_id );
+
+		global $wpdb;
+		$table = $this->get_queue_table_name();
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$table} WHERE run_id = %s", $run_id ) );
+	}
+
+	/**
+	 * Fetch the resumable scan state.
+	 *
+	 * @return array|false
+	 */
+	private function get_resumable_scan_state() {
+		return get_transient( self::RESUMABLE_SCAN_STATE_KEY );
+	}
+
+	/**
+	 * Persist the resumable scan state.
+	 *
+	 * @param array $state State to store.
+	 * @return void
+	 */
+	private function save_resumable_scan_state( $state ) {
+		set_transient( self::RESUMABLE_SCAN_STATE_KEY, $state, HOUR_IN_SECONDS );
+	}
+
+	/**
+	 * Clear resumable scan state.
+	 *
+	 * @return void
+	 */
+	private function clear_resumable_scan_state() {
+		delete_transient( self::RESUMABLE_SCAN_STATE_KEY );
+	}
+
+	/**
+	 * Get the DB table name for the scan queue.
+	 *
+	 * @return string
+	 */
+	private function get_queue_table_name() {
+		global $wpdb;
+		return $wpdb->prefix . 'atomicedge_scan_queue';
+	}
+
+	/**
+	 * Ensure the scan queue table exists (safe to call repeatedly).
+	 *
+	 * @return void
+	 */
+	private function ensure_queue_table_exists() {
+		global $wpdb;
+		$table_name = $this->get_queue_table_name();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_name ) );
+		if ( $exists === $table_name ) {
+			return;
+		}
+
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		$charset_collate = $wpdb->get_charset_collate();
+
+		$sql = "CREATE TABLE {$table_name} (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			run_id char(36) NOT NULL,
+			item_type varchar(10) NOT NULL,
+			area varchar(20) NOT NULL DEFAULT '',
+			path longtext NOT NULL,
+			path_hash char(32) NOT NULL,
+			status varchar(20) NOT NULL DEFAULT 'pending',
+			meta longtext NULL,
+			last_error longtext NULL,
+			created_at datetime NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			KEY run_status (run_id,status,id),
+			KEY run_type_status (run_id,item_type,status,id),
+			UNIQUE KEY run_item (run_id,item_type,path_hash)
+		) {$charset_collate};";
+
+		dbDelta( $sql );
+	}
+
+	/**
+	 * Seed the queue for a run.
+	 *
+	 * @param string $run_id Run id.
+	 * @return void
+	 */
+	private function seed_queue_for_run( $run_id, $scan_mode = 'php' ) {
+		// Root PHP files (non-recursive) are treated specially.
+		$this->enqueue_queue_item( $run_id, 'rootfiles', 'root', ABSPATH, array() );
+
+		$scan_mode = is_string( $scan_mode ) ? $scan_mode : 'all';
+		$scan_mode = in_array( $scan_mode, array( 'php', 'all' ), true ) ? $scan_mode : 'all';
+
+		// Quick scan: focus on the most likely compromise surfaces with minimal I/O.
+		$this->enqueue_queue_item( $run_id, 'dir', 'plugins', ABSPATH . 'wp-content/plugins', array() );
+		$this->enqueue_queue_item( $run_id, 'dir', 'themes', ABSPATH . 'wp-content/themes', array() );
+		$mu_plugins_dir = defined( 'WPMU_PLUGIN_DIR' ) ? WPMU_PLUGIN_DIR : ABSPATH . 'wp-content/mu-plugins';
+		$this->enqueue_queue_item( $run_id, 'dir', 'plugins', $mu_plugins_dir, array() );
+
+		// Thorough scan: include core directories and uploads checks.
+		if ( 'all' === $scan_mode ) {
+			$this->enqueue_queue_item( $run_id, 'dir', 'wp-admin', ABSPATH . 'wp-admin', array() );
+			$this->enqueue_queue_item( $run_id, 'dir', 'wp-includes', ABSPATH . WPINC, array() );
+
+			$uploads = wp_upload_dir();
+			$uploads_dir = isset( $uploads['basedir'] ) ? $uploads['basedir'] : ABSPATH . 'wp-content/uploads';
+			$this->enqueue_queue_item( $run_id, 'dir', 'uploads', $uploads_dir, array() );
+		}
+	}
+
+	/**
+	 * Insert a queue item if it doesn't already exist.
+	 *
+	 * @param string $run_id Run id.
+	 * @param string $item_type Item type.
+	 * @param string $area Scan area.
+	 * @param string $path Absolute path.
+	 * @param array  $meta Optional metadata.
+	 * @return void
+	 */
+	private function enqueue_queue_item( $run_id, $item_type, $area, $path, $meta = array() ) {
+		global $wpdb;
+		$table = $this->get_queue_table_name();
+		$now = current_time( 'mysql' );
+		$path_hash = substr( hash( 'sha256', $item_type . '|' . $area . '|' . $path ), 0, 32 );
+		$meta_json = ! empty( $meta ) ? wp_json_encode( $meta ) : null;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query(
+			$wpdb->prepare(
+				"INSERT IGNORE INTO {$table} (run_id, item_type, area, path, path_hash, status, meta, created_at, updated_at)
+				 VALUES (%s, %s, %s, %s, %s, 'pending', %s, %s, %s)",
+				$run_id,
+				$item_type,
+				$area,
+				$path,
+				$path_hash,
+				$meta_json,
+				$now,
+				$now
+			)
+		);
+	}
+
+	/**
+	 * Claim the next pending queue item.
+	 *
+	 * @param string $run_id Run id.
+	 * @return array|false
+	 */
+	private function claim_next_queue_item( $run_id ) {
+		global $wpdb;
+		$table = $this->get_queue_table_name();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$item = $wpdb->get_row(
+			$wpdb->prepare( "SELECT id, item_type, area, path, meta FROM {$table} WHERE run_id = %s AND status = 'pending' ORDER BY id ASC LIMIT 1", $run_id ),
+			ARRAY_A
+		);
+
+		if ( ! is_array( $item ) ) {
+			return false;
+		}
+
+		$now = current_time( 'mysql' );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$updated = $wpdb->query(
+			$wpdb->prepare( "UPDATE {$table} SET status = 'processing', updated_at = %s WHERE id = %d AND status = 'pending'", $now, (int) $item['id'] )
+		);
+
+		if ( 1 !== (int) $updated ) {
+			return false;
+		}
+
+		return $item;
+	}
+
+	/**
+	 * Mark a queue item as done.
+	 *
+	 * @param int    $id Item id.
+	 * @param string $status New status.
+	 * @param array  $meta Optional meta.
+	 * @param string $error Optional error.
+	 * @return void
+	 */
+	private function update_queue_item( $id, $status, $meta = array(), $error = '' ) {
+		global $wpdb;
+		$table = $this->get_queue_table_name();
+		$now = current_time( 'mysql' );
+		$meta_json = ! empty( $meta ) ? wp_json_encode( $meta ) : null;
+		$error_val = $error ? $error : null;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->update(
+			$table,
+			array(
+				'status' => $status,
+				'meta' => $meta_json,
+				'last_error' => $error_val,
+				'updated_at' => $now,
+			),
+			array( 'id' => (int) $id ),
+			array( '%s', '%s', '%s', '%s' ),
+			array( '%d' )
+		);
+	}
+
+	/**
+	 * Get queue counts for a run.
+	 *
+	 * @param string $run_id Run id.
+	 * @return array
+	 */
+	private function get_queue_counts( $run_id ) {
+		global $wpdb;
+		$table = $this->get_queue_table_name();
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$rows = $wpdb->get_results(
+			$wpdb->prepare( "SELECT status, COUNT(*) as c FROM {$table} WHERE run_id = %s GROUP BY status", $run_id ),
+			ARRAY_A
+		);
+
+		$counts = array(
+			'total' => 0,
+			'pending' => 0,
+			'processing' => 0,
+			'done' => 0,
+			'error' => 0,
+		);
+
+		foreach ( $rows as $row ) {
+			$status = isset( $row['status'] ) ? (string) $row['status'] : '';
+			$c = isset( $row['c'] ) ? (int) $row['c'] : 0;
+			$counts['total'] += $c;
+			if ( isset( $counts[ $status ] ) ) {
+				$counts[ $status ] += $c;
+			}
+		}
+
+		return $counts;
+	}
+
+	/**
+	 * Process a single queue item.
+	 *
+	 * @param array $item Item row.
+	 * @param array $state Run state (by reference).
+	 * @param float $started Step start time.
+	 * @param int   $time_budget_seconds Step budget.
+	 * @return void
+	 */
+	private function process_queue_item( $item, &$state, $started, $time_budget_seconds ) {
+		$item_type = isset( $item['item_type'] ) ? (string) $item['item_type'] : '';
+		$area      = isset( $item['area'] ) ? (string) $item['area'] : '';
+		$path      = isset( $item['path'] ) ? (string) $item['path'] : '';
+		$meta      = isset( $item['meta'] ) && $item['meta'] ? json_decode( (string) $item['meta'], true ) : array();
+		if ( ! is_array( $meta ) ) {
+			$meta = array();
+		}
+
+		$state['current_item'] = array(
+			'id'   => isset( $item['id'] ) ? (int) $item['id'] : 0,
+			'type' => $item_type,
+			'area' => $area,
+			'path' => ltrim( str_replace( ABSPATH, '', $path ), '/' ),
+		);
+		$this->append_scan_log(
+			$state,
+			sprintf(
+				'[%s] %s (%s): %s',
+				current_time( 'mysql' ),
+				$item_type,
+				$area,
+				isset( $state['current_item']['path'] ) ? (string) $state['current_item']['path'] : ''
+			)
+		);
+
+		if ( 'rootfiles' === $item_type ) {
+			$this->process_rootfiles_item( (int) $item['id'], $area, $path, $meta, $state, $started, $time_budget_seconds );
+			return;
+		}
+
+		if ( 'dir' === $item_type ) {
+			$this->process_dir_item( (int) $item['id'], $area, $path, $meta, $state, $started, $time_budget_seconds );
+			return;
+		}
+
+		if ( 'file' === $item_type ) {
+			$this->process_file_item( (int) $item['id'], $area, $path, $state );
+			return;
+		}
+
+		$this->update_queue_item( (int) $item['id'], 'done' );
+	}
+
+	/**
+	 * Process the rootfiles item: scan loose PHP files in ABSPATH (non-recursive).
+	 */
+	private function process_rootfiles_item( $id, $area, $root, $meta, &$state, $started, $time_budget_seconds ) {
+		if ( ! is_dir( $root ) ) {
+			$this->update_queue_item( $id, 'done' );
+			return;
+		}
+
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		$dir_handle = @opendir( $root );
+		if ( ! $dir_handle ) {
+			$this->bump_diag_count( 'dirs_unreadable', 'unreadable_dirs', $root );
+			$this->add_scan_warning( __( 'Could not read WordPress root directory; scan may be incomplete.', 'atomicedge' ) );
+			$this->update_queue_item( $id, 'done' );
+			return;
+		}
+
+		$last_entry = isset( $meta['last_entry'] ) ? (string) $meta['last_entry'] : '';
+		$skipping = '' !== $last_entry;
+		$processed = 0;
+
+		while ( false !== ( $entry = readdir( $dir_handle ) ) ) {
+			if ( '.' === $entry || '..' === $entry ) {
+				continue;
+			}
+
+			if ( $skipping ) {
+				if ( $entry === $last_entry ) {
+					$skipping = false;
+				}
+				continue;
+			}
+
+			$processed++;
+			$meta['last_entry'] = $entry;
+
+			if ( $processed >= 300 || ( microtime( true ) - $started ) >= $time_budget_seconds ) {
+				break;
+			}
+
+			$filepath = $root . $entry;
+			if ( ! ( is_file( $filepath ) && preg_match( '/\.php$/i', $entry ) ) ) {
+				continue;
+			}
+
+			$this->scan_diagnostics['areas']['root']['php_files_found']++;
+			$this->scan_diagnostics['areas']['root']['php_files_scanned']++;
+			$state['results']['scan_stats']['files_scanned']++;
+
+			$relative_path = str_replace( ABSPATH, '', $filepath );
+			if ( $this->is_core_root_file( $relative_path ) ) {
+				continue;
+			}
+
+			$result = $this->scan_file_for_patterns( $filepath, $this->get_malware_patterns(), true );
+			if ( $result ) {
+				$result['file']          = $relative_path;
+				$result['file_path']     = $filepath;
+				$result['location_note'] = __( 'Non-core file in WordPress root', 'atomicedge' );
+				$state['results']['suspicious'][] = $result;
+			} else {
+				$state['results']['suspicious'][] = array(
+					'file'      => $relative_path,
+					'file_path' => $filepath,
+					'type'     => 'unknown_root_file',
+					'severity' => 'high',
+					'pattern'  => __( 'Unknown PHP file in WordPress root directory', 'atomicedge' ),
+				);
+			}
+		}
+
+		$finished = ( false === $entry );
+		closedir( $dir_handle );
+		if ( $finished ) {
+			$this->update_queue_item( $id, 'done' );
+			return;
+		}
+
+		$this->update_queue_item( $id, 'pending', $meta );
+	}
+
+	/**
+	 * Process a directory queue item, expanding child dirs and PHP files.
+	 */
+	private function process_dir_item( $id, $area, $dir, $meta, &$state, $started, $time_budget_seconds ) {
+		if ( ! is_dir( $dir ) ) {
+			$this->scan_diagnostics['counts']['dirs_missing']++;
+			$this->update_queue_item( $id, 'done' );
+			return;
+		}
+
+		if ( ! is_readable( $dir ) ) {
+			$this->bump_diag_count( 'dirs_unreadable', 'unreadable_dirs', $dir );
+			$this->add_scan_warning( __( 'Some directories could not be read; scan may be incomplete.', 'atomicedge' ) );
+			$this->update_queue_item( $id, 'done' );
+			return;
+		}
+
+		// Skip excluded/whitelisted directories for plugin/theme areas.
+		$relative_dir = ltrim( str_replace( ABSPATH, '', $dir ), '/' );
+		if ( in_array( $area, array( 'plugins', 'themes' ), true ) && $this->is_whitelisted_path( $relative_dir . '/' ) ) {
+			$this->update_queue_item( $id, 'done' );
+			return;
+		}
+
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		$handle = @opendir( $dir );
+		if ( ! $handle ) {
+			$this->bump_diag_count( 'dirs_unreadable', 'unreadable_dirs', $dir );
+			$this->add_scan_warning( __( 'Some directories could not be read; scan may be incomplete.', 'atomicedge' ) );
+			$this->update_queue_item( $id, 'done' );
+			return;
+		}
+
+		$max_entries = 300;
+		$processed = 0;
+		$last_entry = isset( $meta['last_entry'] ) ? (string) $meta['last_entry'] : '';
+		$skipping = '' !== $last_entry;
+
+		while ( false !== ( $entry = readdir( $handle ) ) ) {
+			if ( '.' === $entry || '..' === $entry ) {
+				continue;
+			}
+
+			if ( $skipping ) {
+				if ( $entry === $last_entry ) {
+					$skipping = false;
+				}
+				continue;
+			}
+
+			$child = rtrim( $dir, DIRECTORY_SEPARATOR ) . DIRECTORY_SEPARATOR . $entry;
+			$processed++;
+			$meta['last_entry'] = $entry;
+
+			if ( is_dir( $child ) ) {
+				if ( ! is_link( $child ) ) {
+					$this->enqueue_queue_item( $state['run_id'], 'dir', $area, $child, array() );
+				}
+			} elseif ( is_file( $child ) && preg_match( '/\.php$/i', $entry ) ) {
+				if ( isset( $this->scan_diagnostics['areas'][ $area ] ) ) {
+					$this->scan_diagnostics['areas'][ $area ]['php_files_found']++;
+				}
+				$this->enqueue_queue_item( $state['run_id'], 'file', $area, $child, array() );
+			}
+
+			if ( $processed >= $max_entries || ( microtime( true ) - $started ) >= $time_budget_seconds ) {
+				break;
+			}
+		}
+
+		$finished = ( false === $entry );
+		closedir( $handle );
+
+		if ( $finished ) {
+			$this->update_queue_item( $id, 'done' );
+			return;
+		}
+
+		// More work remains in this directory.
+		$this->update_queue_item( $id, 'pending', $meta );
+	}
+
+	/**
+	 * Process a file queue item.
+	 */
+	private function process_file_item( $id, $area, $filepath, &$state ) {
+		$relative_path = ltrim( str_replace( ABSPATH, '', $filepath ), '/' );
+
+		if ( ! file_exists( $filepath ) ) {
+			$this->update_queue_item( $id, 'done' );
+			return;
+		}
+
+		if ( in_array( $area, array( 'plugins', 'themes' ), true ) && $this->is_whitelisted_path( $relative_path ) ) {
+			$this->bump_diag_count( 'files_skipped_whitelist' );
+			$this->update_queue_item( $id, 'done' );
+			return;
+		}
+
+		if ( 'uploads' === $area && $this->is_legitimate_upload_cache( $filepath ) ) {
+			$this->update_queue_item( $id, 'done' );
+			return;
+		}
+
+		if ( isset( $this->scan_diagnostics['areas'][ $area ] ) ) {
+			$this->scan_diagnostics['areas'][ $area ]['php_files_scanned']++;
+		}
+		$state['results']['scan_stats']['files_scanned']++;
+
+		$is_uploads = ( 'uploads' === $area );
+		$pattern_groups = $this->get_malware_patterns();
+		if ( in_array( $area, array( 'wp-admin', 'wp-includes' ), true ) ) {
+			$pattern_groups = $this->get_critical_patterns_only();
+		} elseif ( in_array( $area, array( 'plugins', 'themes' ), true ) && ! $is_uploads ) {
+			$pattern_groups = $this->get_refined_patterns_for_plugins();
+		}
+
+		$result = $this->scan_file_for_patterns( $filepath, $pattern_groups, $is_uploads );
+		if ( $result ) {
+			$result['file']      = $relative_path;
+			$result['file_path'] = $filepath;
+			if ( 'wp-admin' === $area ) {
+				$result['location_note'] = __( 'Suspicious pattern in wp-admin', 'atomicedge' );
+			} elseif ( 'wp-includes' === $area ) {
+				$result['location_note'] = __( 'Suspicious pattern in wp-includes', 'atomicedge' );
+			}
+			$state['results']['suspicious'][] = $result;
+		} elseif ( $is_uploads ) {
+			$state['results']['suspicious'][] = array(
+				'file'      => $relative_path,
+				'file_path' => $filepath,
+				'type'     => 'php_in_uploads',
+				'severity' => 'high',
+				'reason'   => __( 'PHP file found in uploads directory', 'atomicedge' ),
+			);
+		}
+
+		$this->update_queue_item( $id, 'done' );
+	}
+
+	/**
+	 * Process an incremental chunk of core checksum comparisons.
+	 */
+	private function process_core_checksums_step( &$state, $started, $time_budget_seconds ) {
+		$checksums = get_transient( self::CORE_CHECKSUMS_KEY_PREFIX . $state['run_id'] );
+		if ( ! is_array( $checksums ) || empty( $checksums ) ) {
+			return false;
+		}
+
+		$bundled_exclusions = array(
+			'wp-content/plugins/akismet/',
+			'wp-content/plugins/hello.php',
+			'wp-content/themes/twentytwenty/',
+			'wp-content/themes/twentytwentyone/',
+			'wp-content/themes/twentytwentytwo/',
+			'wp-content/themes/twentytwentythree/',
+			'wp-content/themes/twentytwentyfour/',
+			'wp-content/themes/twentytwentyfive/',
+		);
+
+		$keys = array_keys( $checksums );
+		$total = count( $keys );
+		$offset = isset( $state['core_offset'] ) ? (int) $state['core_offset'] : 0;
+		if ( $offset >= $total ) {
+			delete_transient( self::CORE_CHECKSUMS_KEY_PREFIX . $state['run_id'] );
+			return false;
+		}
+
+		$batch = array_slice( $keys, $offset, 50 );
+		foreach ( $batch as $file ) {
+			if ( ( microtime( true ) - $started ) >= $time_budget_seconds ) {
+				break;
+			}
+
+			$expected_hash = $checksums[ $file ];
+			$file_path = ABSPATH . $file;
+			if ( $this->should_skip_core_file_checksum( $file, $file_path, $bundled_exclusions ) ) {
+				$offset++;
+				continue;
+			}
+
+			$actual_hash = $this->get_core_checksum_hash( $file_path );
+			if ( false !== $actual_hash && ! hash_equals( (string) $expected_hash, (string) $actual_hash ) ) {
+				$state['results']['core_files'][] = array(
+					'file'          => $file,
+					'file_path'     => $file_path,
+					'type'          => 'modified_core',
+					'severity'      => 'high',
+					'expected_hash' => $expected_hash,
+					'actual_hash'   => $actual_hash,
+				);
+			}
+			$offset++;
+		}
+
+		$state['core_offset'] = $offset;
+		$state['core_total'] = $total;
+		if ( $offset >= $total ) {
+			delete_transient( self::CORE_CHECKSUMS_KEY_PREFIX . $state['run_id'] );
+			return false;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Finalize a run if there is no more pending work.
+	 */
+	private function finalize_run_if_done( $state ) {
+		$counts = $this->get_queue_counts( $state['run_id'] );
+		if ( isset( $counts['pending'] ) && (int) $counts['pending'] > 0 ) {
+			return $state;
+		}
+
+		$state['results']['scan_diagnostics'] = $this->scan_diagnostics;
+		$integrity_count = 0;
+		if ( isset( $state['results']['integrity_issues'] ) && is_array( $state['results']['integrity_issues'] ) ) {
+			$integrity_count = count( $state['results']['integrity_issues'] );
+		}
+
+		$summary = array(
+			'core_modified' => count( $state['results']['core_files'] ),
+			'suspicious'    => count( $state['results']['suspicious'] ),
+			'total_issues'  => count( $state['results']['core_files'] ) + count( $state['results']['suspicious'] ) + $integrity_count,
+		);
+		if ( array_key_exists( 'integrity_issues', $state['results'] ) ) {
+			$summary['integrity_issues'] = $integrity_count;
+		}
+		$state['results']['summary'] = $summary;
+
+		$state['results']['scan_stats']['memory_peak'] = memory_get_peak_usage( true );
+		$state['results']['scan_stats']['time_elapsed'] = time() - strtotime( $state['results']['started_at'] );
+		$state['results']['completed_at'] = current_time( 'mysql' );
+
+		update_option( 'atomicedge_scan_results', $state['results'] );
+		update_option( 'atomicedge_last_scan', current_time( 'mysql' ) );
+
+		// Cleanup queue rows for this run.
+		global $wpdb;
+		$table = $this->get_queue_table_name();
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query( $wpdb->prepare( "DELETE FROM {$table} WHERE run_id = %s", $state['run_id'] ) );
+
+		$state['status'] = 'complete';
+		$state['progress'] = 100;
+		$this->save_resumable_scan_state( $state );
+
+		// Clear transient state so next scan can start cleanly.
+		$this->clear_resumable_scan_state();
+
+		return $state;
+	}
+
+	/**
 	 * Scan WordPress core files against official checksums.
 	 *
 	 * @return array|false Array of modified files or false on error.
@@ -287,9 +1553,9 @@ class AtomicEdge_Scanner {
 			}
 
 			// Calculate actual hash (WordPress.org core checksums are md5).
-			$actual_hash = md5_file( $file_path );
+			$actual_hash = $this->get_core_checksum_hash( $file_path );
 
-			if ( $actual_hash !== $expected_hash ) {
+			if ( false !== $actual_hash && ! hash_equals( (string) $expected_hash, (string) $actual_hash ) ) {
 				$modified[] = array(
 					'file'          => $file,
 					'file_path'     => $file_path,
@@ -329,6 +1595,44 @@ class AtomicEdge_Scanner {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Compute the local hash for WordPress.org core checksum comparison.
+	 *
+	 * WordPress core checksums returned by WordPress.org are MD5.
+	 *
+	 * @param string $file_path Absolute file path.
+	 * @return string|false
+	 */
+	private function get_core_checksum_hash( $file_path ) {
+		if ( ! is_readable( $file_path ) ) {
+			$this->scan_diagnostics[] = array(
+				'type'     => 'warning',
+				'code'     => 'core_checksum_unreadable',
+				'message'  => 'Unable to read core file for checksum verification.',
+				'file'     => $file_path,
+				'reason'   => 'not_readable',
+				'detected' => current_time( 'mysql' ),
+			);
+			return false;
+		}
+
+		// WordPress.org core checksums are MD5, so we must compute MD5 locally for comparison.
+		$hash = md5_file( $file_path );
+		if ( false === $hash ) {
+			$this->scan_diagnostics[] = array(
+				'type'     => 'warning',
+				'code'     => 'core_checksum_hash_failed',
+				'message'  => 'Failed to hash core file for checksum verification.',
+				'file'     => $file_path,
+				'reason'   => 'hash_failed',
+				'detected' => current_time( 'mysql' ),
+			);
+			return false;
+		}
+
+		return $hash;
 	}
 
 	/**
@@ -428,10 +1732,10 @@ class AtomicEdge_Scanner {
 		$this->scan_suspicious_root_files( $pattern_groups, $suspicious, $reported_files, $files_scanned, $memory_threshold );
 
 		// 2. SCAN WP-ADMIN DIRECTORY (should only contain core files).
-		$this->scan_directory_for_critical_patterns( ABSPATH . 'wp-admin', __( 'Suspicious pattern in wp-admin', 'atomicedge' ), $suspicious, $reported_files, $files_scanned, $memory_threshold );
+		$this->scan_directory_for_critical_patterns( 'wp-admin', ABSPATH . 'wp-admin', __( 'Suspicious pattern in wp-admin', 'atomicedge' ), $suspicious, $reported_files, $files_scanned, $memory_threshold );
 
 		// 3. SCAN WP-INCLUDES DIRECTORY (should only contain core files).
-		$this->scan_directory_for_critical_patterns( ABSPATH . WPINC, __( 'Suspicious pattern in wp-includes', 'atomicedge' ), $suspicious, $reported_files, $files_scanned, $memory_threshold );
+		$this->scan_directory_for_critical_patterns( 'wp-includes', ABSPATH . WPINC, __( 'Suspicious pattern in wp-includes', 'atomicedge' ), $suspicious, $reported_files, $files_scanned, $memory_threshold );
 
 		// 4. SCAN WP-CONTENT SUBDIRECTORIES.
 		$this->scan_wp_content_directories( $pattern_groups, $suspicious, $reported_files, $files_scanned, $memory_threshold );
@@ -444,6 +1748,8 @@ class AtomicEdge_Scanner {
 			'files_scanned' => $files_scanned,
 			'started_at'    => current_time( 'mysql' ),
 		) );
+
+		$this->scan_diagnostics['scan_stats_files_scanned'] = $files_scanned;
 
 		return $suspicious;
 	}
@@ -460,15 +1766,18 @@ class AtomicEdge_Scanner {
 	 */
 	private function scan_suspicious_root_files( $pattern_groups, &$suspicious, &$reported_files, &$files_scanned, $memory_threshold ) {
 		$root_files = $this->get_root_php_files();
+		$this->scan_diagnostics['areas']['root']['php_files_found'] = count( $root_files );
 		foreach ( $root_files as $file ) {
 			// Memory check before processing.
 			if ( memory_get_usage( true ) > $memory_threshold ) {
 				AtomicEdge::log( 'Scan memory limit approaching, stopping early' );
+				$this->mark_stopped_early( 'memory_limit' );
 				break;
 			}
 
 			$relative_path = str_replace( ABSPATH, '', $file );
 			$files_scanned++;
+			$this->scan_diagnostics['areas']['root']['php_files_scanned']++;
 
 			// Skip already reported and core files.
 			if ( isset( $reported_files[ $relative_path ] ) || $this->is_core_root_file( $relative_path ) ) {
@@ -508,19 +1817,27 @@ class AtomicEdge_Scanner {
 	 * @param int    $memory_threshold Threshold at which to stop processing.
 	 * @return void
 	 */
-	private function scan_directory_for_critical_patterns( $dir, $location_note, &$suspicious, &$reported_files, &$files_scanned, $memory_threshold ) {
+	private function scan_directory_for_critical_patterns( $area, $dir, $location_note, &$suspicious, &$reported_files, &$files_scanned, $memory_threshold ) {
 		if ( ! is_dir( $dir ) ) {
+			$this->scan_diagnostics['counts']['dirs_missing']++;
 			return;
 		}
 
 		$files = $this->get_php_files( $dir );
+		if ( isset( $this->scan_diagnostics['areas'][ $area ] ) ) {
+			$this->scan_diagnostics['areas'][ $area ]['php_files_found'] = count( $files );
+		}
 		foreach ( $files as $file ) {
 			if ( memory_get_usage( true ) > $memory_threshold ) {
+				$this->mark_stopped_early( 'memory_limit' );
 				break;
 			}
 
 			$relative_path = str_replace( ABSPATH, '', $file );
 			$files_scanned++;
+			if ( isset( $this->scan_diagnostics['areas'][ $area ] ) ) {
+				$this->scan_diagnostics['areas'][ $area ]['php_files_scanned']++;
+			}
 
 			if ( isset( $reported_files[ $relative_path ] ) ) {
 				continue;
@@ -556,18 +1873,33 @@ class AtomicEdge_Scanner {
 
 		foreach ( $scan_dirs as $dir => $is_uploads_dir ) {
 			if ( ! is_dir( $dir ) ) {
+				$this->scan_diagnostics['counts']['dirs_missing']++;
 				continue;
 			}
 
+			$area = 'plugins';
+			if ( $is_uploads_dir ) {
+				$area = 'uploads';
+			} elseif ( false !== strpos( $dir, 'wp-content/themes' ) ) {
+				$area = 'themes';
+			}
+
 			$files = $this->get_php_files( $dir );
+			if ( isset( $this->scan_diagnostics['areas'][ $area ] ) ) {
+				$this->scan_diagnostics['areas'][ $area ]['php_files_found'] = count( $files );
+			}
 			foreach ( $files as $file ) {
 				if ( memory_get_usage( true ) > $memory_threshold ) {
 					AtomicEdge::log( 'Scan memory limit approaching, stopping early' );
+					$this->mark_stopped_early( 'memory_limit' );
 					break 2;
 				}
 
 				$relative_path = str_replace( ABSPATH, '', $file );
 				$files_scanned++;
+				if ( isset( $this->scan_diagnostics['areas'][ $area ] ) ) {
+					$this->scan_diagnostics['areas'][ $area ]['php_files_scanned']++;
+				}
 
 				if ( isset( $reported_files[ $relative_path ] ) ) {
 					continue;
@@ -575,6 +1907,7 @@ class AtomicEdge_Scanner {
 
 				// Skip whitelisted paths (but NOT in uploads - uploads should always be scanned).
 				if ( ! $is_uploads_dir && $this->is_whitelisted_path( $relative_path ) ) {
+					$this->bump_diag_count( 'files_skipped_whitelist' );
 					continue;
 				}
 
@@ -607,8 +1940,11 @@ class AtomicEdge_Scanner {
 		}
 
 		$upload_php_files = $this->get_php_files( $uploads_dir['basedir'] );
+		// This is a dedicated pass; include it in uploads found/scanned stats.
+		$this->scan_diagnostics['areas']['uploads']['php_files_found'] = max( $this->scan_diagnostics['areas']['uploads']['php_files_found'], count( $upload_php_files ) );
 		foreach ( $upload_php_files as $file ) {
 			$relative_path = str_replace( ABSPATH, '', $file );
+			$this->scan_diagnostics['areas']['uploads']['php_files_scanned']++;
 
 			if ( isset( $reported_files[ $relative_path ] ) ) {
 				continue;
@@ -641,6 +1977,8 @@ class AtomicEdge_Scanner {
 		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		$dir_handle = @opendir( $root );
 		if ( ! $dir_handle ) {
+			$this->bump_diag_count( 'dirs_unreadable', 'unreadable_dirs', $root );
+			$this->add_scan_warning( __( 'Could not read WordPress root directory; scan may be incomplete.', 'atomicedge' ) );
 			return $files;
 		}
 
@@ -699,13 +2037,19 @@ class AtomicEdge_Scanner {
 	 * @return array Critical pattern groups.
 	 */
 	private function get_critical_patterns_only() {
+		if ( is_array( $this->critical_patterns_cache ) ) {
+			return $this->critical_patterns_cache;
+		}
+
 		$all_patterns = $this->get_malware_patterns();
 
-		return array(
+		$this->critical_patterns_cache = array(
 			'backdoor_patterns' => $all_patterns['backdoor_patterns'],
 			'webshells'         => $all_patterns['webshells'],
 			'wordpress_malware' => $all_patterns['wordpress_malware'],
 		);
+
+		return $this->critical_patterns_cache;
 	}
 
 	/**
@@ -717,17 +2061,30 @@ class AtomicEdge_Scanner {
 	 * @return array|false Finding array or false if clean.
 	 */
 	private function scan_file_for_patterns( $filepath, $pattern_groups, $check_php_in_image = false ) {
-		// Read file content with size limit (skip files > 5MB).
 		$filesize = @filesize( $filepath );
-		if ( false === $filesize || $filesize > 5 * 1024 * 1024 ) {
+		if ( false === $filesize ) {
+			$this->bump_diag_count( 'files_stat_failed' );
 			return false;
 		}
 
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-		$content = @file_get_contents( $filepath );
+		$relative_path = str_replace( ABSPATH, '', $filepath );
+
+		// Read a capped prefix of the file to avoid memory/time issues on large files.
+		// We treat oversized files as partially scanned (not silently skipped).
+		$max_bytes = 2 * 1024 * 1024;
+		$bytes_to_read = (int) min( (int) $filesize, (int) $max_bytes );
+
+		$content = $this->read_file_prefix( $filepath, $bytes_to_read );
 
 		if ( false === $content ) {
+			$this->bump_diag_count( 'files_read_failed', 'read_failed_files', $relative_path );
+			$this->add_scan_warning( __( 'Some files could not be read; scan may be incomplete.', 'atomicedge' ) );
 			return false;
+		}
+
+		if ( $filesize > $max_bytes ) {
+			$this->bump_diag_count( 'files_partially_scanned', 'oversized_files', $relative_path );
+			$this->add_scan_warning( __( 'Some large files were only partially scanned; results may be incomplete.', 'atomicedge' ) );
 		}
 
 		// Check for hidden PHP in image files.
@@ -756,6 +2113,47 @@ class AtomicEdge_Scanner {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Read the first N bytes of a file (binary-safe) in small chunks.
+	 *
+	 * @param string $filepath File path.
+	 * @param int    $bytes_to_read Maximum bytes to read.
+	 * @return string|false
+	 */
+	private function read_file_prefix( $filepath, $bytes_to_read ) {
+		$bytes_to_read = max( 0, (int) $bytes_to_read );
+		if ( 0 === $bytes_to_read ) {
+			return '';
+		}
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_fopen
+		$handle = @fopen( $filepath, 'rb' );
+		if ( false === $handle ) {
+			return false;
+		}
+
+		$contents = '';
+		$remaining = $bytes_to_read;
+
+		while ( $remaining > 0 && ! feof( $handle ) ) {
+			$chunk_size = min( 65536, $remaining );
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_fread
+			$chunk = @fread( $handle, $chunk_size );
+			if ( false === $chunk ) {
+				fclose( $handle );
+				return false;
+			}
+			$contents .= $chunk;
+			$remaining -= strlen( $chunk );
+			if ( '' === $chunk ) {
+				break;
+			}
+		}
+
+		fclose( $handle );
+		return $contents;
 	}
 
 	/**
@@ -798,13 +2196,23 @@ class AtomicEdge_Scanner {
 		$files = array();
 
 		if ( ! is_dir( $dir ) || ! is_readable( $dir ) ) {
+			if ( is_dir( $dir ) && ! is_readable( $dir ) ) {
+				$this->bump_diag_count( 'dirs_unreadable', 'unreadable_dirs', $dir );
+				$this->add_scan_warning( __( 'Some directories could not be read; scan may be incomplete.', 'atomicedge' ) );
+			}
 			return $files;
 		}
 
-		$iterator = new RecursiveIteratorIterator(
-			new RecursiveDirectoryIterator( $dir, RecursiveDirectoryIterator::SKIP_DOTS ),
-			RecursiveIteratorIterator::SELF_FIRST
-		);
+		try {
+			$iterator = new RecursiveIteratorIterator(
+				new RecursiveDirectoryIterator( $dir, RecursiveDirectoryIterator::SKIP_DOTS ),
+				RecursiveIteratorIterator::SELF_FIRST
+			);
+		} catch ( UnexpectedValueException $e ) {
+			$this->bump_diag_count( 'dirs_unreadable', 'unreadable_dirs', $dir );
+			$this->add_scan_warning( __( 'Some directories could not be scanned due to permissions; scan may be incomplete.', 'atomicedge' ) );
+			return $files;
+		}
 
 		foreach ( $iterator as $file ) {
 			if ( $file->isFile() && preg_match( '/\.php$/i', $file->getFilename() ) ) {
@@ -842,7 +2250,11 @@ class AtomicEdge_Scanner {
 	 * @return array Associative array of pattern groups.
 	 */
 	private function get_malware_patterns() {
-		return array(
+		if ( is_array( $this->patterns_cache ) ) {
+			return $this->patterns_cache;
+		}
+
+		$this->patterns_cache = array(
 			// Critical: Direct code execution patterns.
 			'code_execution'       => array(
 				'eval\s*\('                                                          => __( 'Eval function (code execution)', 'atomicedge' ),
@@ -979,6 +2391,8 @@ class AtomicEdge_Scanner {
 				'set_error_handler\s*\(\s*null'                                      => __( 'Error handler nullified', 'atomicedge' ),
 			),
 		);
+
+		return $this->patterns_cache;
 	}
 
 	/**
@@ -1142,7 +2556,11 @@ class AtomicEdge_Scanner {
 	 * @return array Refined pattern groups.
 	 */
 	private function get_refined_patterns_for_plugins() {
-		return array(
+		if ( is_array( $this->refined_patterns_cache ) ) {
+			return $this->refined_patterns_cache;
+		}
+
+		$this->refined_patterns_cache = array(
 			// Critical: Definite backdoor patterns (these are ALWAYS malicious).
 			'backdoor_patterns'    => array(
 				'@eval\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)'                        => __( 'Backdoor: eval with user input', 'atomicedge' ),
@@ -1161,12 +2579,8 @@ class AtomicEdge_Scanner {
 				'c99shell'                                                           => __( 'C99 shell signature', 'atomicedge' ),
 				'r57shell'                                                           => __( 'R57 shell signature', 'atomicedge' ),
 				'b374k'                                                              => __( 'B374K shell signature', 'atomicedge' ),
-				'FilesMan'                                                           => __( 'FilesMan shell signature', 'atomicedge' ),
 				'WSO\s+[\d\.]+'                                                      => __( 'WSO shell signature', 'atomicedge' ),
 				'Weevely'                                                            => __( 'Weevely shell signature', 'atomicedge' ),
-				'Mister Spy'                                                         => __( 'Mister Spy shell signature', 'atomicedge' ),
-				'Afghan Shell'                                                       => __( 'Afghan Shell signature', 'atomicedge' ),
-				'SHELL_PASSWORD'                                                     => __( 'Shell password variable', 'atomicedge' ),
 			),
 
 			// Critical: WordPress-specific malware.
@@ -1208,6 +2622,8 @@ class AtomicEdge_Scanner {
 				'\\\\x65\\\\x78\\\\x65\\\\x63'                                       => __( 'Hex-encoded exec', 'atomicedge' ),
 			),
 		);
+
+		return $this->refined_patterns_cache;
 	}
 
 	/**

@@ -1,0 +1,28 @@
+{
+  "algorithm": "sha256",
+  "files": {
+    "admin/css/admin.css": "677037e3e5f6501f1f367b15f66b47dbc61cd282d400c2e4ed494e807c7be939",
+    "admin/js/admin.js": "1f6db63a72b299b6a9bef4780a868885a29a376cd553890447b5fa1f163c24fa",
+    "admin/views/access-control.php": "4b833f0e4f5f4bb2fc0ca643042e77bfd357e4c5b41503be0771c6d58f56c76e",
+    "admin/views/analytics.php": "c0ffa65e30f1753284cdaf2d4c197331fb80ebe0b346e0bf14426065178be486",
+    "admin/views/dashboard.php": "c1318a47cfcd7ddcd555367d1a358b22fcee1fcf37fddac5ac803766a7a29e00",
+    "admin/views/scanner.php": "8875c1cd7a5a58dd39324310336624ee2e9c0dbdc396833887b2a3be3b7ef9a0",
+    "admin/views/settings.php": "cb20b136f7d46f08c44234c19d10047a2335b9ef1d2e8a400358130ffe699b6d",
+    "admin/views/vulnerability-scanner.php": "6841a39b03c16be4fe68d22ab4ded2da393c587321f59af7b2ac3c40660e613b",
+    "admin/views/waf-logs.php": "ea3bd902779d65fb73a647075ee1e21f85f3ee9b8a1fe8a5b8ffa70e8af3ff6f",
+    "assets/images/logo.svg": "8d55beaa7c3615aaf0bd44c41efdbc3fbbcbef75477b7e201720b132184bb130",
+    "assets/images/wordfence-logo.svg": "edc4ef3d1f88d6d8d89d90d7d3a91461037171cc586ef71c29eb122b402ea616",
+    "assets/js/chart.min.js": "d2af8974e95271638772e9e9524db5b9a6f58d6ec2d5d781400447b4a31c681e",
+    "atomicedge.php": "8e020da1c4dff2b3541a923fecc6d1b67093c5654ac5d96dddfbfd87132d089a",
+    "includes/class-atomicedge-admin.php": "6787f75625196f3fc5fcbfd38f146006ec46c43e707dedad3895e9bdeccdf228",
+    "includes/class-atomicedge-ajax.php": "f14cc13b78c572cf985dd9fe2b9686875aa22d5a22f5afc74d68435c2ca9d041",
+    "includes/class-atomicedge-api.php": "d47b8904b46931aa67e421f4a5d36a3c6393d1c0051a39e9a0741463801d6bab",
+    "includes/class-atomicedge-cli.php": "74bfc3521808d6ef44df15b0bf8db4ba4ba6de8ec292cc0c6020ef591de4672b",
+    "includes/class-atomicedge-cron.php": "be014fe9d2a9306dd532d98da9c08625e5684f0c90e737f40826239bb82d05a8",
+    "includes/class-atomicedge-scanner.php": "b55a3e1ac55bb50436ebaaf70dec45f3fbf110fb26cdacbdc00fa526ff5c2a59",
+    "includes/class-atomicedge-vulnerability-scanner.php": "ec26b4a391828de0af813d7f663a85d3531fb7c84b02bffdfcccb577980e214a",
+    "includes/class-atomicedge.php": "0f33754703f72b76ebbe69e9fbcfc3e4be31402a5781b804d5b4f2d850fb3cd4",
+    "uninstall.php": "21fc4f541c72d3dada5bfe9152a2fc86a530be9f673cc5aa4ed624755d09a6e4"
+  },
+  "generated_at": "2026-01-08T10:42:42Z"
+}

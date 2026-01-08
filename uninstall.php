@@ -29,6 +29,11 @@ foreach ( $options_to_delete as $option ) {
 // Delete all transients.
 global $wpdb;
 
+// Drop scanner queue table.
+$table_name = $wpdb->prefix . 'atomicedge_scan_queue';
+// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+$wpdb->query( "DROP TABLE IF EXISTS {$table_name}" );
+
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 $wpdb->query(
 	$wpdb->prepare(

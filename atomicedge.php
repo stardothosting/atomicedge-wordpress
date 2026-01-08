@@ -3,10 +3,10 @@
  * Plugin Name: Atomic Edge Security
  * Plugin URI: https://atomicedge.io/wordpress
  * Description: Connect your WordPress site to Atomic Edge WAF/CDN for advanced security protection, analytics, and access control management.
- * Version: 1.1.1
+ * Version: 1.2.0
  * Requires at least: 5.8
  * Requires PHP: 7.4
- * Tested up to: 6.7
+ * Tested up to: 6.9
  * Author: Atomic Edge
  * Author URI: https://atomicedge.io
  * License: GPL v2 or later
@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'ATOMICEDGE_VERSION', '1.1.1' );
+define( 'ATOMICEDGE_VERSION', '1.2.0' );
 define( 'ATOMICEDGE_PLUGIN_FILE', __FILE__ );
 define( 'ATOMICEDGE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ATOMICEDGE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -125,6 +125,40 @@ function atomicedge_init() {
 add_action( 'plugins_loaded', 'atomicedge_init' );
 
 /**
+ * Install/upgrade database schema used by the malware scanner.
+ *
+ * @return void
+ */
+function atomicedge_install_scanner_schema() {
+	global $wpdb;
+
+	$table_name      = $wpdb->prefix . 'atomicedge_scan_queue';
+	$charset_collate = $wpdb->get_charset_collate();
+
+	require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+	$sql = "CREATE TABLE {$table_name} (
+		id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+		run_id char(36) NOT NULL,
+		item_type varchar(10) NOT NULL,
+		area varchar(20) NOT NULL DEFAULT '',
+		path longtext NOT NULL,
+		path_hash char(32) NOT NULL,
+		status varchar(20) NOT NULL DEFAULT 'pending',
+		meta longtext NULL,
+		last_error longtext NULL,
+		created_at datetime NOT NULL,
+		updated_at datetime NOT NULL,
+		PRIMARY KEY  (id),
+		KEY run_status (run_id,status,id),
+		KEY run_type_status (run_id,item_type,status,id),
+		UNIQUE KEY run_item (run_id,item_type,path_hash)
+	) {$charset_collate};";
+
+	dbDelta( $sql );
+}
+
+/**
  * Plugin activation hook.
  *
  * @return void
@@ -151,6 +185,9 @@ function atomicedge_activate() {
 			add_option( 'atomicedge_' . $key, $value );
 		}
 	}
+
+	// Ensure scanner DB schema exists.
+	atomicedge_install_scanner_schema();
 
 	// Schedule cron events.
 	if ( ! wp_next_scheduled( 'atomicedge_daily_scan' ) ) {

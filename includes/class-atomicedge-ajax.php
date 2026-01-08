@@ -60,11 +60,16 @@ class AtomicEdge_Ajax {
 
 		// Scanner.
 		add_action( 'wp_ajax_atomicedge_run_scan', array( $this, 'ajax_run_scan' ) );
+		add_action( 'wp_ajax_atomicedge_scan_step', array( $this, 'ajax_scan_step' ) );
+		add_action( 'wp_ajax_atomicedge_scan_status', array( $this, 'ajax_scan_status' ) );
 		add_action( 'wp_ajax_atomicedge_get_scan_results', array( $this, 'ajax_get_scan_results' ) );
+		add_action( 'wp_ajax_atomicedge_cancel_scan', array( $this, 'ajax_cancel_scan' ) );
+		add_action( 'wp_ajax_atomicedge_reset_scan', array( $this, 'ajax_reset_scan' ) );
 
 		// Vulnerability Scanner.
 		add_action( 'wp_ajax_atomicedge_run_vulnerability_scan', array( $this, 'ajax_run_vulnerability_scan' ) );
 		add_action( 'wp_ajax_atomicedge_get_vulnerability_results', array( $this, 'ajax_get_vulnerability_results' ) );
+		add_action( 'wp_ajax_atomicedge_reset_vulnerability_results', array( $this, 'ajax_reset_vulnerability_results' ) );
 
 		// Cache.
 		add_action( 'wp_ajax_atomicedge_clear_cache', array( $this, 'ajax_clear_cache' ) );
@@ -312,18 +317,53 @@ class AtomicEdge_Ajax {
 	public function ajax_run_scan() {
 		$this->verify_ajax_request();
 
-		// Get scanner instance.
-		$scanner = AtomicEdge::get_instance()->scanner;
-		$results = $scanner->run_full_scan();
-
-		if ( false === $results ) {
-			wp_send_json_error( array( 'message' => __( 'Scan failed. Please try again.', 'atomicedge' ) ) );
+		$scan_mode = isset( $_POST['scan_mode'] ) ? sanitize_key( wp_unslash( $_POST['scan_mode'] ) ) : 'all';
+		if ( ! in_array( $scan_mode, array( 'php', 'all' ), true ) ) {
+			$scan_mode = 'all';
 		}
 
-		// Fire action.
-		do_action( 'atomicedge_scan_completed', $results );
+		$verify_integrity = ! empty( $_POST['verify_integrity'] );
 
-		wp_send_json_success( $results );
+		// Get scanner instance.
+		$scanner = AtomicEdge::get_instance()->scanner;
+		$state = $scanner->start_resumable_scan( $scan_mode, array( 'verify_integrity' => (bool) $verify_integrity ) );
+		wp_send_json_success( $state );
+	}
+
+	/**
+	 * Run a single scan step via AJAX.
+	 *
+	 * @return void
+	 */
+	public function ajax_scan_step() {
+		$this->verify_ajax_request();
+
+		$run_id = isset( $_POST['run_id'] ) ? sanitize_text_field( wp_unslash( $_POST['run_id'] ) ) : '';
+
+		$scanner = AtomicEdge::get_instance()->scanner;
+		$state = $scanner->step_resumable_scan( $run_id, 8 );
+
+		if ( isset( $state['status'] ) && 'complete' === $state['status'] ) {
+			// Fire completion hook with the saved final results.
+			$results = get_option( 'atomicedge_scan_results', array() );
+			do_action( 'atomicedge_scan_completed', $results );
+		}
+
+		wp_send_json_success( $state );
+	}
+
+	/**
+	 * Get scan status via AJAX.
+	 *
+	 * @return void
+	 */
+	public function ajax_scan_status() {
+		$this->verify_ajax_request();
+
+		$run_id = isset( $_POST['run_id'] ) ? sanitize_text_field( wp_unslash( $_POST['run_id'] ) ) : '';
+		$scanner = AtomicEdge::get_instance()->scanner;
+		$state = $scanner->get_resumable_scan_status( $run_id );
+		wp_send_json_success( $state );
 	}
 
 	/**
@@ -336,6 +376,33 @@ class AtomicEdge_Ajax {
 
 		$results = get_option( 'atomicedge_scan_results', array() );
 		wp_send_json_success( $results );
+	}
+
+	/**
+	 * Cancel an in-progress resumable scan.
+	 *
+	 * @return void
+	 */
+	public function ajax_cancel_scan() {
+		$this->verify_ajax_request();
+
+		$run_id = isset( $_POST['run_id'] ) ? sanitize_text_field( wp_unslash( $_POST['run_id'] ) ) : '';
+		$scanner = AtomicEdge::get_instance()->scanner;
+		$state = $scanner->cancel_resumable_scan( $run_id );
+		wp_send_json_success( $state );
+	}
+
+	/**
+	 * Reset/clear the resumable scan state/cache so a new scan starts fresh.
+	 *
+	 * @return void
+	 */
+	public function ajax_reset_scan() {
+		$this->verify_ajax_request();
+
+		$scanner = AtomicEdge::get_instance()->scanner;
+		$state = $scanner->reset_resumable_scan();
+		wp_send_json_success( $state );
 	}
 
 	/**
@@ -395,5 +462,18 @@ class AtomicEdge_Ajax {
 			'last_scan' => $last_scan,
 			'available' => $vuln_scanner->is_available(),
 		) );
+	}
+
+	/**
+	 * Reset vulnerability scan results via AJAX.
+	 *
+	 * @return void
+	 */
+	public function ajax_reset_vulnerability_results() {
+		$this->verify_ajax_request();
+
+		$vuln_scanner = AtomicEdge::get_instance()->vulnerability_scanner;
+		$state        = $vuln_scanner->reset_results();
+		wp_send_json_success( $state );
 	}
 }

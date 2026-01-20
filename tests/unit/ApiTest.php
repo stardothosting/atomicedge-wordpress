@@ -10,6 +10,11 @@
 
 namespace AtomicEdge\Tests\Unit;
 
+// Prevent direct access.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use AtomicEdge\Tests\TestCase;
 use Brain\Monkey\Functions;
 

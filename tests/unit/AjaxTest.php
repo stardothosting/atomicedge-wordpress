@@ -59,6 +59,9 @@ class AjaxTest extends TestCase {
 		$_GET     = array();
 		$_REQUEST = array();
 
+		// Provide a valid nonce by default for AJAX handlers.
+		$_POST['nonce'] = 'valid-nonce';
+
 		// Reset response capture.
 		$this->json_response      = null;
 		$this->json_response_type = null;
@@ -92,6 +95,10 @@ class AjaxTest extends TestCase {
 			}
 		);
 
+		// Mock nonce verification and capability checks by default.
+		Functions\when( 'wp_verify_nonce' )->justReturn( true );
+		Functions\when( 'current_user_can' )->justReturn( true );
+
 		// Create AJAX handler with mock API.
 		$this->ajax = new \AtomicEdge_Ajax( $this->mock_api );
 	}
@@ -104,15 +111,8 @@ class AjaxTest extends TestCase {
 	 * Test AJAX handler rejects invalid nonce.
 	 */
 	public function test_ajax_rejects_invalid_nonce() {
-		// Override check_ajax_referer to fail.
-		Functions\when( 'check_ajax_referer' )->alias(
-			function () {
-				// Trigger the JSON error path.
-				$this->json_response      = array( 'message' => 'Security check failed.' );
-				$this->json_response_type = 'error';
-				throw new \AtomicEdge\Tests\AjaxExitException( 'error' );
-			}
-		);
+		// Force nonce verification to fail.
+		Functions\when( 'wp_verify_nonce' )->justReturn( false );
 
 		try {
 			$this->ajax->ajax_get_analytics();
@@ -129,9 +129,6 @@ class AjaxTest extends TestCase {
 	public function test_ajax_rejects_unauthorized_users() {
 		// Override current_user_can to return false.
 		Functions\when( 'current_user_can' )->justReturn( false );
-
-		// Mock check_ajax_referer to pass but then fail on capability check.
-		Functions\when( 'check_ajax_referer' )->justReturn( true );
 
 		// We need to re-create the handler to pick up the new mock.
 		$this->ajax = new \AtomicEdge_Ajax( $this->mock_api );

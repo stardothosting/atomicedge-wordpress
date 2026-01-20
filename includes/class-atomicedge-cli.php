@@ -315,7 +315,11 @@ class AtomicEdge_CLI {
 		WP_CLI\Utils\format_items( 'table', $matches, array( 'Category', 'Description', 'Match' ) );
 
 		// Check if file should be whitelisted.
-		$relative_path = str_replace( ABSPATH, '', $file );
+		// Get root path using scanner's method via reflection to maintain consistency.
+		$root_method = $reflection->getMethod( 'get_wp_root_path' );
+		$root_method->setAccessible( true );
+		$root_path = $root_method->invoke( $this->scanner );
+		$relative_path = ltrim( str_replace( $root_path, '', wp_normalize_path( $file ) ), '/' );
 
 		$whitelist_method = $reflection->getMethod( 'is_whitelisted_path' );
 		$whitelist_method->setAccessible( true );
@@ -329,4 +333,4 @@ class AtomicEdge_CLI {
 }
 
 // Register commands.
-WP_CLI::add_command( 'atomicedge', 'AtomicEdge_CLI' );
+WP_CLI::add_command( 'atomic-edge-security', 'AtomicEdge_CLI' );

@@ -141,7 +141,7 @@ class AtomicEdge_API {
 
 		return array(
 			'success' => true,
-			'message' => __( 'Successfully connected to Atomic Edge!', 'atomicedge' ),
+			'message' => __( 'Successfully connected to Atomic Edge!', 'atomic-edge-security' ),
 			'data'    => $response['data'],
 		);
 	}
@@ -167,7 +167,7 @@ class AtomicEdge_API {
 
 		return array(
 			'success' => true,
-			'message' => __( 'Successfully disconnected from Atomic Edge.', 'atomicedge' ),
+			'message' => __( 'Successfully disconnected from Atomic Edge.', 'atomic-edge-security' ),
 		);
 	}
 
@@ -409,7 +409,7 @@ class AtomicEdge_API {
 		if ( ! $api_key && '/connect' !== $endpoint ) {
 			return array(
 				'success' => false,
-				'error'   => __( 'Not connected to Atomic Edge.', 'atomicedge' ),
+				'error'   => __( 'Not connected to Atomic Edge.', 'atomic-edge-security' ),
 			);
 		}
 
@@ -457,7 +457,7 @@ class AtomicEdge_API {
 
 		// Handle HTTP errors.
 		if ( $code >= 400 ) {
-			$error_message = isset( $data['error'] ) ? $data['error'] : __( 'An error occurred.', 'atomicedge' );
+			$error_message = isset( $data['error'] ) ? $data['error'] : __( 'An error occurred.', 'atomic-edge-security' );
 			if ( isset( $data['message'] ) ) {
 				$error_message = $data['message'];
 			}
@@ -480,7 +480,7 @@ class AtomicEdge_API {
 
 		// Handle API-level errors.
 		if ( isset( $data['success'] ) && false === $data['success'] ) {
-			$error_message = isset( $data['message'] ) ? $data['message'] : __( 'An error occurred.', 'atomicedge' );
+			$error_message = isset( $data['message'] ) ? $data['message'] : __( 'An error occurred.', 'atomic-edge-security' );
 			if ( isset( $data['error'] ) ) {
 				$error_message = $data['error'];
 			}

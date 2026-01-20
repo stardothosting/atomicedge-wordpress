@@ -11,27 +11,27 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 ?>
 <div class="wrap atomicedge-wrap">
-	<h1><img src="<?php echo esc_url( ATOMICEDGE_PLUGIN_URL . 'assets/images/logo.svg' ); ?>" alt="<?php esc_attr_e( 'Atomic Edge', 'atomicedge' ); ?>" class="atomicedge-logo" /></h1>
+	<h1><img src="<?php echo esc_url( ATOMICEDGE_PLUGIN_URL . 'assets/images/logo.svg' ); ?>" alt="<?php esc_attr_e( 'Atomic Edge', 'atomic-edge-security' ); ?>" class="atomicedge-logo" /></h1>
 
 	<div class="atomicedge-access-control">
 		<!-- Tabs -->
 		<nav class="nav-tab-wrapper atomicedge-tabs">
 			<a href="#ip-whitelist" class="nav-tab nav-tab-active" data-tab="ip-whitelist">
-				<?php esc_html_e( 'IP Whitelist', 'atomicedge' ); ?>
+				<?php esc_html_e( 'IP Whitelist', 'atomic-edge-security' ); ?>
 			</a>
 			<a href="#ip-blacklist" class="nav-tab" data-tab="ip-blacklist">
-				<?php esc_html_e( 'IP Blacklist', 'atomicedge' ); ?>
+				<?php esc_html_e( 'IP Blacklist', 'atomic-edge-security' ); ?>
 			</a>
 			<a href="#geo-access" class="nav-tab" data-tab="geo-access">
-				<?php esc_html_e( 'Geographic Access', 'atomicedge' ); ?>
+				<?php esc_html_e( 'Geographic Access', 'atomic-edge-security' ); ?>
 			</a>
 		</nav>
 
 		<!-- IP Whitelist Tab -->
 		<div id="ip-whitelist" class="atomicedge-tab-content atomicedge-tab-active">
 			<div class="atomicedge-section-header">
-				<h2><?php esc_html_e( 'IP Whitelist', 'atomicedge' ); ?></h2>
-				<p><?php esc_html_e( 'Whitelisted IPs bypass WAF, bot blocking, and geographic restrictions.', 'atomicedge' ); ?></p>
+				<h2><?php esc_html_e( 'IP Whitelist', 'atomic-edge-security' ); ?></h2>
+				<p><?php esc_html_e( 'Whitelisted IPs bypass WAF, bot blocking, and geographic restrictions.', 'atomic-edge-security' ); ?></p>
 			</div>
 
 			<form id="atomicedge-add-whitelist-form" class="atomicedge-ip-form">
@@ -39,14 +39,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<input type="text"
 						   id="whitelist-ip"
 						   name="ip"
-						   placeholder="<?php esc_attr_e( 'IP address or CIDR (e.g., 192.168.1.1 or 10.0.0.0/24)', 'atomicedge' ); ?>"
+						   placeholder="<?php esc_attr_e( 'IP address or CIDR (e.g., 192.168.1.1 or 10.0.0.0/24)', 'atomic-edge-security' ); ?>"
 						   required />
 					<input type="text"
 						   id="whitelist-description"
 						   name="description"
-						   placeholder="<?php esc_attr_e( 'Description (optional)', 'atomicedge' ); ?>" />
+						   placeholder="<?php esc_attr_e( 'Description (optional)', 'atomic-edge-security' ); ?>" />
 					<button type="submit" class="button button-primary">
-						<?php esc_html_e( 'Add to Whitelist', 'atomicedge' ); ?>
+						<?php esc_html_e( 'Add to Whitelist', 'atomic-edge-security' ); ?>
 					</button>
 				</div>
 			</form>
@@ -54,16 +54,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<table class="wp-list-table widefat fixed striped" id="atomicedge-whitelist-table">
 				<thead>
 					<tr>
-						<th class="column-ip"><?php esc_html_e( 'IP/CIDR', 'atomicedge' ); ?></th>
-						<th class="column-description"><?php esc_html_e( 'Description', 'atomicedge' ); ?></th>
-						<th class="column-actions"><?php esc_html_e( 'Actions', 'atomicedge' ); ?></th>
+						<th class="column-ip"><?php esc_html_e( 'IP/CIDR', 'atomic-edge-security' ); ?></th>
+						<th class="column-description"><?php esc_html_e( 'Description', 'atomic-edge-security' ); ?></th>
+						<th class="column-actions"><?php esc_html_e( 'Actions', 'atomic-edge-security' ); ?></th>
 					</tr>
 				</thead>
 				<tbody id="atomicedge-whitelist-body">
 					<tr class="atomicedge-loading-row">
 						<td colspan="3">
 							<span class="spinner is-active"></span>
-							<?php esc_html_e( 'Loading...', 'atomicedge' ); ?>
+							<?php esc_html_e( 'Loading...', 'atomic-edge-security' ); ?>
 						</td>
 					</tr>
 				</tbody>
@@ -73,8 +73,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<!-- IP Blacklist Tab -->
 		<div id="ip-blacklist" class="atomicedge-tab-content">
 			<div class="atomicedge-section-header">
-				<h2><?php esc_html_e( 'IP Blacklist', 'atomicedge' ); ?></h2>
-				<p><?php esc_html_e( 'Blacklisted IPs are blocked from accessing your site entirely.', 'atomicedge' ); ?></p>
+				<h2><?php esc_html_e( 'IP Blacklist', 'atomic-edge-security' ); ?></h2>
+				<p><?php esc_html_e( 'Blacklisted IPs are blocked from accessing your site entirely.', 'atomic-edge-security' ); ?></p>
 			</div>
 
 			<form id="atomicedge-add-blacklist-form" class="atomicedge-ip-form">
@@ -82,14 +82,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 					<input type="text"
 						   id="blacklist-ip"
 						   name="ip"
-						   placeholder="<?php esc_attr_e( 'IP address or CIDR (e.g., 192.168.1.1 or 10.0.0.0/24)', 'atomicedge' ); ?>"
+						   placeholder="<?php esc_attr_e( 'IP address or CIDR (e.g., 192.168.1.1 or 10.0.0.0/24)', 'atomic-edge-security' ); ?>"
 						   required />
 					<input type="text"
 						   id="blacklist-description"
 						   name="description"
-						   placeholder="<?php esc_attr_e( 'Description (optional)', 'atomicedge' ); ?>" />
+						   placeholder="<?php esc_attr_e( 'Description (optional)', 'atomic-edge-security' ); ?>" />
 					<button type="submit" class="button button-primary">
-						<?php esc_html_e( 'Add to Blacklist', 'atomicedge' ); ?>
+						<?php esc_html_e( 'Add to Blacklist', 'atomic-edge-security' ); ?>
 					</button>
 				</div>
 			</form>
@@ -97,16 +97,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<table class="wp-list-table widefat fixed striped" id="atomicedge-blacklist-table">
 				<thead>
 					<tr>
-						<th class="column-ip"><?php esc_html_e( 'IP/CIDR', 'atomicedge' ); ?></th>
-						<th class="column-description"><?php esc_html_e( 'Description', 'atomicedge' ); ?></th>
-						<th class="column-actions"><?php esc_html_e( 'Actions', 'atomicedge' ); ?></th>
+						<th class="column-ip"><?php esc_html_e( 'IP/CIDR', 'atomic-edge-security' ); ?></th>
+						<th class="column-description"><?php esc_html_e( 'Description', 'atomic-edge-security' ); ?></th>
+						<th class="column-actions"><?php esc_html_e( 'Actions', 'atomic-edge-security' ); ?></th>
 					</tr>
 				</thead>
 				<tbody id="atomicedge-blacklist-body">
 					<tr class="atomicedge-loading-row">
 						<td colspan="3">
 							<span class="spinner is-active"></span>
-							<?php esc_html_e( 'Loading...', 'atomicedge' ); ?>
+							<?php esc_html_e( 'Loading...', 'atomic-edge-security' ); ?>
 						</td>
 					</tr>
 				</tbody>
@@ -116,37 +116,37 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<!-- Geographic Access Tab -->
 		<div id="geo-access" class="atomicedge-tab-content">
 			<div class="atomicedge-section-header">
-				<h2><?php esc_html_e( 'Geographic Access Control', 'atomicedge' ); ?></h2>
-				<p><?php esc_html_e( 'Block or allow access based on visitor country.', 'atomicedge' ); ?></p>
+				<h2><?php esc_html_e( 'Geographic Access Control', 'atomic-edge-security' ); ?></h2>
+				<p><?php esc_html_e( 'Block or allow access based on visitor country.', 'atomic-edge-security' ); ?></p>
 			</div>
 
 			<form id="atomicedge-geo-form" class="atomicedge-geo-form">
 				<div class="atomicedge-form-section">
 					<label>
 						<input type="checkbox" id="geo-enabled" name="enabled" />
-						<?php esc_html_e( 'Enable Geographic Access Control', 'atomicedge' ); ?>
+						<?php esc_html_e( 'Enable Geographic Access Control', 'atomic-edge-security' ); ?>
 					</label>
 				</div>
 
 				<div class="atomicedge-form-section" id="geo-options" style="display: none;">
-					<label for="geo-mode"><?php esc_html_e( 'Mode:', 'atomicedge' ); ?></label>
+					<label for="geo-mode"><?php esc_html_e( 'Mode:', 'atomic-edge-security' ); ?></label>
 					<select id="geo-mode" name="mode">
-						<option value="blacklist"><?php esc_html_e( 'Blacklist (block selected countries)', 'atomicedge' ); ?></option>
-						<option value="whitelist"><?php esc_html_e( 'Whitelist (only allow selected countries)', 'atomicedge' ); ?></option>
+						<option value="blacklist"><?php esc_html_e( 'Blacklist (block selected countries)', 'atomic-edge-security' ); ?></option>
+						<option value="whitelist"><?php esc_html_e( 'Whitelist (only allow selected countries)', 'atomic-edge-security' ); ?></option>
 					</select>
 
 					<div class="atomicedge-country-selector">
-						<label><?php esc_html_e( 'Countries:', 'atomicedge' ); ?></label>
+						<label><?php esc_html_e( 'Countries:', 'atomic-edge-security' ); ?></label>
 						<select id="geo-countries" name="countries" multiple size="10">
 							<!-- Countries will be populated by JavaScript -->
 						</select>
 						<p class="description">
-							<?php esc_html_e( 'Hold Ctrl (Cmd on Mac) to select multiple countries.', 'atomicedge' ); ?>
+							<?php esc_html_e( 'Hold Ctrl (Cmd on Mac) to select multiple countries.', 'atomic-edge-security' ); ?>
 						</p>
 					</div>
 
 					<button type="submit" class="button button-primary">
-						<?php esc_html_e( 'Save Geographic Rules', 'atomicedge' ); ?>
+						<?php esc_html_e( 'Save Geographic Rules', 'atomic-edge-security' ); ?>
 					</button>
 				</div>
 			</form>

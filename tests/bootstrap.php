@@ -57,6 +57,43 @@ if ( ! defined( 'ATOMICEDGE_PLUGIN_BASENAME' ) ) {
 	define( 'ATOMICEDGE_PLUGIN_BASENAME', 'atomicedge/atomicedge.php' );
 }
 
+// Minimal WP_CLI stub for tests that include CLI commands.
+if ( ! class_exists( __NAMESPACE__ . '\\WP_CLI' ) ) {
+	class WP_CLI {
+		public static $logs = array();
+		public static $successes = array();
+		public static $errors = array();
+		public static $commands = array();
+
+		public static function log( $message ) {
+			self::$logs[] = $message;
+		}
+
+		public static function success( $message ) {
+			self::$successes[] = $message;
+		}
+
+		public static function error( $message, $exit = true ) {
+			self::$errors[] = array( 'message' => $message, 'exit' => $exit );
+		}
+
+		public static function add_command( $name, $class ) {
+			self::$commands[] = array( 'name' => $name, 'class' => $class );
+		}
+
+		public static function reset() {
+			self::$logs = array();
+			self::$successes = array();
+			self::$errors = array();
+			self::$commands = array();
+		}
+	}
+}
+
+if ( ! class_exists( 'WP_CLI' ) ) {
+	class_alias( __NAMESPACE__ . '\\WP_CLI', 'WP_CLI' );
+}
+
 // WordPress core constants.
 if ( ! defined( 'WPINC' ) ) {
 	define( 'WPINC', 'wp-includes' );
@@ -70,6 +107,7 @@ if ( ! defined( 'WP_PLUGIN_DIR' ) ) {
 	define( 'WP_PLUGIN_DIR', '/tmp/wordpress/wp-content/plugins' );
 }
 
+
 // WordPress time constants.
 if ( ! defined( 'MINUTE_IN_SECONDS' ) ) {
 	define( 'MINUTE_IN_SECONDS', 60 );
@@ -77,6 +115,14 @@ if ( ! defined( 'MINUTE_IN_SECONDS' ) ) {
 
 if ( ! defined( 'HOUR_IN_SECONDS' ) ) {
 	define( 'HOUR_IN_SECONDS', 60 * MINUTE_IN_SECONDS );
+}
+
+if ( ! defined( 'DAY_IN_SECONDS' ) ) {
+	define( 'DAY_IN_SECONDS', 24 * HOUR_IN_SECONDS );
+}
+
+if ( ! defined( 'WEEK_IN_SECONDS' ) ) {
+	define( 'WEEK_IN_SECONDS', 7 * DAY_IN_SECONDS );
 }
 
 if ( ! defined( 'DAY_IN_SECONDS' ) ) {
@@ -192,6 +238,32 @@ function setup_default_mocks() {
 		}
 	);
 
+	Functions\when( 'wp_normalize_path' )->alias(
+		function ( $path ) {
+			$path = str_replace( '\\', '/', $path );
+			return preg_replace( '|/+|', '/', $path );
+		}
+	);
+
+	Functions\when( 'get_theme_root' )->justReturn( WP_CONTENT_DIR . '/themes' );
+
+	// get_home_path() returns WordPress root directory with trailing slash.
+	Functions\when( 'get_home_path' )->justReturn( ABSPATH );
+
+	// trailingslashit() adds trailing slash if not present.
+	Functions\when( 'trailingslashit' )->alias(
+		function ( $path ) {
+			return rtrim( $path, '/\\' ) . '/';
+		}
+	);
+
+	// sanitize_key() makes string lowercase with only alphanumeric, dashes, and underscores.
+	Functions\when( 'sanitize_key' )->alias(
+		function ( $key ) {
+			return preg_replace( '/[^a-z0-9_\-]/', '', strtolower( $key ) );
+		}
+	);
+
 	Functions\when( 'sanitize_text_field' )->alias(
 		function ( $str ) {
 			return trim( wp_strip_all_tags( (string) $str ) );
@@ -255,6 +327,31 @@ function setup_default_mocks() {
 
 	// JSON functions.
 	Functions\when( 'wp_json_encode' )->alias( 'json_encode' );
+
+	// Upload directory functions.
+	Functions\when( 'wp_upload_dir' )->alias(
+		function () {
+			return array(
+				'basedir' => WP_CONTENT_DIR . '/uploads',
+				'baseurl' => 'http://example.com/wp-content/uploads',
+				'path'    => WP_CONTENT_DIR . '/uploads/' . gmdate( 'Y/m' ),
+				'url'     => 'http://example.com/wp-content/uploads/' . gmdate( 'Y/m' ),
+				'error'   => false,
+			);
+		}
+	);
+
+	Functions\when( 'wp_get_upload_dir' )->alias(
+		function () {
+			return array(
+				'basedir' => WP_CONTENT_DIR . '/uploads',
+				'baseurl' => 'http://example.com/wp-content/uploads',
+				'path'    => WP_CONTENT_DIR . '/uploads/' . gmdate( 'Y/m' ),
+				'url'     => 'http://example.com/wp-content/uploads/' . gmdate( 'Y/m' ),
+				'error'   => false,
+			);
+		}
+	);
 
 	// Time functions.
 	Functions\when( 'current_time' )->alias(

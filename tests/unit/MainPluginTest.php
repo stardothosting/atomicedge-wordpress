@@ -159,4 +159,149 @@ class MainPluginTest extends TestCase {
 
 		$this->assertTrue( true );
 	}
+
+	// =========================================================================
+	// Asset Enqueue Tests
+	// =========================================================================
+
+	/**
+	 * Test enqueue_admin_assets loads on main plugin page.
+	 *
+	 * WordPress generates hooks using sanitize_title($menu_title).
+	 * For menu title "Atomic Edge", this yields "atomic-edge".
+	 */
+	public function test_enqueue_admin_assets_loads_on_main_page() {
+		// Reset singleton to get clean instance.
+		$reflection = new \ReflectionClass( \AtomicEdge::class );
+		$prop       = $reflection->getProperty( 'instance' );
+		$prop->setAccessible( true );
+		$prop->setValue( null, null );
+
+		$instance = \AtomicEdge::get_instance();
+
+		// Mock additional functions needed for localize_script.
+		Functions\when( 'admin_url' )->justReturn( 'http://example.com/wp-admin/admin-ajax.php' );
+		Functions\when( 'wp_create_nonce' )->justReturn( 'test_nonce' );
+
+		// Track if enqueue was called.
+		$enqueue_called = false;
+		Functions\when( 'wp_enqueue_script' )->alias(
+			function () use ( &$enqueue_called ) {
+				$enqueue_called = true;
+				return true;
+			}
+		);
+		Functions\when( 'wp_enqueue_style' )->justReturn( true );
+		Functions\when( 'wp_localize_script' )->justReturn( true );
+
+		// Main page hook: toplevel_page_atomic-edge-security
+		$instance->enqueue_admin_assets( 'toplevel_page_atomic-edge-security' );
+
+		$this->assertTrue( $enqueue_called, 'Assets should be enqueued on main plugin page' );
+	}
+
+	/**
+	 * Test enqueue_admin_assets loads on submenu pages.
+	 *
+	 * Submenu hooks use the pattern: {sanitized_parent_title}_page_{submenu_slug}
+	 * For parent "Atomic Edge" -> "atomic-edge", submenu "atomicedge-scanner"
+	 * Hook would be: atomic-edge_page_atomicedge-scanner
+	 */
+	public function test_enqueue_admin_assets_loads_on_scanner_page() {
+		// Reset singleton to get clean instance.
+		$reflection = new \ReflectionClass( \AtomicEdge::class );
+		$prop       = $reflection->getProperty( 'instance' );
+		$prop->setAccessible( true );
+		$prop->setValue( null, null );
+
+		$instance = \AtomicEdge::get_instance();
+
+		// Mock additional functions needed for localize_script.
+		Functions\when( 'admin_url' )->justReturn( 'http://example.com/wp-admin/admin-ajax.php' );
+		Functions\when( 'wp_create_nonce' )->justReturn( 'test_nonce' );
+
+		// Track if enqueue was called.
+		$enqueue_called = false;
+		Functions\when( 'wp_enqueue_script' )->alias(
+			function () use ( &$enqueue_called ) {
+				$enqueue_called = true;
+				return true;
+			}
+		);
+		Functions\when( 'wp_enqueue_style' )->justReturn( true );
+		Functions\when( 'wp_localize_script' )->justReturn( true );
+
+		// Scanner page hook
+		$instance->enqueue_admin_assets( 'atomic-edge_page_atomicedge-scanner' );
+
+		$this->assertTrue( $enqueue_called, 'Assets should be enqueued on scanner page' );
+	}
+
+	/**
+	 * Test enqueue_admin_assets loads on vulnerability scanner page.
+	 */
+	public function test_enqueue_admin_assets_loads_on_vulnerability_page() {
+		// Reset singleton to get clean instance.
+		$reflection = new \ReflectionClass( \AtomicEdge::class );
+		$prop       = $reflection->getProperty( 'instance' );
+		$prop->setAccessible( true );
+		$prop->setValue( null, null );
+
+		$instance = \AtomicEdge::get_instance();
+
+		// Mock additional functions needed for localize_script.
+		Functions\when( 'admin_url' )->justReturn( 'http://example.com/wp-admin/admin-ajax.php' );
+		Functions\when( 'wp_create_nonce' )->justReturn( 'test_nonce' );
+
+		// Track if enqueue was called.
+		$enqueue_called = false;
+		Functions\when( 'wp_enqueue_script' )->alias(
+			function () use ( &$enqueue_called ) {
+				$enqueue_called = true;
+				return true;
+			}
+		);
+		Functions\when( 'wp_enqueue_style' )->justReturn( true );
+		Functions\when( 'wp_localize_script' )->justReturn( true );
+
+		// Vulnerability scanner page hook
+		$instance->enqueue_admin_assets( 'atomic-edge_page_atomicedge-vulnerabilities' );
+
+		$this->assertTrue( $enqueue_called, 'Assets should be enqueued on vulnerability page' );
+	}
+
+	/**
+	 * Test enqueue_admin_assets does NOT load on non-plugin pages.
+	 */
+	public function test_enqueue_admin_assets_skips_non_plugin_pages() {
+		// Reset singleton to get clean instance.
+		$reflection = new \ReflectionClass( \AtomicEdge::class );
+		$prop       = $reflection->getProperty( 'instance' );
+		$prop->setAccessible( true );
+		$prop->setValue( null, null );
+
+		$instance = \AtomicEdge::get_instance();
+
+		// Track if enqueue was called.
+		$enqueue_called = false;
+		Functions\when( 'wp_enqueue_script' )->alias(
+			function () use ( &$enqueue_called ) {
+				$enqueue_called = true;
+				return true;
+			}
+		);
+		Functions\when( 'wp_enqueue_style' )->alias(
+			function () use ( &$enqueue_called ) {
+				$enqueue_called = true;
+				return true;
+			}
+		);
+		Functions\when( 'wp_localize_script' )->justReturn( true );
+
+		$instance->enqueue_admin_assets( 'plugins.php' );
+		$instance->enqueue_admin_assets( 'options-general.php' );
+		$instance->enqueue_admin_assets( 'post.php' );
+
+		$this->assertFalse( $enqueue_called, 'Assets should NOT be enqueued on non-plugin pages' );
+	}
 }

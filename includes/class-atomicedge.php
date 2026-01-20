@@ -99,7 +99,7 @@ class AtomicEdge {
 	 * @throws Exception Always throws exception.
 	 */
 	public function __wakeup() {
-		throw new Exception( esc_html__( 'Cannot unserialize singleton', 'atomicedge' ) );
+		throw new Exception( esc_html__( 'Cannot unserialize singleton', 'atomic-edge-security' ) );
 	}
 
 	/**
@@ -136,7 +136,10 @@ class AtomicEdge {
 	 */
 	public function enqueue_admin_assets( $hook ) {
 		// Only load on our plugin pages.
-		if ( strpos( $hook, 'atomicedge' ) === false ) {
+		// WordPress hook format uses sanitize_title($menu_title) which yields 'atomic-edge'.
+		// Submenus use slugs like 'atomicedge-scanner', so check for both patterns.
+		$is_plugin_page = ( strpos( $hook, 'atomic-edge' ) !== false ) || ( strpos( $hook, 'atomicedge' ) !== false );
+		if ( ! $is_plugin_page ) {
 			return;
 		}
 
@@ -181,14 +184,14 @@ class AtomicEdge {
 				'nonce'     => wp_create_nonce( 'atomicedge_ajax' ),
 				'connected' => $this->api->is_connected(),
 				'strings'   => array(
-					'loading'      => esc_html__( 'Loading...', 'atomicedge' ),
-					'error'        => esc_html__( 'An error occurred. Please try again.', 'atomicedge' ),
-					'success'      => esc_html__( 'Success!', 'atomicedge' ),
-					'confirm'      => esc_html__( 'Are you sure?', 'atomicedge' ),
-					'confirmIp'    => esc_html__( 'Are you sure you want to remove this IP?', 'atomicedge' ),
-					'invalidIp'    => esc_html__( 'Please enter a valid IP address or CIDR range.', 'atomicedge' ),
-					'scanning'     => esc_html__( 'Scanning files...', 'atomicedge' ),
-					'scanComplete' => esc_html__( 'Scan complete!', 'atomicedge' ),
+					'loading'      => esc_html__( 'Loading...', 'atomic-edge-security' ),
+					'error'        => esc_html__( 'An error occurred. Please try again.', 'atomic-edge-security' ),
+					'success'      => esc_html__( 'Success!', 'atomic-edge-security' ),
+					'confirm'      => esc_html__( 'Are you sure?', 'atomic-edge-security' ),
+					'confirmIp'    => esc_html__( 'Are you sure you want to remove this IP?', 'atomic-edge-security' ),
+					'invalidIp'    => esc_html__( 'Please enter a valid IP address or CIDR range.', 'atomic-edge-security' ),
+					'scanning'     => esc_html__( 'Scanning files...', 'atomic-edge-security' ),
+					'scanComplete' => esc_html__( 'Scan complete!', 'atomic-edge-security' ),
 				),
 			)
 		);

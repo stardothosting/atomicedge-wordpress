@@ -70,7 +70,7 @@ class AtomicEdge_Cron {
 	public function add_cron_schedules( $schedules ) {
 		$schedules['atomicedge_weekly'] = array(
 			'interval' => WEEK_IN_SECONDS,
-			'display'  => __( 'Once Weekly', 'atomicedge' ),
+			'display'  => __( 'Once Weekly', 'atomic-edge-security' ),
 		);
 
 		return $schedules;

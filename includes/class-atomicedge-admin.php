@@ -55,10 +55,10 @@ class AtomicEdge_Admin {
 	public function register_menu() {
 		// Main menu.
 		add_menu_page(
-			__( 'Atomic Edge Security', 'atomicedge' ),
-			__( 'Atomic Edge', 'atomicedge' ),
+			__( 'Atomic Edge Security', 'atomic-edge-security' ),
+			__( 'Atomic Edge', 'atomic-edge-security' ),
 			'manage_options',
-			'atomicedge',
+			'atomic-edge-security',
 			array( $this, 'render_dashboard_page' ),
 			'dashicons-shield',
 			30
@@ -66,19 +66,19 @@ class AtomicEdge_Admin {
 
 		// Dashboard submenu (same as main).
 		add_submenu_page(
-			'atomicedge',
-			__( 'Dashboard', 'atomicedge' ),
-			__( 'Dashboard', 'atomicedge' ),
+			'atomic-edge-security',
+			__( 'Dashboard', 'atomic-edge-security' ),
+			__( 'Dashboard', 'atomic-edge-security' ),
 			'manage_options',
-			'atomicedge',
+			'atomic-edge-security',
 			array( $this, 'render_dashboard_page' )
 		);
 
 		// Analytics submenu.
 		add_submenu_page(
-			'atomicedge',
-			__( 'Analytics', 'atomicedge' ),
-			__( 'Analytics', 'atomicedge' ),
+			'atomic-edge-security',
+			__( 'Analytics', 'atomic-edge-security' ),
+			__( 'Analytics', 'atomic-edge-security' ),
 			'manage_options',
 			'atomicedge-analytics',
 			array( $this, 'render_analytics_page' )
@@ -86,9 +86,9 @@ class AtomicEdge_Admin {
 
 		// WAF Logs submenu.
 		add_submenu_page(
-			'atomicedge',
-			__( 'WAF Logs', 'atomicedge' ),
-			__( 'WAF Logs', 'atomicedge' ),
+			'atomic-edge-security',
+			__( 'WAF Logs', 'atomic-edge-security' ),
+			__( 'WAF Logs', 'atomic-edge-security' ),
 			'manage_options',
 			'atomicedge-waf-logs',
 			array( $this, 'render_waf_logs_page' )
@@ -96,9 +96,9 @@ class AtomicEdge_Admin {
 
 		// Access Control submenu.
 		add_submenu_page(
-			'atomicedge',
-			__( 'Access Control', 'atomicedge' ),
-			__( 'Access Control', 'atomicedge' ),
+			'atomic-edge-security',
+			__( 'Access Control', 'atomic-edge-security' ),
+			__( 'Access Control', 'atomic-edge-security' ),
 			'manage_options',
 			'atomicedge-access-control',
 			array( $this, 'render_access_control_page' )
@@ -106,9 +106,9 @@ class AtomicEdge_Admin {
 
 		// Malware Scanner submenu.
 		add_submenu_page(
-			'atomicedge',
-			__( 'Malware Scanner', 'atomicedge' ),
-			__( 'Malware Scanner', 'atomicedge' ),
+			'atomic-edge-security',
+			__( 'Malware Scanner', 'atomic-edge-security' ),
+			__( 'Malware Scanner', 'atomic-edge-security' ),
 			'manage_options',
 			'atomicedge-scanner',
 			array( $this, 'render_scanner_page' )
@@ -116,9 +116,9 @@ class AtomicEdge_Admin {
 
 		// Vulnerability Scanner submenu.
 		add_submenu_page(
-			'atomicedge',
-			__( 'Vulnerability Scanner', 'atomicedge' ),
-			__( 'Vulnerability Scanner', 'atomicedge' ),
+			'atomic-edge-security',
+			__( 'Vulnerability Scanner', 'atomic-edge-security' ),
+			__( 'Vulnerability Scanner', 'atomic-edge-security' ),
 			'manage_options',
 			'atomicedge-vulnerabilities',
 			array( $this, 'render_vulnerability_scanner_page' )
@@ -126,9 +126,9 @@ class AtomicEdge_Admin {
 
 		// Settings submenu.
 		add_submenu_page(
-			'atomicedge',
-			__( 'Settings', 'atomicedge' ),
-			__( 'Settings', 'atomicedge' ),
+			'atomic-edge-security',
+			__( 'Settings', 'atomic-edge-security' ),
+			__( 'Settings', 'atomic-edge-security' ),
 			'manage_options',
 			'atomicedge-settings',
 			array( $this, 'render_settings_page' )
@@ -142,17 +142,20 @@ class AtomicEdge_Admin {
 	 */
 	public function handle_form_submissions() {
 		// Handle settings form.
-		if ( isset( $_POST['atomicedge_save_settings'] ) ) {
+		if ( isset( $_POST['atomicedge_save_settings'], $_POST['_wpnonce'] ) &&
+			wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'atomicedge_settings' ) ) {
 			$this->handle_settings_save();
 		}
 
 		// Handle connection.
-		if ( isset( $_POST['atomicedge_connect'] ) ) {
+		if ( isset( $_POST['atomicedge_connect'], $_POST['_wpnonce'] ) &&
+			wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'atomicedge_connect' ) ) {
 			$this->handle_connect();
 		}
 
 		// Handle disconnection.
-		if ( isset( $_POST['atomicedge_disconnect'] ) ) {
+		if ( isset( $_POST['atomicedge_disconnect'], $_POST['_wpnonce'] ) &&
+			wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'atomicedge_disconnect' ) ) {
 			$this->handle_disconnect();
 		}
 	}
@@ -166,13 +169,13 @@ class AtomicEdge_Admin {
 		// Verify nonce.
 		if ( ! isset( $_POST['_wpnonce'] ) ||
 			 ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'atomicedge_settings' ) ) {
-			$this->add_admin_notice( 'error', __( 'Security check failed. Please try again.', 'atomicedge' ) );
+			$this->add_admin_notice( 'error', __( 'Security check failed. Please try again.', 'atomic-edge-security' ) );
 			return;
 		}
 
 		// Check capabilities.
 		if ( ! current_user_can( 'manage_options' ) ) {
-			$this->add_admin_notice( 'error', __( 'You do not have permission to change settings.', 'atomicedge' ) );
+			$this->add_admin_notice( 'error', __( 'You do not have permission to change settings.', 'atomic-edge-security' ) );
 			return;
 		}
 
@@ -182,7 +185,7 @@ class AtomicEdge_Admin {
 			update_option( 'atomicedge_api_url', $api_url );
 		}
 
-		$this->add_admin_notice( 'success', __( 'Settings saved successfully.', 'atomicedge' ) );
+		$this->add_admin_notice( 'success', __( 'Settings saved successfully.', 'atomic-edge-security' ) );
 	}
 
 	/**
@@ -194,13 +197,13 @@ class AtomicEdge_Admin {
 		// Verify nonce.
 		if ( ! isset( $_POST['_wpnonce'] ) ||
 			 ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'atomicedge_connect' ) ) {
-			$this->add_admin_notice( 'error', __( 'Security check failed. Please try again.', 'atomicedge' ) );
+			$this->add_admin_notice( 'error', __( 'Security check failed. Please try again.', 'atomic-edge-security' ) );
 			return;
 		}
 
 		// Check capabilities.
 		if ( ! current_user_can( 'manage_options' ) ) {
-			$this->add_admin_notice( 'error', __( 'You do not have permission to connect.', 'atomicedge' ) );
+			$this->add_admin_notice( 'error', __( 'You do not have permission to connect.', 'atomic-edge-security' ) );
 			return;
 		}
 
@@ -209,7 +212,7 @@ class AtomicEdge_Admin {
 		$api_key = trim( $api_key );
 
 		if ( empty( $api_key ) ) {
-			$this->add_admin_notice( 'error', __( 'Please enter an API key.', 'atomicedge' ) );
+			$this->add_admin_notice( 'error', __( 'Please enter an API key.', 'atomic-edge-security' ) );
 			return;
 		}
 
@@ -217,7 +220,7 @@ class AtomicEdge_Admin {
 		if ( ! preg_match( '/^[A-Za-z0-9]{32,64}$/', $api_key ) ) {
 			$this->add_admin_notice(
 				'error',
-				__( 'Invalid API key format. Paste the key exactly as shown in the Atomic Edge dashboard (32–64 letters/numbers, no prefix).', 'atomicedge' )
+				__( 'Invalid API key format. Paste the key exactly as shown in the Atomic Edge dashboard (32–64 letters/numbers, no prefix).', 'atomic-edge-security' )
 			);
 			return;
 		}
@@ -241,13 +244,13 @@ class AtomicEdge_Admin {
 		// Verify nonce.
 		if ( ! isset( $_POST['_wpnonce'] ) ||
 			 ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'atomicedge_disconnect' ) ) {
-			$this->add_admin_notice( 'error', __( 'Security check failed. Please try again.', 'atomicedge' ) );
+			$this->add_admin_notice( 'error', __( 'Security check failed. Please try again.', 'atomic-edge-security' ) );
 			return;
 		}
 
 		// Check capabilities.
 		if ( ! current_user_can( 'manage_options' ) ) {
-			$this->add_admin_notice( 'error', __( 'You do not have permission to disconnect.', 'atomicedge' ) );
+			$this->add_admin_notice( 'error', __( 'You do not have permission to disconnect.', 'atomic-edge-security' ) );
 			return;
 		}
 
@@ -302,7 +305,7 @@ class AtomicEdge_Admin {
 	 */
 	public function render_dashboard_page() {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to access this page.', 'atomicedge' ) );
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'atomic-edge-security' ) );
 		}
 
 		include ATOMICEDGE_PLUGIN_DIR . 'admin/views/dashboard.php';
@@ -315,7 +318,7 @@ class AtomicEdge_Admin {
 	 */
 	public function render_analytics_page() {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to access this page.', 'atomicedge' ) );
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'atomic-edge-security' ) );
 		}
 
 		if ( ! $this->api->is_connected() ) {
@@ -333,7 +336,7 @@ class AtomicEdge_Admin {
 	 */
 	public function render_waf_logs_page() {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to access this page.', 'atomicedge' ) );
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'atomic-edge-security' ) );
 		}
 
 		if ( ! $this->api->is_connected() ) {
@@ -351,7 +354,7 @@ class AtomicEdge_Admin {
 	 */
 	public function render_access_control_page() {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to access this page.', 'atomicedge' ) );
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'atomic-edge-security' ) );
 		}
 
 		if ( ! $this->api->is_connected() ) {
@@ -369,7 +372,7 @@ class AtomicEdge_Admin {
 	 */
 	public function render_scanner_page() {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to access this page.', 'atomicedge' ) );
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'atomic-edge-security' ) );
 		}
 
 		include ATOMICEDGE_PLUGIN_DIR . 'admin/views/scanner.php';
@@ -382,7 +385,7 @@ class AtomicEdge_Admin {
 	 */
 	public function render_vulnerability_scanner_page() {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to access this page.', 'atomicedge' ) );
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'atomic-edge-security' ) );
 		}
 
 		include ATOMICEDGE_PLUGIN_DIR . 'admin/views/vulnerability-scanner.php';
@@ -395,7 +398,7 @@ class AtomicEdge_Admin {
 	 */
 	public function render_settings_page() {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to access this page.', 'atomicedge' ) );
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'atomic-edge-security' ) );
 		}
 
 		include ATOMICEDGE_PLUGIN_DIR . 'admin/views/settings.php';
@@ -409,14 +412,14 @@ class AtomicEdge_Admin {
 	private function render_not_connected_notice() {
 		?>
 		<div class="wrap atomicedge-wrap">
-			<h1><img src="<?php echo esc_url( ATOMICEDGE_PLUGIN_URL . 'assets/images/logo.svg' ); ?>" alt="<?php esc_attr_e( 'Atomic Edge', 'atomicedge' ); ?>" class="atomicedge-logo" /></h1>
+			<h1><img src="<?php echo esc_url( ATOMICEDGE_PLUGIN_URL . 'assets/images/logo.svg' ); ?>" alt="<?php esc_attr_e( 'Atomic Edge', 'atomic-edge-security' ); ?>" class="atomicedge-logo" /></h1>
 			<div class="notice notice-warning">
 				<p>
 					<?php
 					printf(
-						/* translators: %s: Settings page URL */
 						wp_kses(
-							__( 'Please <a href="%s">connect your site</a> to Atomic Edge to access this feature.', 'atomicedge' ),
+								/* translators: %s: Settings page URL */
+							__( 'Please <a href="%s">connect your site</a> to Atomic Edge to access this feature.', 'atomic-edge-security' ),
 							array( 'a' => array( 'href' => array() ) )
 						),
 						esc_url( admin_url( 'admin.php?page=atomicedge' ) )

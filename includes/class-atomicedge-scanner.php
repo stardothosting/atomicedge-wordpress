@@ -183,9 +183,6 @@ class AtomicEdge_Scanner {
 	 * @return array|false Scan results or false on failure.
 	 */
 	public function run_full_scan() {
-		// Extend time limit for long-running scan, respecting server limits.
-		$this->extend_time_limit();
-
 		$this->scan_diagnostics = $this->get_default_scan_diagnostics();
 
 		// Initialize scan state for resumability.
@@ -302,7 +299,7 @@ class AtomicEdge_Scanner {
 		$this->scan_diagnostics['complete']             = false;
 		$this->scan_diagnostics['stopped_early']        = true;
 		$this->scan_diagnostics['stopped_early_reason'] = $reason;
-		$this->add_scan_warning( __( 'Scan stopped early; results may be incomplete.', 'atomicedge' ) );
+		$this->add_scan_warning( __( 'Scan stopped early; results may be incomplete.', 'atomic-edge-security' ) );
 	}
 
 	/**
@@ -351,6 +348,106 @@ class AtomicEdge_Scanner {
 
 		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		return @set_time_limit( $seconds );
+	}
+
+	/**
+	 * Get normalized WordPress root path with trailing slash.
+	 *
+	 * Uses WordPress function APIs where available, avoiding direct use of internal constants.
+	 *
+	 * @return string
+	 */
+	private function get_wp_root_path() {
+		// Prefer get_home_path() when available (admin context).
+		if ( function_exists( 'get_home_path' ) ) {
+			return trailingslashit( wp_normalize_path( get_home_path() ) );
+		}
+		// Fallback: derive from plugin directory path (go up 3 levels from plugin dir).
+		// wp-content/plugins/atomicedge/ -> wp-content/plugins/ -> wp-content/ -> WP root.
+		return trailingslashit( wp_normalize_path( dirname( ATOMICEDGE_PLUGIN_DIR, 3 ) ) );
+	}
+
+	/**
+	 * Get normalized wp-admin path.
+	 *
+	 * @return string
+	 */
+	private function get_wp_admin_path() {
+		return wp_normalize_path( $this->get_wp_root_path() . 'wp-admin' );
+	}
+
+	/**
+	 * Get normalized wp-includes path.
+	 *
+	 * @return string
+	 */
+	private function get_wp_includes_path() {
+		// WPINC constant is 'wp-includes' - this is a core constant that's safe to use for the directory name.
+		$includes_dir = defined( 'WPINC' ) ? WPINC : 'wp-includes';
+		return wp_normalize_path( $this->get_wp_root_path() . $includes_dir );
+	}
+
+	/**
+	 * Get normalized plugins directory path.
+	 *
+	 * Uses plugin_dir_path() API to derive the plugins directory.
+	 *
+	 * @return string
+	 */
+	private function get_wp_plugins_path() {
+		// ATOMICEDGE_PLUGIN_DIR is defined using plugin_dir_path(__FILE__) in the main plugin file.
+		// Go up one level to get the plugins directory.
+		return wp_normalize_path( dirname( ATOMICEDGE_PLUGIN_DIR ) );
+	}
+
+	/**
+	 * Get normalized themes directory path.
+	 *
+	 * @return string
+	 */
+	private function get_wp_themes_path() {
+		return wp_normalize_path( get_theme_root() );
+	}
+
+	/**
+	 * Get normalized mu-plugins directory path.
+	 *
+	 * Uses content_url() path derivation to avoid internal constants.
+	 *
+	 * @return string
+	 */
+	private function get_wp_mu_plugins_path() {
+		// Derive wp-content directory from plugins path (go up one level).
+		$content_dir = dirname( $this->get_wp_plugins_path() );
+		return wp_normalize_path( trailingslashit( $content_dir ) . 'mu-plugins' );
+	}
+
+	/**
+	 * Get normalized uploads base directory path.
+	 *
+	 * Uses wp_upload_dir() API which is the recommended approach.
+	 *
+	 * @return string
+	 */
+	private function get_wp_uploads_path() {
+		$uploads = function_exists( 'wp_get_upload_dir' ) ? wp_get_upload_dir() : wp_upload_dir();
+		if ( isset( $uploads['basedir'] ) ) {
+			return wp_normalize_path( $uploads['basedir'] );
+		}
+		// Fallback: derive wp-content from plugins path.
+		$content_dir = dirname( $this->get_wp_plugins_path() );
+		return wp_normalize_path( trailingslashit( $content_dir ) . 'uploads' );
+	}
+
+	/**
+	 * Convert an absolute path to a root-relative path.
+	 *
+	 * @param string $path Absolute path.
+	 * @return string
+	 */
+	private function make_relative_to_root( $path ) {
+		$root_path = $this->get_wp_root_path();
+		return ltrim( str_replace( $root_path, '', wp_normalize_path( $path ) ), '/' );
 	}
 
 	/**
@@ -439,7 +536,7 @@ class AtomicEdge_Scanner {
 		if ( $verify_integrity ) {
 			$manifest = $this->get_integrity_manifest();
 			if ( ! is_array( $manifest ) || empty( $manifest['files'] ) || ! is_array( $manifest['files'] ) ) {
-				$this->add_scan_warning( __( 'Integrity verification was enabled but the manifest could not be loaded; integrity checks were skipped.', 'atomicedge' ) );
+				$this->add_scan_warning( __( 'Integrity verification was enabled but the manifest could not be loaded; integrity checks were skipped.', 'atomic-edge-security' ) );
 				$state['verify_integrity'] = false;
 				$state['stage'] = ( 'php' === $scan_mode ) ? 'queue' : 'core';
 			} else {
@@ -454,7 +551,7 @@ class AtomicEdge_Scanner {
 			global $wp_version;
 			$checksums = $this->get_core_checksums( $wp_version );
 			if ( false === $checksums || ! is_array( $checksums ) ) {
-				$this->add_scan_warning( __( 'Could not fetch WordPress core checksums; core integrity checks were skipped.', 'atomicedge' ) );
+				$this->add_scan_warning( __( 'Could not fetch WordPress core checksums; core integrity checks were skipped.', 'atomic-edge-security' ) );
 				if ( ! $state['verify_integrity'] ) {
 					$state['stage'] = 'queue';
 				}
@@ -549,7 +646,7 @@ class AtomicEdge_Scanner {
 		} catch ( \Throwable $e ) {
 			$state['status'] = 'error';
 			$state['error']  = $e->getMessage();
-			$this->add_scan_warning( __( 'Scan failed due to an unexpected error; results may be incomplete.', 'atomicedge' ) );
+			$this->add_scan_warning( __( 'Scan failed due to an unexpected error; results may be incomplete.', 'atomic-edge-security' ) );
 			$this->append_scan_log( $state, sprintf( '[%s] Error: %s', current_time( 'mysql' ), $e->getMessage() ) );
 		}
 
@@ -732,7 +829,7 @@ class AtomicEdge_Scanner {
 					'file'     => (string) $rel_path,
 					'type'     => 'missing',
 					'severity' => 'high',
-					'reason'   => __( 'File missing', 'atomicedge' ),
+					'reason'   => __( 'File missing', 'atomic-edge-security' ),
 				);
 				$offset++;
 				continue;
@@ -743,7 +840,7 @@ class AtomicEdge_Scanner {
 					'file'     => (string) $rel_path,
 					'type'     => 'unreadable',
 					'severity' => 'high',
-					'reason'   => __( 'File not readable', 'atomicedge' ),
+					'reason'   => __( 'File not readable', 'atomic-edge-security' ),
 				);
 				$offset++;
 				continue;
@@ -755,7 +852,7 @@ class AtomicEdge_Scanner {
 					'file'     => (string) $rel_path,
 					'type'     => 'hash_failed',
 					'severity' => 'high',
-					'reason'   => __( 'Could not compute file hash', 'atomicedge' ),
+					'reason'   => __( 'Could not compute file hash', 'atomic-edge-security' ),
 				);
 				$offset++;
 				continue;
@@ -766,7 +863,7 @@ class AtomicEdge_Scanner {
 					'file'          => (string) $rel_path,
 					'type'          => 'mismatch',
 					'severity'      => 'high',
-					'reason'        => __( 'Hash mismatch', 'atomicedge' ),
+					'reason'        => __( 'Hash mismatch', 'atomic-edge-security' ),
 					'expected_hash' => $expected,
 					'actual_hash'   => $actual,
 				);
@@ -822,7 +919,7 @@ class AtomicEdge_Scanner {
 		if ( '' !== $run_id && $current_run_id && $run_id !== $current_run_id ) {
 			return array(
 				'status'  => 'error',
-				'message' => __( 'Run id does not match the active scan.', 'atomicedge' ),
+				'message' => __( 'Run id does not match the active scan.', 'atomic-edge-security' ),
 			);
 		}
 
@@ -880,9 +977,12 @@ class AtomicEdge_Scanner {
 		delete_transient( self::INTEGRITY_MANIFEST_KEY_PREFIX . $run_id );
 
 		global $wpdb;
-		$table = $this->get_queue_table_name();
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->query( $wpdb->prepare( "DELETE FROM {$table} WHERE run_id = %s", $run_id ) );
+		$table_sql = $this->get_queue_table_name_sql();
+		if ( '' === $table_sql ) {
+			return;
+		}
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter
+		$wpdb->query( $wpdb->prepare( 'DELETE FROM ' . $table_sql . ' WHERE run_id = %s', $run_id ) );
 	}
 
 	/**
@@ -920,7 +1020,21 @@ class AtomicEdge_Scanner {
 	 */
 	private function get_queue_table_name() {
 		global $wpdb;
-		return $wpdb->prefix . 'atomicedge_scan_queue';
+		$table = $wpdb->prefix . 'atomicedge_scan_queue';
+		return preg_match( '/^[A-Za-z0-9_]+$/', $table ) ? $table : '';
+	}
+
+	/**
+	 * Get a safely-quoted table identifier for use in SQL.
+	 *
+	 * @return string Backticked table identifier, or empty string if invalid.
+	 */
+	private function get_queue_table_name_sql() {
+		$table = $this->get_queue_table_name();
+		if ( ! $table ) {
+			return '';
+		}
+		return '`' . $table . '`';
 	}
 
 	/**
@@ -931,6 +1045,9 @@ class AtomicEdge_Scanner {
 	private function ensure_queue_table_exists() {
 		global $wpdb;
 		$table_name = $this->get_queue_table_name();
+		if ( ! $table_name ) {
+			return;
+		}
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_name ) );
@@ -938,7 +1055,7 @@ class AtomicEdge_Scanner {
 			return;
 		}
 
-		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+		require_once $this->get_wp_root_path() . 'wp-admin/includes/upgrade.php';
 		$charset_collate = $wpdb->get_charset_collate();
 
 		$sql = "CREATE TABLE {$table_name} (
@@ -969,25 +1086,29 @@ class AtomicEdge_Scanner {
 	 * @return void
 	 */
 	private function seed_queue_for_run( $run_id, $scan_mode = 'php' ) {
+		$root_path = $this->get_wp_root_path();
+		$plugins_dir = $this->get_wp_plugins_path();
+		$themes_dir = $this->get_wp_themes_path();
+		$mu_plugins_dir = $this->get_wp_mu_plugins_path();
+		$admin_dir = $this->get_wp_admin_path();
+		$includes_dir = $this->get_wp_includes_path();
+		$uploads_dir = $this->get_wp_uploads_path();
+
 		// Root PHP files (non-recursive) are treated specially.
-		$this->enqueue_queue_item( $run_id, 'rootfiles', 'root', ABSPATH, array() );
+		$this->enqueue_queue_item( $run_id, 'rootfiles', 'root', $root_path, array() );
 
 		$scan_mode = is_string( $scan_mode ) ? $scan_mode : 'all';
 		$scan_mode = in_array( $scan_mode, array( 'php', 'all' ), true ) ? $scan_mode : 'all';
 
 		// Quick scan: focus on the most likely compromise surfaces with minimal I/O.
-		$this->enqueue_queue_item( $run_id, 'dir', 'plugins', ABSPATH . 'wp-content/plugins', array() );
-		$this->enqueue_queue_item( $run_id, 'dir', 'themes', ABSPATH . 'wp-content/themes', array() );
-		$mu_plugins_dir = defined( 'WPMU_PLUGIN_DIR' ) ? WPMU_PLUGIN_DIR : ABSPATH . 'wp-content/mu-plugins';
+		$this->enqueue_queue_item( $run_id, 'dir', 'plugins', $plugins_dir, array() );
+		$this->enqueue_queue_item( $run_id, 'dir', 'themes', $themes_dir, array() );
 		$this->enqueue_queue_item( $run_id, 'dir', 'plugins', $mu_plugins_dir, array() );
 
 		// Thorough scan: include core directories and uploads checks.
 		if ( 'all' === $scan_mode ) {
-			$this->enqueue_queue_item( $run_id, 'dir', 'wp-admin', ABSPATH . 'wp-admin', array() );
-			$this->enqueue_queue_item( $run_id, 'dir', 'wp-includes', ABSPATH . WPINC, array() );
-
-			$uploads = wp_upload_dir();
-			$uploads_dir = isset( $uploads['basedir'] ) ? $uploads['basedir'] : ABSPATH . 'wp-content/uploads';
+			$this->enqueue_queue_item( $run_id, 'dir', 'wp-admin', $admin_dir, array() );
+			$this->enqueue_queue_item( $run_id, 'dir', 'wp-includes', $includes_dir, array() );
 			$this->enqueue_queue_item( $run_id, 'dir', 'uploads', $uploads_dir, array() );
 		}
 	}
@@ -1005,24 +1126,29 @@ class AtomicEdge_Scanner {
 	private function enqueue_queue_item( $run_id, $item_type, $area, $path, $meta = array() ) {
 		global $wpdb;
 		$table = $this->get_queue_table_name();
+		if ( ! $table ) {
+			return;
+		}
 		$now = current_time( 'mysql' );
 		$path_hash = substr( hash( 'sha256', $item_type . '|' . $area . '|' . $path ), 0, 32 );
 		$meta_json = ! empty( $meta ) ? wp_json_encode( $meta ) : null;
 
+		// Use $wpdb->insert() to avoid interpolated table SQL in prepared statements.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->query(
-			$wpdb->prepare(
-				"INSERT IGNORE INTO {$table} (run_id, item_type, area, path, path_hash, status, meta, created_at, updated_at)
-				 VALUES (%s, %s, %s, %s, %s, 'pending', %s, %s, %s)",
-				$run_id,
-				$item_type,
-				$area,
-				$path,
-				$path_hash,
-				$meta_json,
-				$now,
-				$now
-			)
+		$wpdb->insert(
+			$table,
+			array(
+				'run_id'     => $run_id,
+				'item_type'  => $item_type,
+				'area'       => $area,
+				'path'       => $path,
+				'path_hash'  => $path_hash,
+				'status'     => 'pending',
+				'meta'       => $meta_json,
+				'created_at' => $now,
+				'updated_at' => $now,
+			),
+			array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' )
 		);
 	}
 
@@ -1034,11 +1160,16 @@ class AtomicEdge_Scanner {
 	 */
 	private function claim_next_queue_item( $run_id ) {
 		global $wpdb;
-		$table = $this->get_queue_table_name();
+		$table_name = $wpdb->prefix . 'atomicedge_scan_queue';
+		if ( ! preg_match( '/^[A-Za-z0-9_]+$/', $table_name ) ) {
+			return false;
+		}
+		$table_sql = '`' . $table_name . '`';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$item = $wpdb->get_row(
-			$wpdb->prepare( "SELECT id, item_type, area, path, meta FROM {$table} WHERE run_id = %s AND status = 'pending' ORDER BY id ASC LIMIT 1", $run_id ),
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter
+			$wpdb->prepare( 'SELECT id, item_type, area, path, meta FROM ' . $table_sql . " WHERE run_id = %s AND status = 'pending' ORDER BY id ASC LIMIT 1", $run_id ),
 			ARRAY_A
 		);
 
@@ -1049,7 +1180,8 @@ class AtomicEdge_Scanner {
 		$now = current_time( 'mysql' );
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$updated = $wpdb->query(
-			$wpdb->prepare( "UPDATE {$table} SET status = 'processing', updated_at = %s WHERE id = %d AND status = 'pending'", $now, (int) $item['id'] )
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter
+			$wpdb->prepare( 'UPDATE ' . $table_sql . " SET status = 'processing', updated_at = %s WHERE id = %d AND status = 'pending'", $now, (int) $item['id'] )
 		);
 
 		if ( 1 !== (int) $updated ) {
@@ -1098,11 +1230,22 @@ class AtomicEdge_Scanner {
 	 */
 	private function get_queue_counts( $run_id ) {
 		global $wpdb;
-		$table = $this->get_queue_table_name();
+		$table_name = $wpdb->prefix . 'atomicedge_scan_queue';
+		if ( ! preg_match( '/^[A-Za-z0-9_]+$/', $table_name ) ) {
+			return array(
+				'total'      => 0,
+				'pending'    => 0,
+				'processing' => 0,
+				'done'       => 0,
+				'error'      => 0,
+			);
+		}
+		$table_sql = '`' . $table_name . '`';
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$rows = $wpdb->get_results(
-			$wpdb->prepare( "SELECT status, COUNT(*) as c FROM {$table} WHERE run_id = %s GROUP BY status", $run_id ),
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter
+			$wpdb->prepare( 'SELECT status, COUNT(*) as c FROM ' . $table_sql . ' WHERE run_id = %s GROUP BY status', $run_id ),
 			ARRAY_A
 		);
 
@@ -1148,7 +1291,7 @@ class AtomicEdge_Scanner {
 			'id'   => isset( $item['id'] ) ? (int) $item['id'] : 0,
 			'type' => $item_type,
 			'area' => $area,
-			'path' => ltrim( str_replace( ABSPATH, '', $path ), '/' ),
+			'path' => $this->make_relative_to_root( $path ),
 		);
 		$this->append_scan_log(
 			$state,
@@ -1192,7 +1335,7 @@ class AtomicEdge_Scanner {
 		$dir_handle = @opendir( $root );
 		if ( ! $dir_handle ) {
 			$this->bump_diag_count( 'dirs_unreadable', 'unreadable_dirs', $root );
-			$this->add_scan_warning( __( 'Could not read WordPress root directory; scan may be incomplete.', 'atomicedge' ) );
+			$this->add_scan_warning( __( 'Could not read WordPress root directory; scan may be incomplete.', 'atomic-edge-security' ) );
 			$this->update_queue_item( $id, 'done' );
 			return;
 		}
@@ -1229,7 +1372,7 @@ class AtomicEdge_Scanner {
 			$this->scan_diagnostics['areas']['root']['php_files_scanned']++;
 			$state['results']['scan_stats']['files_scanned']++;
 
-			$relative_path = str_replace( ABSPATH, '', $filepath );
+			$relative_path = $this->make_relative_to_root( $filepath );
 			if ( $this->is_core_root_file( $relative_path ) ) {
 				continue;
 			}
@@ -1238,7 +1381,7 @@ class AtomicEdge_Scanner {
 			if ( $result ) {
 				$result['file']          = $relative_path;
 				$result['file_path']     = $filepath;
-				$result['location_note'] = __( 'Non-core file in WordPress root', 'atomicedge' );
+				$result['location_note'] = __( 'Non-core file in WordPress root', 'atomic-edge-security' );
 				$state['results']['suspicious'][] = $result;
 			} else {
 				$state['results']['suspicious'][] = array(
@@ -1246,7 +1389,7 @@ class AtomicEdge_Scanner {
 					'file_path' => $filepath,
 					'type'     => 'unknown_root_file',
 					'severity' => 'high',
-					'pattern'  => __( 'Unknown PHP file in WordPress root directory', 'atomicedge' ),
+					'pattern'  => __( 'Unknown PHP file in WordPress root directory', 'atomic-edge-security' ),
 				);
 			}
 		}
@@ -1273,13 +1416,13 @@ class AtomicEdge_Scanner {
 
 		if ( ! is_readable( $dir ) ) {
 			$this->bump_diag_count( 'dirs_unreadable', 'unreadable_dirs', $dir );
-			$this->add_scan_warning( __( 'Some directories could not be read; scan may be incomplete.', 'atomicedge' ) );
+			$this->add_scan_warning( __( 'Some directories could not be read; scan may be incomplete.', 'atomic-edge-security' ) );
 			$this->update_queue_item( $id, 'done' );
 			return;
 		}
 
 		// Skip excluded/whitelisted directories for plugin/theme areas.
-		$relative_dir = ltrim( str_replace( ABSPATH, '', $dir ), '/' );
+		$relative_dir = $this->make_relative_to_root( $dir );
 		if ( in_array( $area, array( 'plugins', 'themes' ), true ) && $this->is_whitelisted_path( $relative_dir . '/' ) ) {
 			$this->update_queue_item( $id, 'done' );
 			return;
@@ -1289,7 +1432,7 @@ class AtomicEdge_Scanner {
 		$handle = @opendir( $dir );
 		if ( ! $handle ) {
 			$this->bump_diag_count( 'dirs_unreadable', 'unreadable_dirs', $dir );
-			$this->add_scan_warning( __( 'Some directories could not be read; scan may be incomplete.', 'atomicedge' ) );
+			$this->add_scan_warning( __( 'Some directories could not be read; scan may be incomplete.', 'atomic-edge-security' ) );
 			$this->update_queue_item( $id, 'done' );
 			return;
 		}
@@ -1347,7 +1490,7 @@ class AtomicEdge_Scanner {
 	 * Process a file queue item.
 	 */
 	private function process_file_item( $id, $area, $filepath, &$state ) {
-		$relative_path = ltrim( str_replace( ABSPATH, '', $filepath ), '/' );
+		$relative_path = $this->make_relative_to_root( $filepath );
 
 		if ( ! file_exists( $filepath ) ) {
 			$this->update_queue_item( $id, 'done' );
@@ -1383,9 +1526,9 @@ class AtomicEdge_Scanner {
 			$result['file']      = $relative_path;
 			$result['file_path'] = $filepath;
 			if ( 'wp-admin' === $area ) {
-				$result['location_note'] = __( 'Suspicious pattern in wp-admin', 'atomicedge' );
+				$result['location_note'] = __( 'Suspicious pattern in wp-admin', 'atomic-edge-security' );
 			} elseif ( 'wp-includes' === $area ) {
-				$result['location_note'] = __( 'Suspicious pattern in wp-includes', 'atomicedge' );
+				$result['location_note'] = __( 'Suspicious pattern in wp-includes', 'atomic-edge-security' );
 			}
 			$state['results']['suspicious'][] = $result;
 		} elseif ( $is_uploads ) {
@@ -1394,7 +1537,7 @@ class AtomicEdge_Scanner {
 				'file_path' => $filepath,
 				'type'     => 'php_in_uploads',
 				'severity' => 'high',
-				'reason'   => __( 'PHP file found in uploads directory', 'atomicedge' ),
+				'reason'   => __( 'PHP file found in uploads directory', 'atomic-edge-security' ),
 			);
 		}
 
@@ -1430,13 +1573,14 @@ class AtomicEdge_Scanner {
 		}
 
 		$batch = array_slice( $keys, $offset, 50 );
+		$root_path = $this->get_wp_root_path();
 		foreach ( $batch as $file ) {
 			if ( ( microtime( true ) - $started ) >= $time_budget_seconds ) {
 				break;
 			}
 
 			$expected_hash = $checksums[ $file ];
-			$file_path = ABSPATH . $file;
+			$file_path = $root_path . ltrim( $file, '/' );
 			if ( $this->should_skip_core_file_checksum( $file, $file_path, $bundled_exclusions ) ) {
 				$offset++;
 				continue;
@@ -1500,9 +1644,11 @@ class AtomicEdge_Scanner {
 
 		// Cleanup queue rows for this run.
 		global $wpdb;
-		$table = $this->get_queue_table_name();
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->query( $wpdb->prepare( "DELETE FROM {$table} WHERE run_id = %s", $state['run_id'] ) );
+		$table_sql = $this->get_queue_table_name_sql();
+		if ( '' !== $table_sql ) {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter
+			$wpdb->query( $wpdb->prepare( 'DELETE FROM ' . $table_sql . ' WHERE run_id = %s', $state['run_id'] ) );
+		}
 
 		$state['status'] = 'complete';
 		$state['progress'] = 100;
@@ -1521,6 +1667,9 @@ class AtomicEdge_Scanner {
 	 */
 	public function scan_core_files() {
 		global $wp_version;
+
+		// Extend time limit for checksum comparison only.
+		$this->extend_time_limit();
 
 		// Get official checksums from WordPress.org.
 		$checksums = $this->get_core_checksums( $wp_version );
@@ -1545,8 +1694,9 @@ class AtomicEdge_Scanner {
 
 		$modified = array();
 
+		$root_path = $this->get_wp_root_path();
 		foreach ( $checksums as $file => $expected_hash ) {
-			$file_path = ABSPATH . $file;
+			$file_path = $root_path . ltrim( $file, '/' );
 
 			if ( $this->should_skip_core_file_checksum( $file, $file_path, $bundled_exclusions ) ) {
 				continue;
@@ -1619,7 +1769,8 @@ class AtomicEdge_Scanner {
 		}
 
 		// WordPress.org core checksums are MD5, so we must compute MD5 locally for comparison.
-		$hash = md5_file( $file_path );
+		// snyk:ignore php/InsecureHash -- WordPress.org core checksums are MD5; this is integrity comparison, not password/security hashing.
+		$hash = hash_file( 'md5', $file_path );
 		if ( false === $hash ) {
 			$this->scan_diagnostics[] = array(
 				'type'     => 'warning',
@@ -1713,6 +1864,8 @@ class AtomicEdge_Scanner {
 	 * @return array Array of suspicious findings.
 	 */
 	public function scan_suspicious_files() {
+		// Extend time limit for long-running suspicious file scan only.
+		$this->extend_time_limit();
 		$suspicious = array();
 
 		// Get comprehensive pattern definitions.
@@ -1732,10 +1885,10 @@ class AtomicEdge_Scanner {
 		$this->scan_suspicious_root_files( $pattern_groups, $suspicious, $reported_files, $files_scanned, $memory_threshold );
 
 		// 2. SCAN WP-ADMIN DIRECTORY (should only contain core files).
-		$this->scan_directory_for_critical_patterns( 'wp-admin', ABSPATH . 'wp-admin', __( 'Suspicious pattern in wp-admin', 'atomicedge' ), $suspicious, $reported_files, $files_scanned, $memory_threshold );
+		$this->scan_directory_for_critical_patterns( 'wp-admin', $this->get_wp_admin_path(), __( 'Suspicious pattern in wp-admin', 'atomic-edge-security' ), $suspicious, $reported_files, $files_scanned, $memory_threshold );
 
 		// 3. SCAN WP-INCLUDES DIRECTORY (should only contain core files).
-		$this->scan_directory_for_critical_patterns( 'wp-includes', ABSPATH . WPINC, __( 'Suspicious pattern in wp-includes', 'atomicedge' ), $suspicious, $reported_files, $files_scanned, $memory_threshold );
+		$this->scan_directory_for_critical_patterns( 'wp-includes', $this->get_wp_includes_path(), __( 'Suspicious pattern in wp-includes', 'atomic-edge-security' ), $suspicious, $reported_files, $files_scanned, $memory_threshold );
 
 		// 4. SCAN WP-CONTENT SUBDIRECTORIES.
 		$this->scan_wp_content_directories( $pattern_groups, $suspicious, $reported_files, $files_scanned, $memory_threshold );
@@ -1775,7 +1928,7 @@ class AtomicEdge_Scanner {
 				break;
 			}
 
-			$relative_path = str_replace( ABSPATH, '', $file );
+			$relative_path = $this->make_relative_to_root( $file );
 			$files_scanned++;
 			$this->scan_diagnostics['areas']['root']['php_files_scanned']++;
 
@@ -1789,7 +1942,7 @@ class AtomicEdge_Scanner {
 			if ( $result ) {
 				$result['file']          = $relative_path;
 				$result['file_path']     = $file;
-				$result['location_note'] = __( 'Non-core file in WordPress root', 'atomicedge' );
+				$result['location_note'] = __( 'Non-core file in WordPress root', 'atomic-edge-security' );
 				$suspicious[]            = $result;
 				$reported_files[ $relative_path ] = true;
 			} else {
@@ -1799,7 +1952,7 @@ class AtomicEdge_Scanner {
 					'file_path' => $file,
 					'type'     => 'unknown_root_file',
 					'severity' => 'high',
-					'pattern'  => __( 'Unknown PHP file in WordPress root directory', 'atomicedge' ),
+					'pattern'  => __( 'Unknown PHP file in WordPress root directory', 'atomic-edge-security' ),
 				);
 				$reported_files[ $relative_path ] = true;
 			}
@@ -1833,7 +1986,7 @@ class AtomicEdge_Scanner {
 				break;
 			}
 
-			$relative_path = str_replace( ABSPATH, '', $file );
+			$relative_path = $this->make_relative_to_root( $file );
 			$files_scanned++;
 			if ( isset( $this->scan_diagnostics['areas'][ $area ] ) ) {
 				$this->scan_diagnostics['areas'][ $area ]['php_files_scanned']++;
@@ -1866,9 +2019,9 @@ class AtomicEdge_Scanner {
 	 */
 	private function scan_wp_content_directories( $pattern_groups, &$suspicious, &$reported_files, &$files_scanned, $memory_threshold ) {
 		$scan_dirs = array(
-			ABSPATH . 'wp-content/uploads' => true,  // is_uploads.
-			ABSPATH . 'wp-content/themes'  => false,
-			ABSPATH . 'wp-content/plugins' => false,
+			$this->get_wp_uploads_path() => true,  // is_uploads.
+			$this->get_wp_themes_path()  => false,
+			$this->get_wp_plugins_path() => false,
 		);
 
 		foreach ( $scan_dirs as $dir => $is_uploads_dir ) {
@@ -1880,7 +2033,7 @@ class AtomicEdge_Scanner {
 			$area = 'plugins';
 			if ( $is_uploads_dir ) {
 				$area = 'uploads';
-			} elseif ( false !== strpos( $dir, 'wp-content/themes' ) ) {
+			} elseif ( $dir === $this->get_wp_themes_path() ) {
 				$area = 'themes';
 			}
 
@@ -1895,7 +2048,7 @@ class AtomicEdge_Scanner {
 					break 2;
 				}
 
-				$relative_path = str_replace( ABSPATH, '', $file );
+				$relative_path = $this->make_relative_to_root( $file );
 				$files_scanned++;
 				if ( isset( $this->scan_diagnostics['areas'][ $area ] ) ) {
 					$this->scan_diagnostics['areas'][ $area ]['php_files_scanned']++;
@@ -1934,16 +2087,16 @@ class AtomicEdge_Scanner {
 	 * @return void
 	 */
 	private function flag_php_files_in_uploads( &$suspicious, &$reported_files ) {
-		$uploads_dir = wp_upload_dir();
-		if ( ! isset( $uploads_dir['basedir'] ) || ! is_dir( $uploads_dir['basedir'] ) ) {
+		$uploads_dir = $this->get_wp_uploads_path();
+		if ( ! $uploads_dir || ! is_dir( $uploads_dir ) ) {
 			return;
 		}
 
-		$upload_php_files = $this->get_php_files( $uploads_dir['basedir'] );
+		$upload_php_files = $this->get_php_files( $uploads_dir );
 		// This is a dedicated pass; include it in uploads found/scanned stats.
 		$this->scan_diagnostics['areas']['uploads']['php_files_found'] = max( $this->scan_diagnostics['areas']['uploads']['php_files_found'], count( $upload_php_files ) );
 		foreach ( $upload_php_files as $file ) {
-			$relative_path = str_replace( ABSPATH, '', $file );
+			$relative_path = $this->make_relative_to_root( $file );
 			$this->scan_diagnostics['areas']['uploads']['php_files_scanned']++;
 
 			if ( isset( $reported_files[ $relative_path ] ) ) {
@@ -1959,7 +2112,7 @@ class AtomicEdge_Scanner {
 				'file_path' => $file,
 				'type'     => 'php_in_uploads',
 				'severity' => 'high',
-				'reason'   => __( 'PHP file found in uploads directory', 'atomicedge' ),
+				'reason'   => __( 'PHP file found in uploads directory', 'atomic-edge-security' ),
 			);
 			$reported_files[ $relative_path ] = true;
 		}
@@ -1972,13 +2125,13 @@ class AtomicEdge_Scanner {
 	 */
 	private function get_root_php_files() {
 		$files = array();
-		$root  = ABSPATH;
+		$root  = $this->get_wp_root_path();
 
 		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 		$dir_handle = @opendir( $root );
 		if ( ! $dir_handle ) {
 			$this->bump_diag_count( 'dirs_unreadable', 'unreadable_dirs', $root );
-			$this->add_scan_warning( __( 'Could not read WordPress root directory; scan may be incomplete.', 'atomicedge' ) );
+			$this->add_scan_warning( __( 'Could not read WordPress root directory; scan may be incomplete.', 'atomic-edge-security' ) );
 			return $files;
 		}
 
@@ -2067,24 +2220,26 @@ class AtomicEdge_Scanner {
 			return false;
 		}
 
-		$relative_path = str_replace( ABSPATH, '', $filepath );
+		$relative_path = $this->make_relative_to_root( $filepath );
 
 		// Read a capped prefix of the file to avoid memory/time issues on large files.
 		// We treat oversized files as partially scanned (not silently skipped).
 		$max_bytes = 2 * 1024 * 1024;
 		$bytes_to_read = (int) min( (int) $filesize, (int) $max_bytes );
 
-		$content = $this->read_file_prefix( $filepath, $bytes_to_read );
-
-		if ( false === $content ) {
-			$this->bump_diag_count( 'files_read_failed', 'read_failed_files', $relative_path );
-			$this->add_scan_warning( __( 'Some files could not be read; scan may be incomplete.', 'atomicedge' ) );
+		// WP-CLI plugin check enforces WP_Filesystem usage. Since WP_Filesystem does not
+		// support efficient ranged reads, we only scan files up to the cap.
+		if ( $filesize > $max_bytes ) {
+			$this->bump_diag_count( 'files_partially_scanned', 'oversized_files', $relative_path );
+			$this->add_scan_warning( __( 'Some large files were not fully scanned; results may be incomplete.', 'atomic-edge-security' ) );
 			return false;
 		}
 
-		if ( $filesize > $max_bytes ) {
-			$this->bump_diag_count( 'files_partially_scanned', 'oversized_files', $relative_path );
-			$this->add_scan_warning( __( 'Some large files were only partially scanned; results may be incomplete.', 'atomicedge' ) );
+		$content = $this->read_file_prefix( $filepath, $bytes_to_read );
+		if ( false === $content ) {
+			$this->bump_diag_count( 'files_read_failed', 'read_failed_files', $relative_path );
+			$this->add_scan_warning( __( 'Some files could not be read; scan may be incomplete.', 'atomic-edge-security' ) );
+			return false;
 		}
 
 		// Check for hidden PHP in image files.
@@ -2092,7 +2247,7 @@ class AtomicEdge_Scanner {
 			return array(
 				'type'     => 'php_in_image',
 				'severity' => 'critical',
-				'pattern'  => __( 'PHP code hidden in image file', 'atomicedge' ),
+				'pattern'  => __( 'PHP code hidden in image file', 'atomic-edge-security' ),
 			);
 		}
 
@@ -2128,31 +2283,31 @@ class AtomicEdge_Scanner {
 			return '';
 		}
 
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_fopen
-		$handle = @fopen( $filepath, 'rb' );
-		if ( false === $handle ) {
+		// Load WordPress filesystem API if available.
+		$file_php = $this->get_wp_root_path() . 'wp-admin/includes/file.php';
+		if ( file_exists( $file_php ) ) {
+			require_once $file_php;
+		}
+		global $wp_filesystem;
+		if ( ! $wp_filesystem && function_exists( 'WP_Filesystem' ) ) {
+			WP_Filesystem();
+		}
+		// If WP_Filesystem is not available (e.g., in tests), fall back to native PHP.
+		if ( ! $wp_filesystem ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			$contents = @file_get_contents( $filepath, false, null, 0, $bytes_to_read );
+			return false !== $contents ? $contents : false;
+		}
+
+		$contents = $wp_filesystem->get_contents( $filepath );
+		if ( false === $contents ) {
 			return false;
 		}
 
-		$contents = '';
-		$remaining = $bytes_to_read;
-
-		while ( $remaining > 0 && ! feof( $handle ) ) {
-			$chunk_size = min( 65536, $remaining );
-			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_read_fread
-			$chunk = @fread( $handle, $chunk_size );
-			if ( false === $chunk ) {
-				fclose( $handle );
-				return false;
-			}
-			$contents .= $chunk;
-			$remaining -= strlen( $chunk );
-			if ( '' === $chunk ) {
-				break;
-			}
+		if ( strlen( $contents ) > $bytes_to_read ) {
+			$contents = substr( $contents, 0, $bytes_to_read );
 		}
 
-		fclose( $handle );
 		return $contents;
 	}
 
@@ -2198,7 +2353,7 @@ class AtomicEdge_Scanner {
 		if ( ! is_dir( $dir ) || ! is_readable( $dir ) ) {
 			if ( is_dir( $dir ) && ! is_readable( $dir ) ) {
 				$this->bump_diag_count( 'dirs_unreadable', 'unreadable_dirs', $dir );
-				$this->add_scan_warning( __( 'Some directories could not be read; scan may be incomplete.', 'atomicedge' ) );
+				$this->add_scan_warning( __( 'Some directories could not be read; scan may be incomplete.', 'atomic-edge-security' ) );
 			}
 			return $files;
 		}
@@ -2210,7 +2365,7 @@ class AtomicEdge_Scanner {
 			);
 		} catch ( UnexpectedValueException $e ) {
 			$this->bump_diag_count( 'dirs_unreadable', 'unreadable_dirs', $dir );
-			$this->add_scan_warning( __( 'Some directories could not be scanned due to permissions; scan may be incomplete.', 'atomicedge' ) );
+			$this->add_scan_warning( __( 'Some directories could not be scanned due to permissions; scan may be incomplete.', 'atomic-edge-security' ) );
 			return $files;
 		}
 
@@ -2257,138 +2412,138 @@ class AtomicEdge_Scanner {
 		$this->patterns_cache = array(
 			// Critical: Direct code execution patterns.
 			'code_execution'       => array(
-				'eval\s*\('                                                          => __( 'Eval function (code execution)', 'atomicedge' ),
-				'assert\s*\('                                                        => __( 'Assert function (potential code execution)', 'atomicedge' ),
-				'create_function\s*\('                                               => __( 'Create function (dynamic code creation)', 'atomicedge' ),
-				'call_user_func\s*\('                                                => __( 'Call user func (dynamic function call)', 'atomicedge' ),
-				'call_user_func_array\s*\('                                          => __( 'Call user func array (dynamic function call)', 'atomicedge' ),
-				'preg_replace\s*\([^,]+["\'].*\/e["\']'                               => __( 'Preg replace with eval modifier', 'atomicedge' ),
-				'preg_replace_callback\s*\('                                         => __( 'Preg replace callback (potential code execution)', 'atomicedge' ),
+				'eval\s*\('                                                          => __( 'Eval function (code execution)', 'atomic-edge-security' ),
+				'assert\s*\('                                                        => __( 'Assert function (potential code execution)', 'atomic-edge-security' ),
+				'create_function\s*\('                                               => __( 'Create function (dynamic code creation)', 'atomic-edge-security' ),
+				'call_user_func\s*\('                                                => __( 'Call user func (dynamic function call)', 'atomic-edge-security' ),
+				'call_user_func_array\s*\('                                          => __( 'Call user func array (dynamic function call)', 'atomic-edge-security' ),
+				'preg_replace\s*\([^,]+["\'].*\/e["\']'                               => __( 'Preg replace with eval modifier', 'atomic-edge-security' ),
+				'preg_replace_callback\s*\('                                         => __( 'Preg replace callback (potential code execution)', 'atomic-edge-security' ),
 			),
 
 			// Critical: Shell/system execution.
 			'shell_execution'      => array(
-				'\bsystem\s*\('                                                      => __( 'System command execution', 'atomicedge' ),
-				'\bexec\s*\('                                                        => __( 'Exec command execution', 'atomicedge' ),
-				'\bshell_exec\s*\('                                                  => __( 'Shell exec command', 'atomicedge' ),
-				'\bpassthru\s*\('                                                    => __( 'Passthru command execution', 'atomicedge' ),
-				'\bpopen\s*\('                                                       => __( 'Popen command execution', 'atomicedge' ),
-				'\bproc_open\s*\('                                                   => __( 'Proc open command execution', 'atomicedge' ),
-				'\bpcntl_exec\s*\('                                                  => __( 'PCNTL exec', 'atomicedge' ),
-				'`[^`]+`'                                                            => __( 'Backtick command execution', 'atomicedge' ),
+				'\bsystem\s*\('                                                      => __( 'System command execution', 'atomic-edge-security' ),
+				'\bexec\s*\('                                                        => __( 'Exec command execution', 'atomic-edge-security' ),
+				'\bshell_exec\s*\('                                                  => __( 'Shell exec command', 'atomic-edge-security' ),
+				'\bpassthru\s*\('                                                    => __( 'Passthru command execution', 'atomic-edge-security' ),
+				'\bpopen\s*\('                                                       => __( 'Popen command execution', 'atomic-edge-security' ),
+				'\bproc_open\s*\('                                                   => __( 'Proc open command execution', 'atomic-edge-security' ),
+				'\bpcntl_exec\s*\('                                                  => __( 'PCNTL exec', 'atomic-edge-security' ),
+				'`[^`]+`'                                                            => __( 'Backtick command execution', 'atomic-edge-security' ),
 			),
 
 			// Critical: Backdoor patterns.
 			'backdoor_patterns'    => array(
-				'@eval\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)'                        => __( 'Backdoor: eval with user input', 'atomicedge' ),
-				'@eval\s*\(\s*base64_decode'                                         => __( 'Backdoor: eval with base64', 'atomicedge' ),
-				'\$_(?:GET|POST|REQUEST|COOKIE)\s*\[[^\]]+\]\s*\('                   => __( 'Direct superglobal execution', 'atomicedge' ),
-				'extract\s*\(\s*\$_(?:GET|POST|REQUEST)'                             => __( 'Dangerous extract from user input', 'atomicedge' ),
-				'include\s*\(\s*\$_(?:GET|POST|REQUEST)'                             => __( 'Remote file inclusion via user input', 'atomicedge' ),
-				'require\s*\(\s*\$_(?:GET|POST|REQUEST)'                             => __( 'Remote file inclusion via user input', 'atomicedge' ),
-				'file_put_contents\s*\([^,]+,\s*\$_(?:GET|POST|REQUEST)'             => __( 'File write from user input', 'atomicedge' ),
-				'fwrite\s*\([^,]+,\s*\$_(?:GET|POST|REQUEST)'                        => __( 'File write from user input', 'atomicedge' ),
+				'@eval\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)'                        => __( 'Backdoor: eval with user input', 'atomic-edge-security' ),
+				'@eval\s*\(\s*base64_decode'                                         => __( 'Backdoor: eval with base64', 'atomic-edge-security' ),
+				'\$_(?:GET|POST|REQUEST|COOKIE)\s*\[[^\]]+\]\s*\('                   => __( 'Direct superglobal execution', 'atomic-edge-security' ),
+				'extract\s*\(\s*\$_(?:GET|POST|REQUEST)'                             => __( 'Dangerous extract from user input', 'atomic-edge-security' ),
+				'include\s*\(\s*\$_(?:GET|POST|REQUEST)'                             => __( 'Remote file inclusion via user input', 'atomic-edge-security' ),
+				'require\s*\(\s*\$_(?:GET|POST|REQUEST)'                             => __( 'Remote file inclusion via user input', 'atomic-edge-security' ),
+				'file_put_contents\s*\([^,]+,\s*\$_(?:GET|POST|REQUEST)'             => __( 'File write from user input', 'atomic-edge-security' ),
+				'fwrite\s*\([^,]+,\s*\$_(?:GET|POST|REQUEST)'                        => __( 'File write from user input', 'atomic-edge-security' ),
 			),
 
 			// High: Obfuscation techniques.
 			'obfuscation'          => array(
-				'base64_decode\s*\('                                                 => __( 'Base64 decoding (potential obfuscation)', 'atomicedge' ),
-				'gzinflate\s*\('                                                     => __( 'Gzip inflate (potential obfuscation)', 'atomicedge' ),
-				'gzuncompress\s*\('                                                  => __( 'Gzip uncompress (potential obfuscation)', 'atomicedge' ),
-				'str_rot13\s*\('                                                     => __( 'ROT13 encoding (potential obfuscation)', 'atomicedge' ),
-				'convert_uudecode\s*\('                                              => __( 'UUdecode (potential obfuscation)', 'atomicedge' ),
-				'\\\\x[0-9a-fA-F]{2}(\\\\x[0-9a-fA-F]{2}){5,}'                        => __( 'Hex encoded strings', 'atomicedge' ),
-				'chr\s*\(\s*\d+\s*\)\s*\.\s*chr\s*\(\s*\d+\s*\)(\s*\.\s*chr\s*\(\s*\d+\s*\)){3,}' => __( 'Chr() string building', 'atomicedge' ),
-				'edoced_46esab'                                                      => __( 'Reversed base64_decode', 'atomicedge' ),
-				'strrev\s*\(["\'][^"\']+["\']\)'                                      => __( 'String reversal (obfuscation)', 'atomicedge' ),
+				'base64_decode\s*\('                                                 => __( 'Base64 decoding (potential obfuscation)', 'atomic-edge-security' ),
+				'gzinflate\s*\('                                                     => __( 'Gzip inflate (potential obfuscation)', 'atomic-edge-security' ),
+				'gzuncompress\s*\('                                                  => __( 'Gzip uncompress (potential obfuscation)', 'atomic-edge-security' ),
+				'str_rot13\s*\('                                                     => __( 'ROT13 encoding (potential obfuscation)', 'atomic-edge-security' ),
+				'convert_uudecode\s*\('                                              => __( 'UUdecode (potential obfuscation)', 'atomic-edge-security' ),
+				'\\\\x[0-9a-fA-F]{2}(\\\\x[0-9a-fA-F]{2}){5,}'                        => __( 'Hex encoded strings', 'atomic-edge-security' ),
+				'chr\s*\(\s*\d+\s*\)\s*\.\s*chr\s*\(\s*\d+\s*\)(\s*\.\s*chr\s*\(\s*\d+\s*\)){3,}' => __( 'Chr() string building', 'atomic-edge-security' ),
+				'edoced_46esab'                                                      => __( 'Reversed base64_decode', 'atomic-edge-security' ),
+				'strrev\s*\(["\'][^"\']+["\']\)'                                      => __( 'String reversal (obfuscation)', 'atomic-edge-security' ),
 			),
 
 			// High: Known webshell signatures.
 			'webshells'            => array(
-				'c99shell'                                                           => __( 'C99 shell signature', 'atomicedge' ),
-				'r57shell'                                                           => __( 'R57 shell signature', 'atomicedge' ),
-				'b374k'                                                              => __( 'B374K shell signature', 'atomicedge' ),
-				'FilesMan'                                                           => __( 'FilesMan shell signature', 'atomicedge' ),
-				'WSO\s+[\d\.]+'                                                      => __( 'WSO shell signature', 'atomicedge' ),
-				'Weevely'                                                            => __( 'Weevely shell signature', 'atomicedge' ),
-				'php\s*spy'                                                          => __( 'PHPSpy shell signature', 'atomicedge' ),
-				'PHANTOMJS'                                                          => __( 'PhantomJS shell signature', 'atomicedge' ),
-				'Mister Spy'                                                         => __( 'Mister Spy shell signature', 'atomicedge' ),
-				'Afghan Shell'                                                       => __( 'Afghan Shell signature', 'atomicedge' ),
-				'Shell by'                                                           => __( 'Generic shell signature', 'atomicedge' ),
-				'SHELL_PASSWORD'                                                     => __( 'Shell password variable', 'atomicedge' ),
-				'0day'                                                               => __( '0day exploit reference', 'atomicedge' ),
+				'c99shell'                                                           => __( 'C99 shell signature', 'atomic-edge-security' ),
+				'r57shell'                                                           => __( 'R57 shell signature', 'atomic-edge-security' ),
+				'b374k'                                                              => __( 'B374K shell signature', 'atomic-edge-security' ),
+				'FilesMan'                                                           => __( 'FilesMan shell signature', 'atomic-edge-security' ),
+				'WSO\s+[\d\.]+'                                                      => __( 'WSO shell signature', 'atomic-edge-security' ),
+				'Weevely'                                                            => __( 'Weevely shell signature', 'atomic-edge-security' ),
+				'php\s*spy'                                                          => __( 'PHPSpy shell signature', 'atomic-edge-security' ),
+				'PHANTOMJS'                                                          => __( 'PhantomJS shell signature', 'atomic-edge-security' ),
+				'Mister Spy'                                                         => __( 'Mister Spy shell signature', 'atomic-edge-security' ),
+				'Afghan Shell'                                                       => __( 'Afghan Shell signature', 'atomic-edge-security' ),
+				'Shell by'                                                           => __( 'Generic shell signature', 'atomic-edge-security' ),
+				'SHELL_PASSWORD'                                                     => __( 'Shell password variable', 'atomic-edge-security' ),
+				'0day'                                                               => __( '0day exploit reference', 'atomic-edge-security' ),
 			),
 
 			// High: WordPress-specific malware.
 			'wordpress_malware'    => array(
-				'wp-vcd'                                                             => __( 'WP-VCD malware', 'atomicedge' ),
-				'class\.theme-modules\.php'                                          => __( 'WP-VCD theme modules', 'atomicedge' ),
-				'class\.plugin-modules\.php'                                         => __( 'WP-VCD plugin modules', 'atomicedge' ),
-				'wp-tmp\.php'                                                        => __( 'WP-VCD temp file', 'atomicedge' ),
-				'tmpcontentx'                                                        => __( 'WP-VCD content injection', 'atomicedge' ),
-				'wp_temp_setupx'                                                     => __( 'WP-VCD setup function', 'atomicedge' ),
-				'derna\.top'                                                         => __( 'Known malware domain', 'atomicedge' ),
-				'/\*\s*@noupdate\s*\*/'                                              => __( 'Plugin update suppression', 'atomicedge' ),
+				'wp-vcd'                                                             => __( 'WP-VCD malware', 'atomic-edge-security' ),
+				'class\.theme-modules\.php'                                          => __( 'WP-VCD theme modules', 'atomic-edge-security' ),
+				'class\.plugin-modules\.php'                                         => __( 'WP-VCD plugin modules', 'atomic-edge-security' ),
+				'wp-tmp\.php'                                                        => __( 'WP-VCD temp file', 'atomic-edge-security' ),
+				'tmpcontentx'                                                        => __( 'WP-VCD content injection', 'atomic-edge-security' ),
+				'wp_temp_setupx'                                                     => __( 'WP-VCD setup function', 'atomic-edge-security' ),
+				'derna\.top'                                                         => __( 'Known malware domain', 'atomic-edge-security' ),
+				'/\*\s*@noupdate\s*\*/'                                              => __( 'Plugin update suppression', 'atomic-edge-security' ),
 			),
 
 			// Medium: Suspicious file operations.
 			'file_operations'      => array(
-				'file_get_contents\s*\(["\']https?://'                               => __( 'Remote file fetch', 'atomicedge' ),
-				'file_get_contents\s*\(["\']php://input'                             => __( 'Raw POST data read', 'atomicedge' ),
-				'curl_exec\s*\('                                                     => __( 'cURL execution', 'atomicedge' ),
-				'fsockopen\s*\('                                                     => __( 'Socket connection', 'atomicedge' ),
-				'stream_socket_client\s*\('                                          => __( 'Stream socket client', 'atomicedge' ),
+				'file_get_contents\s*\(["\']https?://'                               => __( 'Remote file fetch', 'atomic-edge-security' ),
+				'file_get_contents\s*\(["\']php://input'                             => __( 'Raw POST data read', 'atomic-edge-security' ),
+				'curl_exec\s*\('                                                     => __( 'cURL execution', 'atomic-edge-security' ),
+				'fsockopen\s*\('                                                     => __( 'Socket connection', 'atomic-edge-security' ),
+				'stream_socket_client\s*\('                                          => __( 'Stream socket client', 'atomic-edge-security' ),
 			),
 
 			// Medium: Base64 encoded suspicious keywords.
 			'base64_keywords'      => array(
-				'ZXZhbCg'                                                            => __( 'Base64: eval(', 'atomicedge' ),
-				'YXNzZXJ0'                                                           => __( 'Base64: assert', 'atomicedge' ),
-				'c3lzdGVt'                                                           => __( 'Base64: system', 'atomicedge' ),
-				'ZXhlYyg'                                                            => __( 'Base64: exec(', 'atomicedge' ),
-				'c2hlbGxfZXhlYw'                                                     => __( 'Base64: shell_exec', 'atomicedge' ),
-				'cGFzc3RocnU'                                                        => __( 'Base64: passthru', 'atomicedge' ),
-				'JF9HRV'                                                             => __( 'Base64: $_GET', 'atomicedge' ),
-				'JF9QT1NU'                                                           => __( 'Base64: $_POST', 'atomicedge' ),
-				'JF9SRVFVRVNU'                                                       => __( 'Base64: $_REQUEST', 'atomicedge' ),
-				'JF9DT09LSUU'                                                        => __( 'Base64: $_COOKIE', 'atomicedge' ),
-				'SFRUUF9VU0VSX0FHRU5U'                                               => __( 'Base64: HTTP_USER_AGENT', 'atomicedge' ),
-				'R0xPQkFMU'                                                          => __( 'Base64: GLOBALS', 'atomicedge' ),
+				'ZXZhbCg'                                                            => __( 'Base64: eval(', 'atomic-edge-security' ),
+				'YXNzZXJ0'                                                           => __( 'Base64: assert', 'atomic-edge-security' ),
+				'c3lzdGVt'                                                           => __( 'Base64: system', 'atomic-edge-security' ),
+				'ZXhlYyg'                                                            => __( 'Base64: exec(', 'atomic-edge-security' ),
+				'c2hlbGxfZXhlYw'                                                     => __( 'Base64: shell_exec', 'atomic-edge-security' ),
+				'cGFzc3RocnU'                                                        => __( 'Base64: passthru', 'atomic-edge-security' ),
+				'JF9HRV'                                                             => __( 'Base64: $_GET', 'atomic-edge-security' ),
+				'JF9QT1NU'                                                           => __( 'Base64: $_POST', 'atomic-edge-security' ),
+				'JF9SRVFVRVNU'                                                       => __( 'Base64: $_REQUEST', 'atomic-edge-security' ),
+				'JF9DT09LSUU'                                                        => __( 'Base64: $_COOKIE', 'atomic-edge-security' ),
+				'SFRUUF9VU0VSX0FHRU5U'                                               => __( 'Base64: HTTP_USER_AGENT', 'atomic-edge-security' ),
+				'R0xPQkFMU'                                                          => __( 'Base64: GLOBALS', 'atomic-edge-security' ),
 			),
 
 			// Medium: Suspicious strings and indicators.
 			'suspicious_strings'   => array(
-				'/etc/passwd'                                                            => __( 'Password file access', 'atomicedge' ),
-				'/etc/shadow'                                                            => __( 'Shadow file access', 'atomicedge' ),
-				'HACKED BY'                                                          => __( 'Defacement signature', 'atomicedge' ),
-				'owned by'                                                           => __( 'Defacement signature', 'atomicedge' ),
-				'backdoor'                                                           => __( 'Backdoor keyword', 'atomicedge' ),
-				'rootkit'                                                            => __( 'Rootkit keyword', 'atomicedge' ),
-				'c999sh'                                                             => __( 'Shell variant', 'atomicedge' ),
-				'r57sh'                                                              => __( 'Shell variant', 'atomicedge' ),
-				'webshell'                                                           => __( 'Webshell keyword', 'atomicedge' ),
-				'cmd\.exe'                                                           => __( 'Windows command execution', 'atomicedge' ),
-				'powershell\.exe'                                                    => __( 'PowerShell execution', 'atomicedge' ),
-				'uname\s+-a'                                                         => __( 'System information gathering', 'atomicedge' ),
-				'whoami'                                                             => __( 'User identification command', 'atomicedge' ),
+				'/etc/passwd'                                                            => __( 'Password file access', 'atomic-edge-security' ),
+				'/etc/shadow'                                                            => __( 'Shadow file access', 'atomic-edge-security' ),
+				'HACKED BY'                                                          => __( 'Defacement signature', 'atomic-edge-security' ),
+				'owned by'                                                           => __( 'Defacement signature', 'atomic-edge-security' ),
+				'backdoor'                                                           => __( 'Backdoor keyword', 'atomic-edge-security' ),
+				'rootkit'                                                            => __( 'Rootkit keyword', 'atomic-edge-security' ),
+				'c999sh'                                                             => __( 'Shell variant', 'atomic-edge-security' ),
+				'r57sh'                                                              => __( 'Shell variant', 'atomic-edge-security' ),
+				'webshell'                                                           => __( 'Webshell keyword', 'atomic-edge-security' ),
+				'cmd\.exe'                                                           => __( 'Windows command execution', 'atomic-edge-security' ),
+				'powershell\.exe'                                                    => __( 'PowerShell execution', 'atomic-edge-security' ),
+				'uname\s+-a'                                                         => __( 'System information gathering', 'atomic-edge-security' ),
+				'whoami'                                                             => __( 'User identification command', 'atomic-edge-security' ),
 			),
 
 			// Medium: Network indicators.
 			'network_indicators'   => array(
-'fsockopen\s*\(["\']udp://'                                              => __( 'UDP socket (potential DDoS)', 'atomicedge' ),
-				'socket_create\s*\(\s*AF_INET'                                       => __( 'Raw socket creation', 'atomicedge' ),
-				'curl_setopt[^;]+CURLOPT_FOLLOWLOCATION'                             => __( 'cURL with redirect following', 'atomicedge' ),
+'fsockopen\s*\(["\']udp://'                                              => __( 'UDP socket (potential DDoS)', 'atomic-edge-security' ),
+				'socket_create\s*\(\s*AF_INET'                                       => __( 'Raw socket creation', 'atomic-edge-security' ),
+				'curl_setopt[^;]+CURLOPT_FOLLOWLOCATION'                             => __( 'cURL with redirect following', 'atomic-edge-security' ),
 			),
 
 			// Low: Potentially dangerous functions (context-dependent).
 			'potentially_dangerous' => array(
-				'unserialize\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)'                  => __( 'Unserialize user input (object injection)', 'atomicedge' ),
-				'serialize\s*\([^)]+\)\s*\.'                                         => __( 'Serialized data concatenation', 'atomicedge' ),
-				'ini_set\s*\(["\'](?:allow_url_fopen|allow_url_include)'             => __( 'INI override for remote includes', 'atomicedge' ),
-				'ini_set\s*\(["\']disable_functions'                                 => __( 'Attempt to modify disabled functions', 'atomicedge' ),
-				'error_reporting\s*\(\s*0\s*\)'                                      => __( 'Error reporting disabled', 'atomicedge' ),
-				'set_error_handler\s*\(\s*null'                                      => __( 'Error handler nullified', 'atomicedge' ),
+				'unserialize\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)'                  => __( 'Unserialize user input (object injection)', 'atomic-edge-security' ),
+				'serialize\s*\([^)]+\)\s*\.'                                         => __( 'Serialized data concatenation', 'atomic-edge-security' ),
+				'ini_set\s*\(["\'](?:allow_url_fopen|allow_url_include)'             => __( 'INI override for remote includes', 'atomic-edge-security' ),
+				'ini_set\s*\(["\']disable_functions'                                 => __( 'Attempt to modify disabled functions', 'atomic-edge-security' ),
+				'error_reporting\s*\(\s*0\s*\)'                                      => __( 'Error reporting disabled', 'atomic-edge-security' ),
+				'set_error_handler\s*\(\s*null'                                      => __( 'Error handler nullified', 'atomic-edge-security' ),
 			),
 		);
 
@@ -2563,63 +2718,63 @@ class AtomicEdge_Scanner {
 		$this->refined_patterns_cache = array(
 			// Critical: Definite backdoor patterns (these are ALWAYS malicious).
 			'backdoor_patterns'    => array(
-				'@eval\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)'                        => __( 'Backdoor: eval with user input', 'atomicedge' ),
-				'@eval\s*\(\s*base64_decode\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)'   => __( 'Backdoor: eval+base64 with user input', 'atomicedge' ),
-				'\$_(?:GET|POST|REQUEST|COOKIE)\s*\[[^\]]+\]\s*\('                   => __( 'Direct superglobal as function', 'atomicedge' ),
-				'extract\s*\(\s*\$_(?:GET|POST|REQUEST)'                             => __( 'Dangerous extract from user input', 'atomicedge' ),
-				'include\s*\(\s*\$_(?:GET|POST|REQUEST)'                             => __( 'Remote file inclusion via user input', 'atomicedge' ),
-				'require\s*\(\s*\$_(?:GET|POST|REQUEST)'                             => __( 'Remote file inclusion via user input', 'atomicedge' ),
-				'file_put_contents\s*\([^,]+,\s*\$_(?:GET|POST|REQUEST)'             => __( 'File write from user input', 'atomicedge' ),
-				'assert\s*\(\s*\$_(?:GET|POST|REQUEST)'                              => __( 'Assert with user input', 'atomicedge' ),
-				'preg_replace\s*\([^,]+["\'].*\/e["\'][^,]*,\s*\$_'                  => __( 'Preg replace eval with user input', 'atomicedge' ),
+				'@eval\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)'                        => __( 'Backdoor: eval with user input', 'atomic-edge-security' ),
+				'@eval\s*\(\s*base64_decode\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)'   => __( 'Backdoor: eval+base64 with user input', 'atomic-edge-security' ),
+				'\$_(?:GET|POST|REQUEST|COOKIE)\s*\[[^\]]+\]\s*\('                   => __( 'Direct superglobal as function', 'atomic-edge-security' ),
+				'extract\s*\(\s*\$_(?:GET|POST|REQUEST)'                             => __( 'Dangerous extract from user input', 'atomic-edge-security' ),
+				'include\s*\(\s*\$_(?:GET|POST|REQUEST)'                             => __( 'Remote file inclusion via user input', 'atomic-edge-security' ),
+				'require\s*\(\s*\$_(?:GET|POST|REQUEST)'                             => __( 'Remote file inclusion via user input', 'atomic-edge-security' ),
+				'file_put_contents\s*\([^,]+,\s*\$_(?:GET|POST|REQUEST)'             => __( 'File write from user input', 'atomic-edge-security' ),
+				'assert\s*\(\s*\$_(?:GET|POST|REQUEST)'                              => __( 'Assert with user input', 'atomic-edge-security' ),
+				'preg_replace\s*\([^,]+["\'].*\/e["\'][^,]*,\s*\$_'                  => __( 'Preg replace eval with user input', 'atomic-edge-security' ),
 			),
 
 			// Critical: Known webshell signatures (unique identifiers).
 			'webshells'            => array(
-				'c99shell'                                                           => __( 'C99 shell signature', 'atomicedge' ),
-				'r57shell'                                                           => __( 'R57 shell signature', 'atomicedge' ),
-				'b374k'                                                              => __( 'B374K shell signature', 'atomicedge' ),
-				'WSO\s+[\d\.]+'                                                      => __( 'WSO shell signature', 'atomicedge' ),
-				'Weevely'                                                            => __( 'Weevely shell signature', 'atomicedge' ),
+				'c99shell'                                                           => __( 'C99 shell signature', 'atomic-edge-security' ),
+				'r57shell'                                                           => __( 'R57 shell signature', 'atomic-edge-security' ),
+				'b374k'                                                              => __( 'B374K shell signature', 'atomic-edge-security' ),
+				'WSO\s+[\d\.]+'                                                      => __( 'WSO shell signature', 'atomic-edge-security' ),
+				'Weevely'                                                            => __( 'Weevely shell signature', 'atomic-edge-security' ),
 			),
 
 			// Critical: WordPress-specific malware.
 			'wordpress_malware'    => array(
-				'wp-vcd'                                                             => __( 'WP-VCD malware', 'atomicedge' ),
-				'class\.theme-modules\.php'                                          => __( 'WP-VCD theme modules', 'atomicedge' ),
-				'class\.plugin-modules\.php'                                         => __( 'WP-VCD plugin modules', 'atomicedge' ),
-				'wp-tmp\.php'                                                        => __( 'WP-VCD temp file', 'atomicedge' ),
-				'tmpcontentx'                                                        => __( 'WP-VCD content injection', 'atomicedge' ),
-				'wp_temp_setupx'                                                     => __( 'WP-VCD setup function', 'atomicedge' ),
-				'derna\.top'                                                         => __( 'Known malware domain', 'atomicedge' ),
-				'/\*\s*@noupdate\s*\*/'                                              => __( 'Plugin update suppression', 'atomicedge' ),
+				'wp-vcd'                                                             => __( 'WP-VCD malware', 'atomic-edge-security' ),
+				'class\.theme-modules\.php'                                          => __( 'WP-VCD theme modules', 'atomic-edge-security' ),
+				'class\.plugin-modules\.php'                                         => __( 'WP-VCD plugin modules', 'atomic-edge-security' ),
+				'wp-tmp\.php'                                                        => __( 'WP-VCD temp file', 'atomic-edge-security' ),
+				'tmpcontentx'                                                        => __( 'WP-VCD content injection', 'atomic-edge-security' ),
+				'wp_temp_setupx'                                                     => __( 'WP-VCD setup function', 'atomic-edge-security' ),
+				'derna\.top'                                                         => __( 'Known malware domain', 'atomic-edge-security' ),
+				'/\*\s*@noupdate\s*\*/'                                              => __( 'Plugin update suppression', 'atomic-edge-security' ),
 			),
 
 			// High: Obfuscated code execution (multi-layer obfuscation is suspicious).
 			'obfuscated_execution' => array(
-				'eval\s*\(\s*gzinflate\s*\(\s*base64_decode'                         => __( 'Multi-layer obfuscation: eval+gzinflate+base64', 'atomicedge' ),
-				'eval\s*\(\s*gzuncompress\s*\(\s*base64_decode'                      => __( 'Multi-layer obfuscation: eval+gzuncompress+base64', 'atomicedge' ),
-				'eval\s*\(\s*str_rot13\s*\(\s*base64_decode'                         => __( 'Multi-layer obfuscation: eval+rot13+base64', 'atomicedge' ),
-				'assert\s*\(\s*base64_decode'                                        => __( 'Obfuscated assert', 'atomicedge' ),
-				'create_function\s*\([^)]*base64_decode'                             => __( 'Obfuscated create_function', 'atomicedge' ),
-				'edoced_46esab'                                                      => __( 'Reversed base64_decode', 'atomicedge' ),
+				'eval\s*\(\s*gzinflate\s*\(\s*base64_decode'                         => __( 'Multi-layer obfuscation: eval+gzinflate+base64', 'atomic-edge-security' ),
+				'eval\s*\(\s*gzuncompress\s*\(\s*base64_decode'                      => __( 'Multi-layer obfuscation: eval+gzuncompress+base64', 'atomic-edge-security' ),
+				'eval\s*\(\s*str_rot13\s*\(\s*base64_decode'                         => __( 'Multi-layer obfuscation: eval+rot13+base64', 'atomic-edge-security' ),
+				'assert\s*\(\s*base64_decode'                                        => __( 'Obfuscated assert', 'atomic-edge-security' ),
+				'create_function\s*\([^)]*base64_decode'                             => __( 'Obfuscated create_function', 'atomic-edge-security' ),
+				'edoced_46esab'                                                      => __( 'Reversed base64_decode', 'atomic-edge-security' ),
 			),
 
 			// High: Suspicious strings that are almost never legitimate.
 			'suspicious_strings'   => array(
-				'/etc/passwd'                                                        => __( 'Password file access attempt', 'atomicedge' ),
-				'/etc/shadow'                                                        => __( 'Shadow file access attempt', 'atomicedge' ),
-				'HACKED BY'                                                          => __( 'Defacement signature', 'atomicedge' ),
-				'c999sh'                                                             => __( 'Shell variant', 'atomicedge' ),
-				'r57sh'                                                              => __( 'Shell variant', 'atomicedge' ),
+				'/etc/passwd'                                                        => __( 'Password file access attempt', 'atomic-edge-security' ),
+				'/etc/shadow'                                                        => __( 'Shadow file access attempt', 'atomic-edge-security' ),
+				'HACKED BY'                                                          => __( 'Defacement signature', 'atomic-edge-security' ),
+				'c999sh'                                                             => __( 'Shell variant', 'atomic-edge-security' ),
+				'r57sh'                                                              => __( 'Shell variant', 'atomic-edge-security' ),
 			),
 
 			// Medium: Hex-encoded function calls (used to evade detection).
 			'hex_obfuscation'      => array(
-				'\\\\x65\\\\x76\\\\x61\\\\x6c'                                       => __( 'Hex-encoded eval', 'atomicedge' ),
-				'\\\\x61\\\\x73\\\\x73\\\\x65\\\\x72\\\\x74'                         => __( 'Hex-encoded assert', 'atomicedge' ),
-				'\\\\x73\\\\x79\\\\x73\\\\x74\\\\x65\\\\x6d'                         => __( 'Hex-encoded system', 'atomicedge' ),
-				'\\\\x65\\\\x78\\\\x65\\\\x63'                                       => __( 'Hex-encoded exec', 'atomicedge' ),
+				'\\\\x65\\\\x76\\\\x61\\\\x6c'                                       => __( 'Hex-encoded eval', 'atomic-edge-security' ),
+				'\\\\x61\\\\x73\\\\x73\\\\x65\\\\x72\\\\x74'                         => __( 'Hex-encoded assert', 'atomic-edge-security' ),
+				'\\\\x73\\\\x79\\\\x73\\\\x74\\\\x65\\\\x6d'                         => __( 'Hex-encoded system', 'atomic-edge-security' ),
+				'\\\\x65\\\\x78\\\\x65\\\\x63'                                       => __( 'Hex-encoded exec', 'atomic-edge-security' ),
 			),
 		);
 

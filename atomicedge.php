@@ -3,7 +3,7 @@
  * Plugin Name: Atomic Edge Security
  * Plugin URI: https://atomicedge.io/wordpress
  * Description: Connect your WordPress site to Atomic Edge WAF/CDN for advanced security protection, analytics, and access control management.
- * Version: 1.2.0
+ * Version: 1.3.3
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Tested up to: 6.9
@@ -11,7 +11,7 @@
  * Author URI: https://atomicedge.io
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain: atomicedge
+ * Text Domain: atomic-edge-security
  * Domain Path: /languages
  *
  * GitHub Plugin URI: https://github.com/stardothosting/atomicedge-wordpress
@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'ATOMICEDGE_VERSION', '1.2.0' );
+define( 'ATOMICEDGE_VERSION', '1.3.3' );
 define( 'ATOMICEDGE_PLUGIN_FILE', __FILE__ );
 define( 'ATOMICEDGE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ATOMICEDGE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -34,6 +34,8 @@ define( 'ATOMICEDGE_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
 // Minimum requirements.
 define( 'ATOMICEDGE_MIN_PHP_VERSION', '7.4' );
 define( 'ATOMICEDGE_MIN_WP_VERSION', '5.8' );
+
+define( 'ATOMICEDGE_TESTED_UP_TO', '6.9' );
 
 /**
  * Check minimum requirements before loading the plugin.
@@ -47,7 +49,7 @@ function atomicedge_check_requirements() {
 	if ( version_compare( PHP_VERSION, ATOMICEDGE_MIN_PHP_VERSION, '<' ) ) {
 		$errors[] = sprintf(
 			/* translators: 1: Current PHP version, 2: Required PHP version */
-			esc_html__( 'Atomic Edge Security requires PHP %2$s or higher. You are running PHP %1$s.', 'atomicedge' ),
+			esc_html__( 'Atomic Edge Security requires PHP %2$s or higher. You are running PHP %1$s.', 'atomic-edge-security' ),
 			esc_html( PHP_VERSION ),
 			esc_html( ATOMICEDGE_MIN_PHP_VERSION )
 		);
@@ -58,7 +60,7 @@ function atomicedge_check_requirements() {
 	if ( version_compare( $wp_version, ATOMICEDGE_MIN_WP_VERSION, '<' ) ) {
 		$errors[] = sprintf(
 			/* translators: 1: Current WordPress version, 2: Required WordPress version */
-			esc_html__( 'Atomic Edge Security requires WordPress %2$s or higher. You are running WordPress %1$s.', 'atomicedge' ),
+			esc_html__( 'Atomic Edge Security requires WordPress %2$s or higher. You are running WordPress %1$s.', 'atomic-edge-security' ),
 			esc_html( $wp_version ),
 			esc_html( ATOMICEDGE_MIN_WP_VERSION )
 		);
@@ -66,7 +68,7 @@ function atomicedge_check_requirements() {
 
 	// Check for OpenSSL (required for API key encryption).
 	if ( ! function_exists( 'openssl_encrypt' ) ) {
-		$errors[] = esc_html__( 'Atomic Edge Security requires the OpenSSL PHP extension to be enabled.', 'atomicedge' );
+		$errors[] = esc_html__( 'Atomic Edge Security requires the OpenSSL PHP extension to be enabled.', 'atomic-edge-security' );
 	}
 
 	if ( ! empty( $errors ) ) {
@@ -75,7 +77,7 @@ function atomicedge_check_requirements() {
 			function () use ( $errors ) {
 				?>
 				<div class="notice notice-error">
-					<p><strong><?php esc_html_e( 'Atomic Edge Security cannot be activated:', 'atomicedge' ); ?></strong></p>
+					<p><strong><?php esc_html_e( 'Atomic Edge Security cannot be activated:', 'atomic-edge-security' ); ?></strong></p>
 					<ul>
 						<?php foreach ( $errors as $error ) : ?>
 							<li><?php echo esc_html( $error ); ?></li>
@@ -101,9 +103,6 @@ function atomicedge_init() {
 	if ( ! atomicedge_check_requirements() ) {
 		return;
 	}
-
-	// Load text domain.
-	load_plugin_textdomain( 'atomicedge', false, dirname( ATOMICEDGE_PLUGIN_BASENAME ) . '/languages' );
 
 	// Include required files.
 	require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge.php';
@@ -168,8 +167,8 @@ function atomicedge_activate() {
 	if ( ! atomicedge_check_requirements() ) {
 		deactivate_plugins( ATOMICEDGE_PLUGIN_BASENAME );
 		wp_die(
-			esc_html__( 'AtomicEdge Security cannot be activated. Please check the requirements.', 'atomicedge' ),
-			esc_html__( 'Plugin Activation Error', 'atomicedge' ),
+			esc_html__( 'AtomicEdge Security cannot be activated. Please check the requirements.', 'atomic-edge-security' ),
+			esc_html__( 'Plugin Activation Error', 'atomic-edge-security' ),
 			array( 'back_link' => true )
 		);
 	}
@@ -224,7 +223,7 @@ function atomicedge_plugin_action_links( $links ) {
 	$settings_link = sprintf(
 		'<a href="%s">%s</a>',
 		esc_url( admin_url( 'admin.php?page=atomicedge' ) ),
-		esc_html__( 'Settings', 'atomicedge' )
+		esc_html__( 'Settings', 'atomic-edge-security' )
 	);
 	array_unshift( $links, $settings_link );
 	return $links;

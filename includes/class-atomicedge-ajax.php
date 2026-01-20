@@ -76,22 +76,52 @@ class AtomicEdge_Ajax {
 	}
 
 	/**
-	 * Verify AJAX request and check capabilities.
+	 * Verify AJAX request and return sanitized POST fields.
 	 *
-	 * @return bool True if valid, sends JSON error and exits otherwise.
+	 * NOTE: All values are sanitized at point of retrieval per WordPress Plugin Review
+	 * requirements. Values are returned as sanitized strings (text fields) by default.
+	 * Array values are recursively sanitized as text fields.
+	 *
+	 * @param array $allowed_keys Allowed POST keys to return.
+	 * @return array Verified, sanitized POST data.
 	 */
-	private function verify_ajax_request() {
-		// Verify nonce.
-		if ( ! check_ajax_referer( 'atomicedge_ajax', 'nonce', false ) ) {
-			wp_send_json_error( array( 'message' => __( 'Security check failed.', 'atomicedge' ) ) );
+	private function get_verified_post_fields( array $allowed_keys ) {
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized immediately after isset check.
+		$nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
+		if ( ! $nonce || ! wp_verify_nonce( $nonce, 'atomicedge_ajax' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Security check failed.', 'atomic-edge-security' ) ) );
 		}
 
-		// Check capabilities.
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( array( 'message' => __( 'You do not have permission to perform this action.', 'atomicedge' ) ) );
+			wp_send_json_error( array( 'message' => __( 'You do not have permission to perform this action.', 'atomic-edge-security' ) ) );
 		}
 
-		return true;
+		$post = array();
+		foreach ( $allowed_keys as $key ) {
+			if ( isset( $_POST[ $key ] ) ) {
+				// Sanitize at point of retrieval per WordPress Plugin Review requirements.
+				// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized recursively below.
+				$raw_value = wp_unslash( $_POST[ $key ] );
+				$post[ $key ] = $this->sanitize_post_value( $raw_value );
+			}
+		}
+
+		return $post;
+	}
+
+	/**
+	 * Recursively sanitize a POST value.
+	 *
+	 * Handles both scalar values and arrays per WordPress Plugin Review requirements.
+	 *
+	 * @param mixed $value The value to sanitize.
+	 * @return mixed Sanitized value (string or array of strings).
+	 */
+	private function sanitize_post_value( $value ) {
+		if ( is_array( $value ) ) {
+			return array_map( array( $this, 'sanitize_post_value' ), $value );
+		}
+		return sanitize_text_field( (string) $value );
 	}
 
 	/**
@@ -100,9 +130,9 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_get_analytics() {
-		$this->verify_ajax_request();
+		$post = $this->get_verified_post_fields( array( 'period' ) );
 
-		$period = isset( $_POST['period'] ) ? sanitize_text_field( wp_unslash( $_POST['period'] ) ) : '24h';
+		$period = isset( $post['period'] ) ? sanitize_text_field( $post['period'] ) : '24h';
 
 		// Validate period.
 		$valid_periods = array( '24h', '7d', '30d' );
@@ -125,12 +155,12 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_get_waf_logs() {
-		$this->verify_ajax_request();
+		$post = $this->get_verified_post_fields( array( 'page', 'per_page', 'search' ) );
 
 		$args = array(
-			'page'     => isset( $_POST['page'] ) ? absint( $_POST['page'] ) : 1,
-			'per_page' => isset( $_POST['per_page'] ) ? absint( $_POST['per_page'] ) : 50,
-			'search'   => isset( $_POST['search'] ) ? sanitize_text_field( wp_unslash( $_POST['search'] ) ) : '',
+			'page'     => isset( $post['page'] ) ? absint( $post['page'] ) : 1,
+			'per_page' => isset( $post['per_page'] ) ? absint( $post['per_page'] ) : 50,
+			'search'   => isset( $post['search'] ) ? sanitize_text_field( $post['search'] ) : '',
 		);
 
 		// Validate per_page.
@@ -153,7 +183,7 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_get_ip_rules() {
-		$this->verify_ajax_request();
+		$this->get_verified_post_fields( array() );
 
 		$result = $this->api->get_ip_rules();
 
@@ -170,24 +200,24 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_add_ip_whitelist() {
-		$this->verify_ajax_request();
+		$post = $this->get_verified_post_fields( array( 'ip', 'description' ) );
 
-		$ip          = isset( $_POST['ip'] ) ? sanitize_text_field( wp_unslash( $_POST['ip'] ) ) : '';
-		$description = isset( $_POST['description'] ) ? sanitize_text_field( wp_unslash( $_POST['description'] ) ) : '';
+		$ip          = isset( $post['ip'] ) ? sanitize_text_field( $post['ip'] ) : '';
+		$description = isset( $post['description'] ) ? sanitize_text_field( $post['description'] ) : '';
 
 		// Validate IP.
 		if ( empty( $ip ) ) {
-			wp_send_json_error( array( 'message' => __( 'Please enter an IP address.', 'atomicedge' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Please enter an IP address.', 'atomic-edge-security' ) ) );
 		}
 
 		if ( ! $this->api->is_valid_ip( $ip ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid IP address or CIDR range.', 'atomicedge' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Invalid IP address or CIDR range.', 'atomic-edge-security' ) ) );
 		}
 
 		$result = $this->api->add_ip_whitelist( $ip, $description );
 
 		if ( $result['success'] ) {
-			wp_send_json_success( array( 'message' => __( 'IP added to whitelist successfully.', 'atomicedge' ) ) );
+			wp_send_json_success( array( 'message' => __( 'IP added to whitelist successfully.', 'atomic-edge-security' ) ) );
 		} else {
 			wp_send_json_error( array( 'message' => $result['error'] ) );
 		}
@@ -199,24 +229,24 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_add_ip_blacklist() {
-		$this->verify_ajax_request();
+		$post = $this->get_verified_post_fields( array( 'ip', 'description' ) );
 
-		$ip          = isset( $_POST['ip'] ) ? sanitize_text_field( wp_unslash( $_POST['ip'] ) ) : '';
-		$description = isset( $_POST['description'] ) ? sanitize_text_field( wp_unslash( $_POST['description'] ) ) : '';
+		$ip          = isset( $post['ip'] ) ? sanitize_text_field( $post['ip'] ) : '';
+		$description = isset( $post['description'] ) ? sanitize_text_field( $post['description'] ) : '';
 
 		// Validate IP.
 		if ( empty( $ip ) ) {
-			wp_send_json_error( array( 'message' => __( 'Please enter an IP address.', 'atomicedge' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Please enter an IP address.', 'atomic-edge-security' ) ) );
 		}
 
 		if ( ! $this->api->is_valid_ip( $ip ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid IP address or CIDR range.', 'atomicedge' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Invalid IP address or CIDR range.', 'atomic-edge-security' ) ) );
 		}
 
 		$result = $this->api->add_ip_blacklist( $ip, $description );
 
 		if ( $result['success'] ) {
-			wp_send_json_success( array( 'message' => __( 'IP added to blacklist successfully.', 'atomicedge' ) ) );
+			wp_send_json_success( array( 'message' => __( 'IP added to blacklist successfully.', 'atomic-edge-security' ) ) );
 		} else {
 			wp_send_json_error( array( 'message' => $result['error'] ) );
 		}
@@ -228,24 +258,24 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_remove_ip() {
-		$this->verify_ajax_request();
+		$post = $this->get_verified_post_fields( array( 'ip', 'type' ) );
 
-		$ip   = isset( $_POST['ip'] ) ? sanitize_text_field( wp_unslash( $_POST['ip'] ) ) : '';
-		$type = isset( $_POST['type'] ) ? sanitize_key( wp_unslash( $_POST['type'] ) ) : '';
+		$ip   = isset( $post['ip'] ) ? sanitize_text_field( $post['ip'] ) : '';
+		$type = isset( $post['type'] ) ? sanitize_key( $post['type'] ) : '';
 
 		// Validate inputs.
 		if ( empty( $ip ) ) {
-			wp_send_json_error( array( 'message' => __( 'IP address is required.', 'atomicedge' ) ) );
+			wp_send_json_error( array( 'message' => __( 'IP address is required.', 'atomic-edge-security' ) ) );
 		}
 
 		if ( ! in_array( $type, array( 'whitelist', 'blacklist' ), true ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid list type.', 'atomicedge' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Invalid list type.', 'atomic-edge-security' ) ) );
 		}
 
 		$result = $this->api->remove_ip( $ip, $type );
 
 		if ( $result['success'] ) {
-			wp_send_json_success( array( 'message' => __( 'IP removed successfully.', 'atomicedge' ) ) );
+			wp_send_json_success( array( 'message' => __( 'IP removed successfully.', 'atomic-edge-security' ) ) );
 		} else {
 			wp_send_json_error( array( 'message' => $result['error'] ) );
 		}
@@ -257,7 +287,7 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_get_geo_rules() {
-		$this->verify_ajax_request();
+		$this->get_verified_post_fields( array() );
 
 		$result = $this->api->get_geo_rules();
 
@@ -274,12 +304,12 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_update_geo_rules() {
-		$this->verify_ajax_request();
+		$post = $this->get_verified_post_fields( array( 'enabled', 'mode', 'countries' ) );
 
-		// Get and validate rules.
-		$enabled   = isset( $_POST['enabled'] ) && 'true' === sanitize_text_field( wp_unslash( $_POST['enabled'] ) );
-		$mode      = isset( $_POST['mode'] ) ? sanitize_key( wp_unslash( $_POST['mode'] ) ) : 'blacklist';
-		$countries = isset( $_POST['countries'] ) ? array_map( 'sanitize_text_field', wp_unslash( $_POST['countries'] ) ) : array();
+		// Get and validate rules (values are already sanitized by get_verified_post_fields).
+		$enabled   = isset( $post['enabled'] ) && 'true' === $post['enabled'];
+		$mode      = isset( $post['mode'] ) ? sanitize_key( $post['mode'] ) : 'blacklist';
+		$countries = isset( $post['countries'] ) && is_array( $post['countries'] ) ? $post['countries'] : array();
 
 		// Validate mode.
 		if ( ! in_array( $mode, array( 'whitelist', 'blacklist' ), true ) ) {
@@ -303,7 +333,7 @@ class AtomicEdge_Ajax {
 		$result = $this->api->update_geo_rules( $rules );
 
 		if ( $result['success'] ) {
-			wp_send_json_success( array( 'message' => __( 'Geographic rules updated successfully.', 'atomicedge' ) ) );
+			wp_send_json_success( array( 'message' => __( 'Geographic rules updated successfully.', 'atomic-edge-security' ) ) );
 		} else {
 			wp_send_json_error( array( 'message' => $result['error'] ) );
 		}
@@ -315,14 +345,14 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_run_scan() {
-		$this->verify_ajax_request();
+		$post = $this->get_verified_post_fields( array( 'scan_mode', 'verify_integrity' ) );
 
-		$scan_mode = isset( $_POST['scan_mode'] ) ? sanitize_key( wp_unslash( $_POST['scan_mode'] ) ) : 'all';
+		$scan_mode = isset( $post['scan_mode'] ) ? sanitize_key( $post['scan_mode'] ) : 'all';
 		if ( ! in_array( $scan_mode, array( 'php', 'all' ), true ) ) {
 			$scan_mode = 'all';
 		}
 
-		$verify_integrity = ! empty( $_POST['verify_integrity'] );
+		$verify_integrity = ! empty( $post['verify_integrity'] );
 
 		// Get scanner instance.
 		$scanner = AtomicEdge::get_instance()->scanner;
@@ -336,9 +366,9 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_scan_step() {
-		$this->verify_ajax_request();
+		$post = $this->get_verified_post_fields( array( 'run_id' ) );
 
-		$run_id = isset( $_POST['run_id'] ) ? sanitize_text_field( wp_unslash( $_POST['run_id'] ) ) : '';
+		$run_id = isset( $post['run_id'] ) ? sanitize_text_field( $post['run_id'] ) : '';
 
 		$scanner = AtomicEdge::get_instance()->scanner;
 		$state = $scanner->step_resumable_scan( $run_id, 8 );
@@ -358,9 +388,9 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_scan_status() {
-		$this->verify_ajax_request();
+		$post = $this->get_verified_post_fields( array( 'run_id' ) );
 
-		$run_id = isset( $_POST['run_id'] ) ? sanitize_text_field( wp_unslash( $_POST['run_id'] ) ) : '';
+		$run_id = isset( $post['run_id'] ) ? sanitize_text_field( $post['run_id'] ) : '';
 		$scanner = AtomicEdge::get_instance()->scanner;
 		$state = $scanner->get_resumable_scan_status( $run_id );
 		wp_send_json_success( $state );
@@ -372,7 +402,7 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_get_scan_results() {
-		$this->verify_ajax_request();
+		$this->get_verified_post_fields( array() );
 
 		$results = get_option( 'atomicedge_scan_results', array() );
 		wp_send_json_success( $results );
@@ -384,9 +414,9 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_cancel_scan() {
-		$this->verify_ajax_request();
+		$post = $this->get_verified_post_fields( array( 'run_id' ) );
 
-		$run_id = isset( $_POST['run_id'] ) ? sanitize_text_field( wp_unslash( $_POST['run_id'] ) ) : '';
+		$run_id = isset( $post['run_id'] ) ? sanitize_text_field( $post['run_id'] ) : '';
 		$scanner = AtomicEdge::get_instance()->scanner;
 		$state = $scanner->cancel_resumable_scan( $run_id );
 		wp_send_json_success( $state );
@@ -398,7 +428,7 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_reset_scan() {
-		$this->verify_ajax_request();
+		$this->get_verified_post_fields( array() );
 
 		$scanner = AtomicEdge::get_instance()->scanner;
 		$state = $scanner->reset_resumable_scan();
@@ -411,11 +441,11 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_clear_cache() {
-		$this->verify_ajax_request();
+		$this->get_verified_post_fields( array() );
 
 		$this->api->clear_cache();
 
-		wp_send_json_success( array( 'message' => __( 'Cache cleared successfully.', 'atomicedge' ) ) );
+		wp_send_json_success( array( 'message' => __( 'Cache cleared successfully.', 'atomic-edge-security' ) ) );
 	}
 
 	/**
@@ -424,18 +454,18 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_run_vulnerability_scan() {
-		$this->verify_ajax_request();
+		$post = $this->get_verified_post_fields( array( 'force_refresh' ) );
 
 		$vuln_scanner = AtomicEdge::get_instance()->vulnerability_scanner;
 
 		if ( ! $vuln_scanner->is_available() ) {
 			wp_send_json_error( array(
-				'message' => __( 'Vulnerability scanning requires an Atomic Edge API connection. Please connect your site in the Settings page.', 'atomicedge' ),
+				'message' => __( 'Vulnerability scanning requires an Atomic Edge API connection. Please connect your site in the Settings page.', 'atomic-edge-security' ),
 				'need_connection' => true,
 			) );
 		}
 
-		$force_refresh = isset( $_POST['force_refresh'] ) && 'true' === sanitize_text_field( wp_unslash( $_POST['force_refresh'] ) );
+		$force_refresh = isset( $post['force_refresh'] ) && 'true' === sanitize_text_field( $post['force_refresh'] );
 		$results = $vuln_scanner->run_full_scan( $force_refresh );
 
 		if ( isset( $results['error'] ) ) {
@@ -451,7 +481,7 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_get_vulnerability_results() {
-		$this->verify_ajax_request();
+		$this->get_verified_post_fields( array() );
 
 		$vuln_scanner = AtomicEdge::get_instance()->vulnerability_scanner;
 		$results = $vuln_scanner->get_last_results();
@@ -470,7 +500,7 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_reset_vulnerability_results() {
-		$this->verify_ajax_request();
+		$this->get_verified_post_fields( array() );
 
 		$vuln_scanner = AtomicEdge::get_instance()->vulnerability_scanner;
 		$state        = $vuln_scanner->reset_results();

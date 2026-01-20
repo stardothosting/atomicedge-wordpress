@@ -1,10 +1,10 @@
 === Atomic Edge Security ===
-Contributors: atomicedge
+Contributors: shift8
 Tags: security, firewall, waf, malware, protection
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.2.0
+Stable tag: 1.3.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -42,7 +42,7 @@ Vulnerability scanning is available when connected and uses Atomic Edge's vulner
 
 == Installation ==
 
-1. Upload the `atomicedge` folder to the `/wp-content/plugins/` directory
+1. Upload the `atomic-edge-security` folder to the `/wp-content/plugins/` directory
 2. Activate the plugin through the 'Plugins' menu in WordPress
 3. Go to Atomic Edge > Settings and enter your API key
 4. Your site is now protected!
@@ -88,6 +88,15 @@ Atomic Edge uses the OWASP Core Rule Set to block:
 6. Vulnerability scanner results
 
 == Changelog ==
+
+= 1.3.0 =
+* Text domain updated to match WordPress.org plugin slug
+
+= 1.3.3 =
+* WordPress.org Plugin Review Team compliance: refactored path handling to use WordPress API functions instead of internal constants (ABSPATH, WP_PLUGIN_DIR, WP_CONTENT_DIR, WPMU_PLUGIN_DIR)
+* WordPress.org Plugin Review Team compliance: AJAX handlers now sanitize all inputs at point of retrieval
+* WordPress.org Plugin Review Team compliance: improved file inclusion guards for test compatibility
+* Added recursive array sanitization support for complex AJAX request data
 
 = 1.2.0 =
 * Malware scanner: resumable scanning with DB-backed queue, improved progress reporting, and live activity log

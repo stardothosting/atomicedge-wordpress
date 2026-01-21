@@ -541,7 +541,16 @@ class AtomicEdge_Ajax {
 	public function ajax_refresh_cdn_status() {
 		$this->get_verified_post_fields( array() );
 
+		// Clear CDN status cache to force fresh API call.
+		delete_transient( 'atomicedge_cdn_status' );
+
 		$result = $this->api->get_cdn_status();
+
+		// Debug: Log the API response.
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( 'AtomicEdge CDN refresh result: ' . wp_json_encode( $result ) );
+		}
 
 		if ( $result['success'] ) {
 			// Update stored site data with CDN information.
@@ -563,9 +572,14 @@ class AtomicEdge_Ajax {
 			wp_send_json_success( array(
 				'message'     => __( 'CDN status refreshed.', 'atomic-edge-security' ),
 				'cdn_enabled' => $site_data['cdn_enabled'] ?? false,
+				'debug'       => defined( 'WP_DEBUG' ) && WP_DEBUG ? $result : null,
 			) );
 		} else {
-			wp_send_json_error( array( 'message' => $result['error'] ?? __( 'Failed to fetch CDN status.', 'atomic-edge-security' ) ) );
+			$error_message = isset( $result['error'] ) ? $result['error'] : __( 'Failed to fetch CDN status.', 'atomic-edge-security' );
+			wp_send_json_error( array(
+				'message' => $error_message,
+				'debug'   => defined( 'WP_DEBUG' ) && WP_DEBUG ? $result : null,
+			) );
 		}
 	}
 

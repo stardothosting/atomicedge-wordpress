@@ -245,6 +245,13 @@ $atomicedge_cdn_last_purge = get_option( 'atomicedge_cdn_last_purge', '' );
 	'use strict';
 
 	$(document).ready(function() {
+		// Debug: Check if atomicedgeAdmin is available
+		if (typeof atomicedgeAdmin === 'undefined') {
+			console.error('AtomicEdge: atomicedgeAdmin is not defined. Scripts may not be loaded correctly.');
+			return;
+		}
+		console.log('AtomicEdge CDN: Scripts loaded, atomicedgeAdmin available');
+
 		// Copy to clipboard.
 		$('.atomicedge-copy-btn').on('click', function(e) {
 			e.preventDefault();
@@ -275,10 +282,12 @@ $atomicedge_cdn_last_purge = get_option( 'atomicedge_cdn_last_purge', '' );
 
 		// Refresh CDN status.
 		$('#atomicedge-cdn-refresh').on('click', function(e) {
+			console.log('AtomicEdge CDN: Refresh button clicked');
 			e.preventDefault();
 			var $button = $(this);
 			$button.prop('disabled', true).find('.dashicons').addClass('atomicedge-spinning');
 			
+			console.log('AtomicEdge CDN: Making AJAX request to', atomicedgeAdmin.ajaxUrl);
 			$.ajax({
 				url: atomicedgeAdmin.ajaxUrl,
 				type: 'POST',
@@ -287,15 +296,18 @@ $atomicedge_cdn_last_purge = get_option( 'atomicedge_cdn_last_purge', '' );
 					nonce: atomicedgeAdmin.nonce
 				},
 				success: function(response) {
+					console.log('AtomicEdge CDN: AJAX response', response);
 					if (response.success) {
-						// Reload page to show updated status.
+						// Show success message before reloading.
+						alert(response.data.message || '<?php echo esc_js( __( 'CDN status refreshed. Page will reload.', 'atomic-edge-security' ) ); ?>');
 						location.reload();
 					} else {
 						alert(response.data ? response.data.message : '<?php echo esc_js( __( 'Failed to refresh status.', 'atomic-edge-security' ) ); ?>');
 						$button.prop('disabled', false).find('.dashicons').removeClass('atomicedge-spinning');
 					}
 				},
-				error: function() {
+				error: function(xhr, status, error) {
+					console.error('AtomicEdge CDN: AJAX error', status, error, xhr.responseText);
 					alert('<?php echo esc_js( __( 'Failed to connect to the server.', 'atomic-edge-security' ) ); ?>');
 					$button.prop('disabled', false).find('.dashicons').removeClass('atomicedge-spinning');
 				}

@@ -404,6 +404,8 @@ class AtomicEdge_Admin {
 	/**
 	 * Render CDN page.
 	 *
+	 * Handles form submission for CDN settings before rendering.
+	 *
 	 * @return void
 	 */
 	public function render_cdn_page() {
@@ -411,9 +413,23 @@ class AtomicEdge_Admin {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'atomic-edge-security' ) );
 		}
 
-		if ( ! $this->api->is_connected() ) {
-			$this->render_not_connected_notice();
-			return;
+		// Handle CDN settings form submission.
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Nonce check first.
+		if ( isset( $_POST['atomicedge_save_cdn_settings'] ) ) {
+			// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized immediately.
+			$nonce = isset( $_POST['atomicedge_cdn_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['atomicedge_cdn_nonce'] ) ) : '';
+			if ( wp_verify_nonce( $nonce, 'atomicedge_cdn_settings' ) ) {
+				// Save CDN optimization settings to WP options.
+				update_option( 'atomicedge_cdn_brotli', isset( $_POST['atomicedge_cdn_brotli'] ) ? true : false );
+				update_option( 'atomicedge_cdn_js_minification', isset( $_POST['atomicedge_cdn_js_minification'] ) ? true : false );
+				update_option( 'atomicedge_cdn_css_minification', isset( $_POST['atomicedge_cdn_css_minification'] ) ? true : false );
+				update_option( 'atomicedge_cdn_image_optimization', isset( $_POST['atomicedge_cdn_image_optimization'] ) ? true : false );
+
+				add_settings_error( 'atomicedge_cdn', 'settings_saved', __( 'CDN settings saved.', 'atomic-edge-security' ), 'success' );
+			} else {
+				add_settings_error( 'atomicedge_cdn', 'nonce_failed', __( 'Security check failed.', 'atomic-edge-security' ), 'error' );
+			}
+			settings_errors( 'atomicedge_cdn' );
 		}
 
 		include ATOMICEDGE_PLUGIN_DIR . 'admin/views/cdn.php';

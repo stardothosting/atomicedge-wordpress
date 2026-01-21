@@ -2,6 +2,15 @@
 /**
  * CDN Page View
  *
+ * This page allows users to configure CDN settings for their site.
+ * CDN settings are stored locally in WordPress options.
+ * The API is only called when the user clicks "Refresh Status" or "Purge Cache".
+ *
+ * User scenarios:
+ * 1. New user not connected to AtomicEdge - show connection prompt
+ * 2. Connected user without CDN enabled - show how to enable CDN
+ * 3. Connected user with CDN enabled - show settings and controls
+ *
  * @package AtomicEdge
  */
 
@@ -9,172 +18,225 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
+
+// Get connection status and CDN settings.
+$atomicedge_is_connected = $this->api->is_connected();
+$atomicedge_site_data    = get_option( 'atomicedge_site_data', array() );
+
+// CDN settings from site data (populated when site connects or refreshes).
+$atomicedge_cdn_enabled  = ! empty( $atomicedge_site_data['cdn_enabled'] );
+$atomicedge_cdn_prefix   = $atomicedge_site_data['cdn_prefix'] ?? '';
+$atomicedge_cdn_url      = $atomicedge_site_data['cdn_url'] ?? '';
+
+// Local CDN optimization settings (stored in WP options).
+$atomicedge_cdn_brotli     = get_option( 'atomicedge_cdn_brotli', true );
+$atomicedge_cdn_js_min     = get_option( 'atomicedge_cdn_js_minification', false );
+$atomicedge_cdn_css_min    = get_option( 'atomicedge_cdn_css_minification', false );
+$atomicedge_cdn_image_opt  = get_option( 'atomicedge_cdn_image_optimization', false );
+
+// Last purge time.
+$atomicedge_cdn_last_purge = get_option( 'atomicedge_cdn_last_purge', '' );
 ?>
 <div class="wrap atomicedge-wrap">
 	<h1><img src="<?php echo esc_url( ATOMICEDGE_PLUGIN_URL . 'assets/images/logo.svg' ); ?>" alt="<?php esc_attr_e( 'Atomic Edge', 'atomic-edge-security' ); ?>" class="atomicedge-logo" /></h1>
 
 	<div class="atomicedge-cdn">
-		<h2><?php esc_html_e( 'CDN', 'atomic-edge-security' ); ?></h2>
+		<h2><?php esc_html_e( 'CDN Settings', 'atomic-edge-security' ); ?></h2>
 		<p class="atomicedge-page-description">
-			<?php esc_html_e( 'Manage your Content Delivery Network settings. CDN caches your static assets globally for faster load times.', 'atomic-edge-security' ); ?>
+			<?php esc_html_e( 'Content Delivery Network (CDN) caches your static assets on global edge servers for faster page loads.', 'atomic-edge-security' ); ?>
 		</p>
 
-		<!-- CDN Status Loading -->
-		<div id="atomicedge-cdn-loading" class="atomicedge-loading">
-			<span class="spinner is-active"></span>
-			<span><?php esc_html_e( 'Loading CDN status...', 'atomic-edge-security' ); ?></span>
-		</div>
-
-		<!-- CDN Status Display -->
-		<div id="atomicedge-cdn-content" style="display: none;">
-			<!-- CDN Status Card -->
-			<div class="atomicedge-card atomicedge-cdn-status-card">
-				<h3><?php esc_html_e( 'CDN Status', 'atomic-edge-security' ); ?></h3>
-				
-				<div class="atomicedge-cdn-status-grid">
-					<div class="atomicedge-cdn-status-item">
-						<span class="atomicedge-cdn-label"><?php esc_html_e( 'Status', 'atomic-edge-security' ); ?></span>
-						<span id="atomicedge-cdn-enabled-status" class="atomicedge-cdn-value atomicedge-cdn-status-badge">
-							<span class="atomicedge-status-indicator"></span>
-							<span class="atomicedge-status-text"><?php esc_html_e( 'Loading...', 'atomic-edge-security' ); ?></span>
-						</span>
+		<?php if ( ! $atomicedge_is_connected ) : ?>
+			<!-- Not Connected State -->
+			<div class="atomicedge-card">
+				<div class="atomicedge-notice atomicedge-notice-warning">
+					<span class="dashicons dashicons-warning"></span>
+					<div>
+						<p><strong><?php esc_html_e( 'Not Connected to Atomic Edge', 'atomic-edge-security' ); ?></strong></p>
+						<p><?php esc_html_e( 'Connect your site to Atomic Edge to access CDN features.', 'atomic-edge-security' ); ?></p>
+						<p>
+							<a href="<?php echo esc_url( admin_url( 'admin.php?page=atomicedge-settings' ) ); ?>" class="button button-primary">
+								<?php esc_html_e( 'Go to Settings', 'atomic-edge-security' ); ?>
+							</a>
+						</p>
 					</div>
-					
-					<div class="atomicedge-cdn-status-item" id="atomicedge-cdn-url-row" style="display: none;">
-						<span class="atomicedge-cdn-label"><?php esc_html_e( 'CDN URL', 'atomic-edge-security' ); ?></span>
-						<span class="atomicedge-cdn-value">
-							<code id="atomicedge-cdn-url"></code>
-							<button type="button" class="button button-small atomicedge-copy-btn" data-copy-target="#atomicedge-cdn-url" title="<?php esc_attr_e( 'Copy to clipboard', 'atomic-edge-security' ); ?>">
+				</div>
+			</div>
+
+		<?php elseif ( ! $atomicedge_cdn_enabled ) : ?>
+			<!-- Connected but CDN Not Enabled -->
+			<div class="atomicedge-card">
+				<h3><?php esc_html_e( 'CDN Status', 'atomic-edge-security' ); ?></h3>
+				<div class="atomicedge-cdn-status-display">
+					<span class="atomicedge-status-badge atomicedge-status-inactive">
+						<span class="atomicedge-status-indicator"></span>
+						<span><?php esc_html_e( 'CDN Not Enabled', 'atomic-edge-security' ); ?></span>
+					</span>
+				</div>
+				<div class="atomicedge-notice atomicedge-notice-info" style="margin-top: 15px;">
+					<span class="dashicons dashicons-info"></span>
+					<div>
+						<p><strong><?php esc_html_e( 'Enable CDN in Your Dashboard', 'atomic-edge-security' ); ?></strong></p>
+						<p><?php esc_html_e( 'CDN is not currently enabled for this site. You can enable it from your Atomic Edge dashboard.', 'atomic-edge-security' ); ?></p>
+						<p style="margin-top: 10px;">
+							<a href="https://dashboard.atomicedge.io" target="_blank" rel="noopener noreferrer" class="button button-primary">
+								<?php esc_html_e( 'Open Dashboard', 'atomic-edge-security' ); ?>
+								<span class="dashicons dashicons-external" style="margin-top: 3px;"></span>
+							</a>
+							<button type="button" id="atomicedge-cdn-refresh" class="button" style="margin-left: 10px;">
+								<span class="dashicons dashicons-update" style="margin-top: 3px;"></span>
+								<?php esc_html_e( 'Refresh Status', 'atomic-edge-security' ); ?>
+							</button>
+						</p>
+					</div>
+				</div>
+			</div>
+
+			<!-- Shift8 CDN Migration Notice -->
+			<div class="atomicedge-card">
+				<h3><?php esc_html_e( 'Migrating from Shift8 CDN?', 'atomic-edge-security' ); ?></h3>
+				<p><?php esc_html_e( 'If you were using the Shift8 CDN plugin, your CDN service will continue to work through Atomic Edge.', 'atomic-edge-security' ); ?></p>
+				<ol>
+					<li><?php esc_html_e( 'Log in to your Atomic Edge dashboard', 'atomic-edge-security' ); ?></li>
+					<li><?php esc_html_e( 'Enable CDN for your site in the site settings', 'atomic-edge-security' ); ?></li>
+					<li><?php esc_html_e( 'Return here and click "Refresh Status"', 'atomic-edge-security' ); ?></li>
+				</ol>
+			</div>
+
+		<?php else : ?>
+			<!-- CDN Enabled - Show Full Settings -->
+			
+			<!-- CDN Status Card -->
+			<div class="atomicedge-card">
+				<h3><?php esc_html_e( 'CDN Status', 'atomic-edge-security' ); ?></h3>
+				<table class="form-table atomicedge-status-table">
+					<tr>
+						<th><?php esc_html_e( 'Status', 'atomic-edge-security' ); ?></th>
+						<td>
+							<span class="atomicedge-status-badge atomicedge-status-active">
+								<span class="atomicedge-status-indicator"></span>
+								<span><?php esc_html_e( 'Active', 'atomic-edge-security' ); ?></span>
+							</span>
+						</td>
+					</tr>
+					<?php if ( ! empty( $atomicedge_cdn_prefix ) ) : ?>
+					<tr>
+						<th><?php esc_html_e( 'CDN Prefix', 'atomic-edge-security' ); ?></th>
+						<td><code><?php echo esc_html( $atomicedge_cdn_prefix ); ?></code></td>
+					</tr>
+					<?php endif; ?>
+					<?php if ( ! empty( $atomicedge_cdn_url ) ) : ?>
+					<tr>
+						<th><?php esc_html_e( 'CDN URL', 'atomic-edge-security' ); ?></th>
+						<td>
+							<code id="atomicedge-cdn-url-value"><?php echo esc_html( $atomicedge_cdn_url ); ?></code>
+							<button type="button" class="button button-small atomicedge-copy-btn" data-copy-target="#atomicedge-cdn-url-value" title="<?php esc_attr_e( 'Copy to clipboard', 'atomic-edge-security' ); ?>">
 								<span class="dashicons dashicons-clipboard"></span>
 							</button>
-						</span>
-					</div>
-					
-					<div class="atomicedge-cdn-status-item" id="atomicedge-cdn-last-purge-row" style="display: none;">
-						<span class="atomicedge-cdn-label"><?php esc_html_e( 'Last Cache Purge', 'atomic-edge-security' ); ?></span>
-						<span id="atomicedge-cdn-last-purge" class="atomicedge-cdn-value"><?php esc_html_e( 'Never', 'atomic-edge-security' ); ?></span>
-					</div>
-					
-					<div class="atomicedge-cdn-status-item" id="atomicedge-cdn-bandwidth-row" style="display: none;">
-						<span class="atomicedge-cdn-label"><?php esc_html_e( 'Bandwidth Used', 'atomic-edge-security' ); ?></span>
-						<span id="atomicedge-cdn-bandwidth" class="atomicedge-cdn-value"><?php esc_html_e( '0 B', 'atomic-edge-security' ); ?></span>
-					</div>
-				</div>
+						</td>
+					</tr>
+					<?php endif; ?>
+					<?php if ( ! empty( $atomicedge_cdn_last_purge ) ) : ?>
+					<tr>
+						<th><?php esc_html_e( 'Last Cache Purge', 'atomic-edge-security' ); ?></th>
+						<td><?php echo esc_html( $atomicedge_cdn_last_purge ); ?></td>
+					</tr>
+					<?php endif; ?>
+				</table>
+				<p style="margin-top: 15px;">
+					<button type="button" id="atomicedge-cdn-refresh" class="button">
+						<span class="dashicons dashicons-update" style="margin-top: 3px;"></span>
+						<?php esc_html_e( 'Refresh Status', 'atomic-edge-security' ); ?>
+					</button>
+				</p>
 			</div>
 
-			<!-- CDN Not Enabled Message -->
-			<div id="atomicedge-cdn-disabled-notice" class="atomicedge-notice atomicedge-notice-info" style="display: none;">
-				<span class="dashicons dashicons-info"></span>
-				<div>
-					<p><strong><?php esc_html_e( 'CDN is not enabled', 'atomic-edge-security' ); ?></strong></p>
-					<p><?php esc_html_e( 'Enable CDN in your Atomic Edge dashboard to accelerate your site with global content delivery.', 'atomic-edge-security' ); ?></p>
-					<p>
-						<a href="https://dashboard.atomicedge.io" target="_blank" rel="noopener noreferrer" class="button button-primary">
-							<?php esc_html_e( 'Go to Atomic Edge Dashboard', 'atomic-edge-security' ); ?>
-							<span class="dashicons dashicons-external"></span>
-						</a>
-					</p>
-				</div>
+			<!-- Cache Purge Card -->
+			<div class="atomicedge-card">
+				<h3><?php esc_html_e( 'Purge Cache', 'atomic-edge-security' ); ?></h3>
+				<p class="atomicedge-card-description">
+					<?php esc_html_e( 'Clear the CDN cache to serve fresh content. Use this after making significant changes to your site. Cache purge can only be performed once every 5 minutes.', 'atomic-edge-security' ); ?>
+				</p>
+				<p>
+					<button type="button" id="atomicedge-purge-cdn" class="button button-primary">
+						<span class="dashicons dashicons-trash" style="margin-top: 3px;"></span>
+						<?php esc_html_e( 'Purge Cache', 'atomic-edge-security' ); ?>
+					</button>
+					<span id="atomicedge-purge-status" class="atomicedge-inline-status"></span>
+				</p>
 			</div>
 
-			<!-- CDN Enabled Content -->
-			<div id="atomicedge-cdn-enabled-content" style="display: none;">
-				<!-- Cache Purge Card -->
-				<div class="atomicedge-card atomicedge-cdn-purge-card">
-					<h3><?php esc_html_e( 'Cache Purge', 'atomic-edge-security' ); ?></h3>
-					<p class="atomicedge-card-description">
-						<?php esc_html_e( 'Clear the CDN cache to serve fresh content. Use this after making significant changes to your site.', 'atomic-edge-security' ); ?>
-					</p>
+			<!-- CDN Optimization Settings -->
+			<div class="atomicedge-card">
+				<h3><?php esc_html_e( 'Optimization Settings', 'atomic-edge-security' ); ?></h3>
+				<p class="atomicedge-card-description">
+					<?php esc_html_e( 'Configure how CDN optimizes your content.', 'atomic-edge-security' ); ?>
+				</p>
+				
+				<form id="atomicedge-cdn-settings-form" method="post" action="">
+					<?php wp_nonce_field( 'atomicedge_cdn_settings', 'atomicedge_cdn_nonce' ); ?>
 					
-					<div class="atomicedge-cdn-purge-actions">
-						<button type="button" id="atomicedge-purge-cdn" class="button button-primary">
-							<span class="dashicons dashicons-update"></span>
-							<?php esc_html_e( 'Purge Cache', 'atomic-edge-security' ); ?>
+					<table class="form-table">
+						<tr>
+							<th scope="row">
+								<label for="atomicedge-cdn-brotli"><?php esc_html_e( 'Brotli Compression', 'atomic-edge-security' ); ?></label>
+							</th>
+							<td>
+								<label class="atomicedge-toggle">
+									<input type="checkbox" id="atomicedge-cdn-brotli" name="atomicedge_cdn_brotli" value="1" <?php checked( $atomicedge_cdn_brotli ); ?>>
+									<span class="atomicedge-toggle-slider"></span>
+								</label>
+								<p class="description"><?php esc_html_e( 'Enable Brotli compression for smaller file sizes and faster transfers.', 'atomic-edge-security' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="atomicedge-cdn-js-min"><?php esc_html_e( 'JavaScript Minification', 'atomic-edge-security' ); ?></label>
+							</th>
+							<td>
+								<label class="atomicedge-toggle">
+									<input type="checkbox" id="atomicedge-cdn-js-min" name="atomicedge_cdn_js_minification" value="1" <?php checked( $atomicedge_cdn_js_min ); ?>>
+									<span class="atomicedge-toggle-slider"></span>
+								</label>
+								<p class="description"><?php esc_html_e( 'Minify JavaScript files to reduce their size.', 'atomic-edge-security' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="atomicedge-cdn-css-min"><?php esc_html_e( 'CSS Minification', 'atomic-edge-security' ); ?></label>
+							</th>
+							<td>
+								<label class="atomicedge-toggle">
+									<input type="checkbox" id="atomicedge-cdn-css-min" name="atomicedge_cdn_css_minification" value="1" <?php checked( $atomicedge_cdn_css_min ); ?>>
+									<span class="atomicedge-toggle-slider"></span>
+								</label>
+								<p class="description"><?php esc_html_e( 'Minify CSS files to reduce their size.', 'atomic-edge-security' ); ?></p>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="atomicedge-cdn-image-opt"><?php esc_html_e( 'Image Optimization', 'atomic-edge-security' ); ?></label>
+							</th>
+							<td>
+								<label class="atomicedge-toggle">
+									<input type="checkbox" id="atomicedge-cdn-image-opt" name="atomicedge_cdn_image_optimization" value="1" <?php checked( $atomicedge_cdn_image_opt ); ?>>
+									<span class="atomicedge-toggle-slider"></span>
+								</label>
+								<p class="description"><?php esc_html_e( 'Automatically optimize images for faster loading.', 'atomic-edge-security' ); ?></p>
+							</td>
+						</tr>
+					</table>
+					
+					<p class="submit">
+						<button type="submit" name="atomicedge_save_cdn_settings" class="button button-primary">
+							<?php esc_html_e( 'Save Settings', 'atomic-edge-security' ); ?>
 						</button>
-						<span id="atomicedge-purge-cooldown" class="atomicedge-cooldown-notice" style="display: none;">
-							<span class="dashicons dashicons-clock"></span>
-							<span class="atomicedge-cooldown-text"></span>
-						</span>
-					</div>
-					
-					<div id="atomicedge-purge-progress" class="atomicedge-inline-progress" style="display: none;">
-						<span class="spinner is-active"></span>
-						<span><?php esc_html_e( 'Purging cache...', 'atomic-edge-security' ); ?></span>
-					</div>
-				</div>
-
-				<!-- Optimization Settings Card -->
-				<div class="atomicedge-card atomicedge-cdn-settings-card">
-					<h3><?php esc_html_e( 'Optimization Settings', 'atomic-edge-security' ); ?></h3>
-					<p class="atomicedge-card-description">
-						<?php esc_html_e( 'Configure how CDN optimizes your content for faster delivery.', 'atomic-edge-security' ); ?>
+						<span id="atomicedge-cdn-settings-status" class="atomicedge-inline-status"></span>
 					</p>
-					
-					<form id="atomicedge-cdn-settings-form">
-						<table class="form-table atomicedge-settings-table">
-							<tbody>
-								<tr>
-									<th scope="row">
-										<label for="atomicedge-cdn-brotli"><?php esc_html_e( 'Brotli Compression', 'atomic-edge-security' ); ?></label>
-									</th>
-									<td>
-										<label class="atomicedge-toggle">
-											<input type="checkbox" id="atomicedge-cdn-brotli" name="brotli" value="1">
-											<span class="atomicedge-toggle-slider"></span>
-										</label>
-										<p class="description"><?php esc_html_e( 'Enable Brotli compression for smaller file sizes and faster transfers.', 'atomic-edge-security' ); ?></p>
-									</td>
-								</tr>
-								<tr>
-									<th scope="row">
-										<label for="atomicedge-cdn-js-min"><?php esc_html_e( 'JavaScript Minification', 'atomic-edge-security' ); ?></label>
-									</th>
-									<td>
-										<label class="atomicedge-toggle">
-											<input type="checkbox" id="atomicedge-cdn-js-min" name="js_minification" value="1">
-											<span class="atomicedge-toggle-slider"></span>
-										</label>
-										<p class="description"><?php esc_html_e( 'Minify JavaScript files to reduce their size.', 'atomic-edge-security' ); ?></p>
-									</td>
-								</tr>
-								<tr>
-									<th scope="row">
-										<label for="atomicedge-cdn-css-min"><?php esc_html_e( 'CSS Minification', 'atomic-edge-security' ); ?></label>
-									</th>
-									<td>
-										<label class="atomicedge-toggle">
-											<input type="checkbox" id="atomicedge-cdn-css-min" name="css_minification" value="1">
-											<span class="atomicedge-toggle-slider"></span>
-										</label>
-										<p class="description"><?php esc_html_e( 'Minify CSS files to reduce their size.', 'atomic-edge-security' ); ?></p>
-									</td>
-								</tr>
-								<tr>
-									<th scope="row">
-										<label for="atomicedge-cdn-image-opt"><?php esc_html_e( 'Image Optimization', 'atomic-edge-security' ); ?></label>
-									</th>
-									<td>
-										<label class="atomicedge-toggle">
-											<input type="checkbox" id="atomicedge-cdn-image-opt" name="image_optimization" value="1">
-											<span class="atomicedge-toggle-slider"></span>
-										</label>
-										<p class="description"><?php esc_html_e( 'Automatically optimize images for faster loading.', 'atomic-edge-security' ); ?></p>
-									</td>
-								</tr>
-							</tbody>
-						</table>
-						
-						<div class="atomicedge-form-actions">
-							<button type="submit" class="button button-primary">
-								<span class="dashicons dashicons-saved"></span>
-								<?php esc_html_e( 'Save Settings', 'atomic-edge-security' ); ?>
-							</button>
-							<span id="atomicedge-cdn-settings-status" class="atomicedge-form-status"></span>
-						</div>
-					</form>
-				</div>
+				</form>
 			</div>
-		</div>
+
+		<?php endif; ?>
 	</div>
 </div>
 
@@ -182,262 +244,137 @@ if ( ! defined( 'ABSPATH' ) ) {
 (function($) {
 	'use strict';
 
-	var AtomicEdgeCDN = {
-		nonce: atomicedge_ajax.nonce,
-		cdnStatus: null,
-		cooldownTimer: null,
+	$(document).ready(function() {
+		// Copy to clipboard.
+		$('.atomicedge-copy-btn').on('click', function(e) {
+			e.preventDefault();
+			var targetSelector = $(this).data('copy-target');
+			var textToCopy = $(targetSelector).text();
+			
+			if (navigator.clipboard && navigator.clipboard.writeText) {
+				navigator.clipboard.writeText(textToCopy).then(function() {
+					showCopySuccess(e.currentTarget);
+				});
+			} else {
+				var $temp = $('<textarea>');
+				$('body').append($temp);
+				$temp.val(textToCopy).select();
+				document.execCommand('copy');
+				$temp.remove();
+				showCopySuccess(e.currentTarget);
+			}
+		});
 
-		init: function() {
-			this.loadStatus();
-			this.bindEvents();
-		},
+		function showCopySuccess(button) {
+			var $btn = $(button);
+			$btn.find('.dashicons').removeClass('dashicons-clipboard').addClass('dashicons-yes');
+			setTimeout(function() {
+				$btn.find('.dashicons').removeClass('dashicons-yes').addClass('dashicons-clipboard');
+			}, 2000);
+		}
 
-		bindEvents: function() {
-			$('#atomicedge-purge-cdn').on('click', this.purgeCache.bind(this));
-			$('#atomicedge-cdn-settings-form').on('submit', this.saveSettings.bind(this));
-			$('.atomicedge-copy-btn').on('click', this.copyToClipboard.bind(this));
-		},
-
-		loadStatus: function() {
-			var self = this;
+		// Refresh CDN status.
+		$('#atomicedge-cdn-refresh').on('click', function(e) {
+			e.preventDefault();
+			var $button = $(this);
+			$button.prop('disabled', true).find('.dashicons').addClass('atomicedge-spinning');
 			
 			$.ajax({
 				url: atomicedge_ajax.ajax_url,
 				type: 'POST',
 				data: {
-					action: 'atomicedge_get_cdn_status',
-					nonce: this.nonce
+					action: 'atomicedge_refresh_cdn_status',
+					nonce: atomicedge_ajax.nonce
 				},
 				success: function(response) {
-					$('#atomicedge-cdn-loading').hide();
-					$('#atomicedge-cdn-content').show();
-					
 					if (response.success) {
-						self.cdnStatus = response.data;
-						self.renderStatus(response.data);
+						// Reload page to show updated status.
+						location.reload();
 					} else {
-						self.showError(response.data ? response.data.message : '<?php echo esc_js( __( 'Failed to load CDN status.', 'atomic-edge-security' ) ); ?>');
+						alert(response.data ? response.data.message : '<?php echo esc_js( __( 'Failed to refresh status.', 'atomic-edge-security' ) ); ?>');
+						$button.prop('disabled', false).find('.dashicons').removeClass('atomicedge-spinning');
 					}
 				},
 				error: function() {
-					$('#atomicedge-cdn-loading').hide();
-					$('#atomicedge-cdn-content').show();
-					self.showError('<?php echo esc_js( __( 'Failed to connect to the server.', 'atomic-edge-security' ) ); ?>');
+					alert('<?php echo esc_js( __( 'Failed to connect to the server.', 'atomic-edge-security' ) ); ?>');
+					$button.prop('disabled', false).find('.dashicons').removeClass('atomicedge-spinning');
 				}
 			});
-		},
+		});
 
-		renderStatus: function(data) {
-			var $statusBadge = $('#atomicedge-cdn-enabled-status');
-			var $indicator = $statusBadge.find('.atomicedge-status-indicator');
-			var $text = $statusBadge.find('.atomicedge-status-text');
-			
-			if (data.cdn_enabled) {
-				$indicator.addClass('atomicedge-status-active');
-				$text.text('<?php echo esc_js( __( 'Active', 'atomic-edge-security' ) ); ?>');
-				$statusBadge.addClass('atomicedge-status-active');
-				
-				// Show CDN URL.
-				if (data.cdn_url) {
-					$('#atomicedge-cdn-url').text(data.cdn_url);
-					$('#atomicedge-cdn-url-row').show();
-				}
-				
-				// Show last purge.
-				if (data.last_purged_at) {
-					var purgeDate = new Date(data.last_purged_at);
-					$('#atomicedge-cdn-last-purge').text(purgeDate.toLocaleString());
-					$('#atomicedge-cdn-last-purge-row').show();
-				}
-				
-				// Show bandwidth.
-				if (data.bandwidth && data.bandwidth.total > 0) {
-					$('#atomicedge-cdn-bandwidth').text(this.formatBytes(data.bandwidth.total));
-					$('#atomicedge-cdn-bandwidth-row').show();
-				}
-				
-				// Show purge button state.
-				if (!data.can_purge) {
-					$('#atomicedge-purge-cdn').prop('disabled', true);
-					$('#atomicedge-purge-cooldown').show();
-					$('#atomicedge-purge-cooldown .atomicedge-cooldown-text').text('<?php echo esc_js( __( 'Please wait before purging again.', 'atomic-edge-security' ) ); ?>');
-				}
-				
-				// Set optimization toggles.
-				if (data.optimization) {
-					$('#atomicedge-cdn-brotli').prop('checked', data.optimization.brotli);
-					$('#atomicedge-cdn-js-min').prop('checked', data.optimization.js_minification);
-					$('#atomicedge-cdn-css-min').prop('checked', data.optimization.css_minification);
-					$('#atomicedge-cdn-image-opt').prop('checked', data.optimization.image_optimization);
-				}
-				
-				$('#atomicedge-cdn-disabled-notice').hide();
-				$('#atomicedge-cdn-enabled-content').show();
-			} else {
-				$indicator.addClass('atomicedge-status-inactive');
-				$text.text('<?php echo esc_js( __( 'Disabled', 'atomic-edge-security' ) ); ?>');
-				$statusBadge.addClass('atomicedge-status-inactive');
-				
-				$('#atomicedge-cdn-disabled-notice').show();
-				$('#atomicedge-cdn-enabled-content').hide();
-			}
-		},
-
-		purgeCache: function(e) {
+		// Purge CDN cache.
+		$('#atomicedge-purge-cdn').on('click', function(e) {
 			e.preventDefault();
 			
-			var self = this;
-			var $button = $('#atomicedge-purge-cdn');
-			var $progress = $('#atomicedge-purge-progress');
+			if (!confirm('<?php echo esc_js( __( 'Are you sure you want to purge the CDN cache?', 'atomic-edge-security' ) ); ?>')) {
+				return;
+			}
+			
+			var $button = $(this);
+			var $status = $('#atomicedge-purge-status');
 			
 			$button.prop('disabled', true);
-			$progress.show();
+			$status.removeClass('atomicedge-status-success atomicedge-status-error').text('<?php echo esc_js( __( 'Purging...', 'atomic-edge-security' ) ); ?>');
 			
 			$.ajax({
 				url: atomicedge_ajax.ajax_url,
 				type: 'POST',
 				data: {
 					action: 'atomicedge_purge_cdn_cache',
-					nonce: this.nonce
+					nonce: atomicedge_ajax.nonce
 				},
 				success: function(response) {
-					$progress.hide();
-					
 					if (response.success) {
-						self.showSuccess(response.data.message || '<?php echo esc_js( __( 'Cache purge has been queued.', 'atomic-edge-security' ) ); ?>');
-						
-						// Update last purge time.
-						if (response.data.purged_at) {
-							var purgeDate = new Date(response.data.purged_at);
-							$('#atomicedge-cdn-last-purge').text(purgeDate.toLocaleString());
-							$('#atomicedge-cdn-last-purge-row').show();
-						}
-						
-						// Show cooldown.
-						$('#atomicedge-purge-cooldown').show();
-						$('#atomicedge-purge-cooldown .atomicedge-cooldown-text').text('<?php echo esc_js( __( 'Please wait before purging again.', 'atomic-edge-security' ) ); ?>');
-						
-						// Enable button after cooldown (5 minutes).
-						setTimeout(function() {
-							$button.prop('disabled', false);
-							$('#atomicedge-purge-cooldown').hide();
-						}, 5 * 60 * 1000);
+						$status.addClass('atomicedge-status-success').text(response.data.message || '<?php echo esc_js( __( 'Cache purged successfully!', 'atomic-edge-security' ) ); ?>');
+						// Keep button disabled for cooldown (re-enable on page refresh).
 					} else {
-						self.showError(response.data ? response.data.message : '<?php echo esc_js( __( 'Failed to purge cache.', 'atomic-edge-security' ) ); ?>');
+						$status.addClass('atomicedge-status-error').text(response.data ? response.data.message : '<?php echo esc_js( __( 'Failed to purge cache.', 'atomic-edge-security' ) ); ?>');
 						$button.prop('disabled', false);
 					}
 				},
 				error: function() {
-					$progress.hide();
-					$button.prop('disabled', false);
-					self.showError('<?php echo esc_js( __( 'Failed to connect to the server.', 'atomic-edge-security' ) ); ?>');
-				}
-			});
-		},
-
-		saveSettings: function(e) {
-			e.preventDefault();
-			
-			var self = this;
-			var $form = $('#atomicedge-cdn-settings-form');
-			var $button = $form.find('button[type="submit"]');
-			var $status = $('#atomicedge-cdn-settings-status');
-			
-			$button.prop('disabled', true);
-			$status.removeClass('atomicedge-status-success atomicedge-status-error').text('<?php echo esc_js( __( 'Saving...', 'atomic-edge-security' ) ); ?>');
-			
-			$.ajax({
-				url: atomicedge_ajax.ajax_url,
-				type: 'POST',
-				data: {
-					action: 'atomicedge_update_cdn_settings',
-					nonce: this.nonce,
-					brotli: $('#atomicedge-cdn-brotli').is(':checked') ? 'true' : 'false',
-					js_minification: $('#atomicedge-cdn-js-min').is(':checked') ? 'true' : 'false',
-					css_minification: $('#atomicedge-cdn-css-min').is(':checked') ? 'true' : 'false',
-					image_optimization: $('#atomicedge-cdn-image-opt').is(':checked') ? 'true' : 'false'
-				},
-				success: function(response) {
-					$button.prop('disabled', false);
-					
-					if (response.success) {
-						$status.addClass('atomicedge-status-success').text('<?php echo esc_js( __( 'Settings saved!', 'atomic-edge-security' ) ); ?>');
-						setTimeout(function() {
-							$status.text('');
-						}, 3000);
-					} else {
-						$status.addClass('atomicedge-status-error').text(response.data ? response.data.message : '<?php echo esc_js( __( 'Failed to save settings.', 'atomic-edge-security' ) ); ?>');
-					}
-				},
-				error: function() {
-					$button.prop('disabled', false);
 					$status.addClass('atomicedge-status-error').text('<?php echo esc_js( __( 'Failed to connect to the server.', 'atomic-edge-security' ) ); ?>');
+					$button.prop('disabled', false);
 				}
 			});
-		},
-
-		copyToClipboard: function(e) {
-			e.preventDefault();
-			
-			var $button = $(e.currentTarget);
-			var targetSelector = $button.data('copy-target');
-			var textToCopy = $(targetSelector).text();
-			
-			if (navigator.clipboard && navigator.clipboard.writeText) {
-				navigator.clipboard.writeText(textToCopy).then(function() {
-					$button.find('.dashicons').removeClass('dashicons-clipboard').addClass('dashicons-yes');
-					setTimeout(function() {
-						$button.find('.dashicons').removeClass('dashicons-yes').addClass('dashicons-clipboard');
-					}, 2000);
-				});
-			} else {
-				// Fallback for older browsers.
-				var $temp = $('<textarea>');
-				$('body').append($temp);
-				$temp.val(textToCopy).select();
-				document.execCommand('copy');
-				$temp.remove();
-				
-				$button.find('.dashicons').removeClass('dashicons-clipboard').addClass('dashicons-yes');
-				setTimeout(function() {
-					$button.find('.dashicons').removeClass('dashicons-yes').addClass('dashicons-clipboard');
-				}, 2000);
-			}
-		},
-
-		formatBytes: function(bytes) {
-			if (bytes === 0) return '0 B';
-			
-			var k = 1024;
-			var sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-			var i = Math.floor(Math.log(bytes) / Math.log(k));
-			
-			return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-		},
-
-		showSuccess: function(message) {
-			this.showNotice(message, 'success');
-		},
-
-		showError: function(message) {
-			this.showNotice(message, 'error');
-		},
-
-		showNotice: function(message, type) {
-			var $notice = $('<div class="notice notice-' + type + ' is-dismissible"><p>' + message + '</p></div>');
-			$('.atomicedge-cdn h2').after($notice);
-			
-			// Auto-dismiss after 5 seconds.
-			setTimeout(function() {
-				$notice.fadeOut(function() {
-					$(this).remove();
-				});
-			}, 5000);
-		}
-	};
-
-	$(document).ready(function() {
-		AtomicEdgeCDN.init();
+		});
 	});
 })(jQuery);
 </script>
+
+<style type="text/css">
+/* Inline status messages */
+.atomicedge-inline-status {
+	margin-left: 10px;
+	font-style: italic;
+}
+.atomicedge-inline-status.atomicedge-status-success {
+	color: #00a32a;
+}
+.atomicedge-inline-status.atomicedge-status-error {
+	color: #d63638;
+}
+
+/* Spinning animation for refresh */
+.atomicedge-spinning {
+	animation: atomicedge-spin 1s linear infinite;
+}
+@keyframes atomicedge-spin {
+	from { transform: rotate(0deg); }
+	to { transform: rotate(360deg); }
+}
+
+/* Status table */
+.atomicedge-status-table th {
+	width: 150px;
+	padding: 10px 10px 10px 0;
+}
+.atomicedge-status-table td {
+	padding: 10px 0;
+}
+
+/* Status display for non-enabled state */
+.atomicedge-cdn-status-display {
+	margin: 10px 0;
+}
+</style>

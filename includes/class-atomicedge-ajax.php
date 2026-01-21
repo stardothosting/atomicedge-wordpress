@@ -73,6 +73,7 @@ class AtomicEdge_Ajax {
 
 		// CDN.
 		add_action( 'wp_ajax_atomicedge_get_cdn_status', array( $this, 'ajax_get_cdn_status' ) );
+		add_action( 'wp_ajax_atomicedge_refresh_cdn_status', array( $this, 'ajax_refresh_cdn_status' ) );
 		add_action( 'wp_ajax_atomicedge_purge_cdn_cache', array( $this, 'ajax_purge_cdn_cache' ) );
 		add_action( 'wp_ajax_atomicedge_update_cdn_settings', array( $this, 'ajax_update_cdn_settings' ) );
 
@@ -526,6 +527,45 @@ class AtomicEdge_Ajax {
 			wp_send_json_success( $result['data'] );
 		} else {
 			wp_send_json_error( array( 'message' => $result['error'] ) );
+		}
+	}
+
+	/**
+	 * Refresh CDN status and update stored site data.
+	 *
+	 * This fetches the latest CDN status from the API and updates
+	 * the locally stored site data with any CDN configuration changes.
+	 *
+	 * @return void
+	 */
+	public function ajax_refresh_cdn_status() {
+		$this->get_verified_post_fields( array() );
+
+		$result = $this->api->get_cdn_status();
+
+		if ( $result['success'] ) {
+			// Update stored site data with CDN information.
+			$site_data = get_option( 'atomicedge_site_data', array() );
+
+			// Merge CDN-related fields from API response.
+			if ( isset( $result['data']['cdn_enabled'] ) ) {
+				$site_data['cdn_enabled'] = (bool) $result['data']['cdn_enabled'];
+			}
+			if ( isset( $result['data']['cdn_prefix'] ) ) {
+				$site_data['cdn_prefix'] = sanitize_text_field( $result['data']['cdn_prefix'] );
+			}
+			if ( isset( $result['data']['cdn_url'] ) ) {
+				$site_data['cdn_url'] = esc_url_raw( $result['data']['cdn_url'] );
+			}
+
+			update_option( 'atomicedge_site_data', $site_data );
+
+			wp_send_json_success( array(
+				'message'     => __( 'CDN status refreshed.', 'atomic-edge-security' ),
+				'cdn_enabled' => $site_data['cdn_enabled'] ?? false,
+			) );
+		} else {
+			wp_send_json_error( array( 'message' => $result['error'] ?? __( 'Failed to fetch CDN status.', 'atomic-edge-security' ) ) );
 		}
 	}
 

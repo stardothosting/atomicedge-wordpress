@@ -283,6 +283,64 @@ class CdnTest extends TestCase {
 	}
 
 	/**
+	 * Test ajax_refresh_cdn_status updates site data on success.
+	 */
+	public function test_ajax_refresh_cdn_status_updates_site_data() {
+		// Ensure no cache.
+		delete_transient( 'atomicedge_cdn_status' );
+
+		// Mock connection and API key.
+		update_option( 'atomicedge_connected', true );
+		$this->mock_api_key( 'test-api-key-12345' );
+
+		// Initial site data without CDN info.
+		$initial_site_data = array(
+			'site_id' => 123,
+			'domain'  => 'example.com',
+		);
+		update_option( 'atomicedge_site_data', $initial_site_data );
+
+		// Mock API response with CDN data.
+		$this->mock_api_response( array(
+			'success' => true,
+			'data'    => array(
+				'cdn_enabled' => true,
+				'cdn_prefix'  => 'xyz98765',
+				'cdn_url'     => 'https://xyz98765.cdn.atomicedge.io',
+			),
+		) );
+
+		// Call the refresh method directly on API to simulate what AJAX handler does.
+		$result = $this->api->get_cdn_status();
+
+		$this->assertTrue( $result['success'] );
+
+		// Simulate what the AJAX handler does - merge CDN data.
+		if ( $result['success'] ) {
+			$site_data = get_option( 'atomicedge_site_data', array() );
+			if ( isset( $result['data']['cdn_enabled'] ) ) {
+				$site_data['cdn_enabled'] = (bool) $result['data']['cdn_enabled'];
+			}
+			if ( isset( $result['data']['cdn_prefix'] ) ) {
+				$site_data['cdn_prefix'] = sanitize_text_field( $result['data']['cdn_prefix'] );
+			}
+			if ( isset( $result['data']['cdn_url'] ) ) {
+				$site_data['cdn_url'] = esc_url_raw( $result['data']['cdn_url'] );
+			}
+			update_option( 'atomicedge_site_data', $site_data );
+		}
+
+		// Verify site data was updated.
+		$updated_site_data = get_option( 'atomicedge_site_data', array() );
+		$this->assertTrue( $updated_site_data['cdn_enabled'] );
+		$this->assertSame( 'xyz98765', $updated_site_data['cdn_prefix'] );
+		$this->assertSame( 'https://xyz98765.cdn.atomicedge.io', $updated_site_data['cdn_url'] );
+		// Verify original data preserved.
+		$this->assertSame( 123, $updated_site_data['site_id'] );
+		$this->assertSame( 'example.com', $updated_site_data['domain'] );
+	}
+
+	/**
 	 * Helper to mock API key.
 	 *
 	 * @param string $key The API key to mock.

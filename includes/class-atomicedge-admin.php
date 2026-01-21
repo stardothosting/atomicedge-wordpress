@@ -124,6 +124,16 @@ class AtomicEdge_Admin {
 			array( $this, 'render_vulnerability_scanner_page' )
 		);
 
+		// CDN submenu.
+		add_submenu_page(
+			'atomic-edge-security',
+			__( 'CDN', 'atomic-edge-security' ),
+			__( 'CDN', 'atomic-edge-security' ),
+			'manage_options',
+			'atomicedge-cdn',
+			array( $this, 'render_cdn_page' )
+		);
+
 		// Settings submenu.
 		add_submenu_page(
 			'atomic-edge-security',
@@ -389,6 +399,24 @@ class AtomicEdge_Admin {
 		}
 
 		include ATOMICEDGE_PLUGIN_DIR . 'admin/views/vulnerability-scanner.php';
+	}
+
+	/**
+	 * Render CDN page.
+	 *
+	 * @return void
+	 */
+	public function render_cdn_page() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'atomic-edge-security' ) );
+		}
+
+		if ( ! $this->api->is_connected() ) {
+			$this->render_not_connected_notice();
+			return;
+		}
+
+		include ATOMICEDGE_PLUGIN_DIR . 'admin/views/cdn.php';
 	}
 
 	/**

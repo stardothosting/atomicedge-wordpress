@@ -71,6 +71,11 @@ class AtomicEdge_Ajax {
 		add_action( 'wp_ajax_atomicedge_get_vulnerability_results', array( $this, 'ajax_get_vulnerability_results' ) );
 		add_action( 'wp_ajax_atomicedge_reset_vulnerability_results', array( $this, 'ajax_reset_vulnerability_results' ) );
 
+		// CDN.
+		add_action( 'wp_ajax_atomicedge_get_cdn_status', array( $this, 'ajax_get_cdn_status' ) );
+		add_action( 'wp_ajax_atomicedge_purge_cdn_cache', array( $this, 'ajax_purge_cdn_cache' ) );
+		add_action( 'wp_ajax_atomicedge_update_cdn_settings', array( $this, 'ajax_update_cdn_settings' ) );
+
 		// Cache.
 		add_action( 'wp_ajax_atomicedge_clear_cache', array( $this, 'ajax_clear_cache' ) );
 	}
@@ -505,5 +510,96 @@ class AtomicEdge_Ajax {
 		$vuln_scanner = AtomicEdge::get_instance()->vulnerability_scanner;
 		$state        = $vuln_scanner->reset_results();
 		wp_send_json_success( $state );
+	}
+
+	/**
+	 * Get CDN status via AJAX.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_cdn_status() {
+		$this->get_verified_post_fields( array() );
+
+		$result = $this->api->get_cdn_status();
+
+		if ( $result['success'] ) {
+			wp_send_json_success( $result['data'] );
+		} else {
+			wp_send_json_error( array( 'message' => $result['error'] ) );
+		}
+	}
+
+	/**
+	 * Purge CDN cache via AJAX.
+	 *
+	 * @return void
+	 */
+	public function ajax_purge_cdn_cache() {
+		$this->get_verified_post_fields( array() );
+
+		$result = $this->api->purge_cdn_cache();
+
+		if ( $result['success'] ) {
+			wp_send_json_success( array(
+				'message'   => isset( $result['data']['message'] ) ? $result['data']['message'] : __( 'Cache purge has been queued.', 'atomic-edge-security' ),
+				'purged_at' => isset( $result['data']['purged_at'] ) ? $result['data']['purged_at'] : gmdate( 'c' ),
+			) );
+		} else {
+			$error_message = isset( $result['error'] ) ? $result['error'] : __( 'Failed to purge cache.', 'atomic-edge-security' );
+			// Handle specific error codes.
+			if ( isset( $result['data']['error'] ) ) {
+				switch ( $result['data']['error'] ) {
+					case 'cdn_disabled':
+						$error_message = __( 'CDN is not enabled for this site.', 'atomic-edge-security' );
+						break;
+					case 'no_cdn_prefix':
+						$error_message = __( 'CDN is not configured for this site.', 'atomic-edge-security' );
+						break;
+					case 'cooldown_active':
+						$error_message = __( 'Please wait a few minutes between purge requests.', 'atomic-edge-security' );
+						break;
+				}
+			}
+			wp_send_json_error( array( 'message' => $error_message ) );
+		}
+	}
+
+	/**
+	 * Update CDN settings via AJAX.
+	 *
+	 * @return void
+	 */
+	public function ajax_update_cdn_settings() {
+		$post = $this->get_verified_post_fields( array( 'brotli', 'js_minification', 'css_minification', 'image_optimization' ) );
+
+		// Build settings array from provided values.
+		$settings = array();
+
+		if ( isset( $post['brotli'] ) ) {
+			$settings['brotli'] = 'true' === $post['brotli'] || '1' === $post['brotli'];
+		}
+		if ( isset( $post['js_minification'] ) ) {
+			$settings['js_minification'] = 'true' === $post['js_minification'] || '1' === $post['js_minification'];
+		}
+		if ( isset( $post['css_minification'] ) ) {
+			$settings['css_minification'] = 'true' === $post['css_minification'] || '1' === $post['css_minification'];
+		}
+		if ( isset( $post['image_optimization'] ) ) {
+			$settings['image_optimization'] = 'true' === $post['image_optimization'] || '1' === $post['image_optimization'];
+		}
+
+		if ( empty( $settings ) ) {
+			wp_send_json_error( array( 'message' => __( 'No settings provided.', 'atomic-edge-security' ) ) );
+		}
+
+		$result = $this->api->update_cdn_settings( $settings );
+
+		if ( $result['success'] ) {
+			wp_send_json_success( array(
+				'message' => __( 'CDN settings updated successfully.', 'atomic-edge-security' ),
+			) );
+		} else {
+			wp_send_json_error( array( 'message' => $result['error'] ) );
+		}
 	}
 }

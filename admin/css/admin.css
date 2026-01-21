@@ -1032,3 +1032,268 @@
 	text-decoration: underline;
 }
 
+/* ==========================================================================
+   CDN Page Styles
+   ========================================================================== */
+
+.atomicedge-cdn {
+	margin-top: 20px;
+}
+
+.atomicedge-cdn h2 {
+	font-size: 1.5em;
+	margin-bottom: 10px;
+}
+
+.atomicedge-page-description {
+	color: #646970;
+	margin-bottom: 20px;
+}
+
+/* CDN Cards */
+.atomicedge-card {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 20px;
+	margin-bottom: 20px;
+}
+
+.atomicedge-card h3 {
+	margin-top: 0;
+	margin-bottom: 10px;
+	font-size: 1.2em;
+}
+
+.atomicedge-card-description {
+	color: #646970;
+	margin-bottom: 15px;
+}
+
+/* CDN Status Grid */
+.atomicedge-cdn-status-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 15px;
+}
+
+.atomicedge-cdn-status-item {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+
+.atomicedge-cdn-label {
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	color: #646970;
+}
+
+.atomicedge-cdn-value {
+	font-size: 14px;
+}
+
+.atomicedge-cdn-value code {
+	padding: 4px 8px;
+	background: #f0f0f1;
+	border-radius: 3px;
+	font-size: 13px;
+}
+
+/* CDN Status Badge */
+.atomicedge-cdn-status-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.atomicedge-status-indicator {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: #ddd;
+}
+
+.atomicedge-status-indicator.atomicedge-status-active {
+	background: #00a32a;
+}
+
+.atomicedge-status-indicator.atomicedge-status-inactive {
+	background: #d63638;
+}
+
+.atomicedge-cdn-status-badge.atomicedge-status-active .atomicedge-status-text {
+	color: #00a32a;
+	font-weight: 600;
+}
+
+.atomicedge-cdn-status-badge.atomicedge-status-inactive .atomicedge-status-text {
+	color: #d63638;
+}
+
+/* Copy Button */
+.atomicedge-copy-btn {
+	padding: 2px 6px !important;
+	min-height: auto !important;
+	vertical-align: middle;
+}
+
+.atomicedge-copy-btn .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	vertical-align: middle;
+}
+
+/* CDN Purge Actions */
+.atomicedge-cdn-purge-actions {
+	display: flex;
+	align-items: center;
+	gap: 15px;
+}
+
+.atomicedge-cooldown-notice {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	color: #996800;
+	font-size: 13px;
+}
+
+.atomicedge-cooldown-notice .dashicons {
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
+}
+
+.atomicedge-inline-progress {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 10px;
+	color: #646970;
+}
+
+.atomicedge-inline-progress .spinner {
+	float: none;
+	margin: 0;
+}
+
+/* CDN Toggle Switches */
+.atomicedge-toggle {
+	position: relative;
+	display: inline-block;
+	width: 44px;
+	height: 24px;
+	vertical-align: middle;
+}
+
+.atomicedge-toggle input {
+	opacity: 0;
+	width: 0;
+	height: 0;
+}
+
+.atomicedge-toggle-slider {
+	position: absolute;
+	cursor: pointer;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: #ccc;
+	transition: .3s;
+	border-radius: 24px;
+}
+
+.atomicedge-toggle-slider:before {
+	position: absolute;
+	content: "";
+	height: 18px;
+	width: 18px;
+	left: 3px;
+	bottom: 3px;
+	background-color: white;
+	transition: .3s;
+	border-radius: 50%;
+}
+
+.atomicedge-toggle input:checked + .atomicedge-toggle-slider {
+	background-color: #2271b1;
+}
+
+.atomicedge-toggle input:focus + .atomicedge-toggle-slider {
+	box-shadow: 0 0 0 2px #2271b1;
+}
+
+.atomicedge-toggle input:checked + .atomicedge-toggle-slider:before {
+	transform: translateX(20px);
+}
+
+/* CDN Settings Table */
+.atomicedge-settings-table th {
+	width: 200px;
+	vertical-align: top;
+	padding-top: 15px;
+}
+
+.atomicedge-settings-table td {
+	padding-top: 10px;
+	padding-bottom: 10px;
+}
+
+.atomicedge-settings-table .description {
+	margin-top: 8px;
+	color: #646970;
+}
+
+/* CDN Form Actions */
+.atomicedge-form-actions {
+	display: flex;
+	align-items: center;
+	gap: 15px;
+	margin-top: 20px;
+	padding-top: 20px;
+	border-top: 1px solid #dcdcde;
+}
+
+.atomicedge-form-status {
+	font-size: 13px;
+}
+
+.atomicedge-form-status.atomicedge-status-success {
+	color: #00a32a;
+}
+
+.atomicedge-form-status.atomicedge-status-error {
+	color: #d63638;
+}
+
+/* Button with icon */
+.atomicedge-cdn button .dashicons,
+.atomicedge-cdn .button .dashicons {
+	vertical-align: middle;
+	margin-right: 4px;
+	margin-top: -2px;
+}
+
+/* CDN Loading State */
+.atomicedge-loading {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 20px;
+	color: #646970;
+}
+
+.atomicedge-loading .spinner {
+	float: none;
+	margin: 0;
+}
+
+/* External link icon */
+.button .dashicons-external {
+	margin-left: 4px;
+	margin-right: 0;
+}

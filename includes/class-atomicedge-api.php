@@ -395,6 +395,62 @@ class AtomicEdge_API {
 	}
 
 	/**
+	 * Get CDN status and configuration.
+	 *
+	 * @return array CDN status or error.
+	 */
+	public function get_cdn_status() {
+		$cache_key = 'atomicedge_cdn_status';
+		$cached    = get_transient( $cache_key );
+
+		if ( false !== $cached ) {
+			return $cached;
+		}
+
+		$response = $this->request( 'GET', '/wp/cdn/status' );
+
+		if ( $response['success'] ) {
+			// Cache for 5 minutes since CDN status can change.
+			set_transient( $cache_key, $response, 5 * MINUTE_IN_SECONDS );
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Purge CDN cache.
+	 *
+	 * @return array Response with success status.
+	 */
+	public function purge_cdn_cache() {
+		$response = $this->request( 'POST', '/wp/cdn/purge' );
+
+		if ( $response['success'] ) {
+			// Clear cached CDN status since purge time changed.
+			delete_transient( 'atomicedge_cdn_status' );
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Update CDN optimization settings.
+	 *
+	 * @param array $settings Settings to update (brotli, js_minification, css_minification, image_optimization).
+	 * @return array Response with success status.
+	 */
+	public function update_cdn_settings( $settings ) {
+		$response = $this->request( 'PUT', '/wp/cdn/settings', $settings );
+
+		if ( $response['success'] ) {
+			// Clear cached CDN status.
+			delete_transient( 'atomicedge_cdn_status' );
+		}
+
+		return $response;
+	}
+
+	/**
 	 * Make an API request.
 	 *
 	 * @param string      $method   HTTP method (GET, POST, PUT, DELETE).

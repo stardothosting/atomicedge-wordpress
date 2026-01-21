@@ -280,11 +280,11 @@ $atomicedge_cdn_last_purge = get_option( 'atomicedge_cdn_last_purge', '' );
 			$button.prop('disabled', true).find('.dashicons').addClass('atomicedge-spinning');
 			
 			$.ajax({
-				url: atomicedge_ajax.ajax_url,
+				url: atomicedgeAdmin.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'atomicedge_refresh_cdn_status',
-					nonce: atomicedge_ajax.nonce
+					nonce: atomicedgeAdmin.nonce
 				},
 				success: function(response) {
 					if (response.success) {
@@ -317,11 +317,11 @@ $atomicedge_cdn_last_purge = get_option( 'atomicedge_cdn_last_purge', '' );
 			$status.removeClass('atomicedge-status-success atomicedge-status-error').text('<?php echo esc_js( __( 'Purging...', 'atomic-edge-security' ) ); ?>');
 			
 			$.ajax({
-				url: atomicedge_ajax.ajax_url,
+				url: atomicedgeAdmin.ajaxUrl,
 				type: 'POST',
 				data: {
 					action: 'atomicedge_purge_cdn_cache',
-					nonce: atomicedge_ajax.nonce
+					nonce: atomicedgeAdmin.nonce
 				},
 				success: function(response) {
 					if (response.success) {

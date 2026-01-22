@@ -4,7 +4,7 @@ Tags: security, firewall, waf, malware, protection
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.3.7
+Stable tag: 1.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -88,6 +88,13 @@ Atomic Edge uses the OWASP Core Rule Set to block:
 6. Vulnerability scanner results
 
 == Changelog ==
+
+= 1.4.0 =
+* Malware Scanner: Cancel/Reset buttons now match Vulnerability Scanner styling
+* Malware Scanner: Suspicious Files table formatting fixed
+* Malware Scanner: Quick scan now skips excluded paths earlier (e.g., .git), reducing noise and improving speed
+* Malware Scanner: Progress now uses stable totals and ETA
+* Scanner: Core checksum verification now uses WordPress core verifier
 
 = 1.3.7 =
 * Fixed CDN settings sync: Brotli and image optimization now properly sync between plugin and AtomicEdge dashboard

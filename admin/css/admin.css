@@ -354,6 +354,19 @@
 	gap: 10px;
 }
 
+.atomicedge-scan-controls-right {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+.atomicedge-scanner-actions .button {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
 .atomicedge-scan-progress {
 	padding: 30px;
 	text-align: center;
@@ -476,6 +489,20 @@
 
 .atomicedge-results-section h3 {
 	margin-top: 0;
+}
+
+.atomicedge-results-section table {
+	width: 100%;
+	table-layout: fixed;
+}
+
+.atomicedge-results-section td {
+	vertical-align: top;
+	word-break: break-word;
+}
+
+.atomicedge-results-section td code {
+	white-space: normal;
 }
 
 .atomicedge-results-count {

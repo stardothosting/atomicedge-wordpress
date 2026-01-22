@@ -91,6 +91,14 @@ Atomic Edge uses the OWASP Core Rule Set to block:
 
 ## Changelog
 
+### 1.4.0
+
+- Malware Scanner: Cancel/Reset buttons now match Vulnerability Scanner styling
+- Malware Scanner: Suspicious Files table formatting fixed
+- Malware Scanner: Quick scan now skips excluded paths earlier (e.g., .git), reducing noise and improving speed
+- Malware Scanner: Progress now uses stable totals and ETA
+- Scanner: Core checksum verification now uses WordPress core verifier
+
 ### 1.2.0
 
 - Malware scanner: resumable scanning with DB-backed queue, improved progress reporting, and live activity log

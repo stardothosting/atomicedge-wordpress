@@ -934,9 +934,9 @@
                 }
 
                 var stage = stepData.stage || '';
-                var counts = stepData.queue_counts || null;
                 var currentItem = stepData.current_item || null;
                 var scanMode = stepData.scan_mode || '';
+                var scanStats = stepData.results && stepData.results.scan_stats ? stepData.results.scan_stats : null;
 
                 var parts = [];
                 if (stage) {
@@ -945,14 +945,20 @@
                 if (scanMode) {
                     parts.push('Mode: ' + scanMode);
                 }
-                if (counts && counts.total !== undefined) {
-                    parts.push('Queue: ' + (counts.done || 0) + '/' + (counts.total || 0) + ' done');
-                    if (counts.pending !== undefined) {
-                        parts.push((counts.pending || 0) + ' pending');
-                    }
+                if (scanStats && scanStats.files_total) {
+                    var scannedCount = parseInt(scanStats.files_scanned || 0, 10);
+                    var totalCount = parseInt(scanStats.files_total || 0, 10);
+                    var remainingCount = Math.max(0, totalCount - scannedCount);
+                    parts.push('Files: ' + scannedCount + '/' + totalCount);
+                    parts.push('Remaining: ' + remainingCount);
                 }
                 if (currentItem && currentItem.path) {
                     parts.push('Now: ' + currentItem.path);
+                }
+                if (stepData.eta_label) {
+                    parts.push('ETA: ' + stepData.eta_label);
+                } else if (scanStats && scanStats.files_total) {
+                    parts.push('ETA: calculating...');
                 }
                 if (parts.length) {
                     $progressText.text(parts.join(' · '));

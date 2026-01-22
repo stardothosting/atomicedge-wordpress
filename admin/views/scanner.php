@@ -57,11 +57,13 @@ $atomicedge_last_results = $atomicedge_scanner->get_last_results();
 							<?php esc_html_e( 'Run Scan', 'atomic-edge-security' ); ?>
 						</button>
 
-						<button type="button" id="atomicedge-cancel-scan" class="button" style="margin-left: 8px;">
+						<button type="button" id="atomicedge-cancel-scan" class="button">
+							<span class="dashicons dashicons-no-alt"></span>
 							<?php esc_html_e( 'Cancel Scan', 'atomic-edge-security' ); ?>
 						</button>
 
-						<button type="button" id="atomicedge-reset-scan" class="button" style="margin-left: 8px;">
+						<button type="button" id="atomicedge-reset-scan" class="button">
+							<span class="dashicons dashicons-trash"></span>
 							<?php esc_html_e( 'Reset Scan', 'atomic-edge-security' ); ?>
 						</button>
 					</div>
@@ -232,7 +234,7 @@ $atomicedge_last_results = $atomicedge_scanner->get_last_results();
 							<span class="atomicedge-results-count">(<?php echo esc_html( count( $atomicedge_last_results['integrity_issues'] ) ); ?>)</span>
 						</h3>
 						<p class="description"><?php esc_html_e( 'These files did not match the expected release manifest. This can indicate tampering or a partial/failed update.', 'atomic-edge-security' ); ?></p>
-							<span class="atomicedge-results-count"><?php echo esc_html( count( $atomicedge_last_results['integrity_issues'] ) ); ?></span>
+							<table class="wp-list-table widefat fixed striped">
 							<thead>
 								<tr>
 									<th><?php esc_html_e( 'File', 'atomic-edge-security' ); ?></th>
@@ -260,7 +262,7 @@ $atomicedge_last_results = $atomicedge_scanner->get_last_results();
 							<span class="atomicedge-results-count">(<?php echo esc_html( count( $atomicedge_last_results['core_files'] ) ); ?>)</span>
 						</h3>
 						<p class="description"><?php esc_html_e( 'These WordPress core files have been modified from their original versions.', 'atomic-edge-security' ); ?></p>
-							<span class="atomicedge-results-count"><?php echo esc_html( count( $atomicedge_last_results['core_files'] ) ); ?></span>
+							<table class="wp-list-table widefat fixed striped atomicedge-paginated-table">
 							<thead>
 								<tr>
 									<th><?php esc_html_e( 'File', 'atomic-edge-security' ); ?></th>
@@ -292,7 +294,7 @@ $atomicedge_last_results = $atomicedge_scanner->get_last_results();
 							<span class="atomicedge-results-count">(<?php echo esc_html( count( $atomicedge_last_results['suspicious'] ) ); ?>)</span>
 						</h3>
 						<p class="description"><?php esc_html_e( 'These files contain potentially malicious code patterns.', 'atomic-edge-security' ); ?></p>
-							<span class="atomicedge-results-count"><?php echo esc_html( count( $atomicedge_last_results['suspicious'] ) ); ?></span>
+							<table class="wp-list-table widefat fixed striped atomicedge-paginated-table">
 							<thead>
 								<tr>
 									<th><?php esc_html_e( 'File', 'atomic-edge-security' ); ?></th>

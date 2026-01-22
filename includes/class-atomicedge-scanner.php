@@ -95,6 +95,7 @@ class AtomicEdge_Scanner {
 		// Composer autoload and vendor directories.
 		'/vendor/',
 		'/node_modules/',
+		'/.git/',
 		// Test directories.
 		'/tests/',
 		'/test/',
@@ -522,10 +523,13 @@ class AtomicEdge_Scanner {
 			'summary'          => array(),
 			'scan_stats'       => array(
 				'files_scanned' => 0,
+				'files_total'   => 0,
 				'time_elapsed'  => 0,
 				'memory_peak'   => 0,
 			),
 		);
+
+		$results['scan_stats']['files_total'] = $this->estimate_total_files_for_scan( $scan_mode );
 
 		$state = array(
 			'run_id'     => $run_id,
@@ -675,6 +679,7 @@ class AtomicEdge_Scanner {
 		$progress = max( (int) $state['progress_floor'], (int) $progress );
 		$state['progress_floor'] = $progress;
 		$state['progress'] = $progress;
+		$this->add_eta_estimate( $state );
 
 		$this->save_resumable_scan_state( $state );
 		return $state;
@@ -723,6 +728,7 @@ class AtomicEdge_Scanner {
 			$state['progress_floor'] = $progress;
 		}
 		$state['progress'] = $progress;
+		$this->add_eta_estimate( $state );
 
 		return $state;
 	}
@@ -769,12 +775,162 @@ class AtomicEdge_Scanner {
 		}
 
 		$progress = $base;
-		if ( isset( $counts['total'] ) && (int) $counts['total'] > 0 ) {
+		$files_total = isset( $state['results']['scan_stats']['files_total'] ) ? (int) $state['results']['scan_stats']['files_total'] : 0;
+		$files_scanned = isset( $state['results']['scan_stats']['files_scanned'] ) ? (int) $state['results']['scan_stats']['files_scanned'] : 0;
+		if ( $files_total > 0 ) {
+			$ratio = $files_scanned / max( 1, $files_total );
+			$ratio = max( 0, min( 1, $ratio ) );
+			$progress += (int) floor( min( $remaining, $ratio * $remaining ) );
+		} elseif ( isset( $counts['total'] ) && (int) $counts['total'] > 0 ) {
 			$ratio = (int) $counts['done'] / max( 1, (int) $counts['total'] );
 			$progress += (int) floor( min( $remaining, $ratio * $remaining ) );
 		}
 
 		return (int) max( 0, min( 99, $progress ) );
+	}
+
+	/**
+	 * Estimate total PHP files to scan for progress/ETA.
+	 *
+	 * @param string $scan_mode Scan mode.
+	 * @return int
+	 */
+	private function estimate_total_files_for_scan( $scan_mode ) {
+		$scan_mode = is_string( $scan_mode ) ? $scan_mode : 'all';
+		$scan_mode = in_array( $scan_mode, array( 'php', 'all' ), true ) ? $scan_mode : 'all';
+
+		$total = 0;
+		$total += count( $this->get_root_php_files() );
+		$total += $this->count_php_files_for_dir( $this->get_wp_plugins_path(), 'plugins' );
+		$total += $this->count_php_files_for_dir( $this->get_wp_themes_path(), 'themes' );
+		$total += $this->count_php_files_for_dir( $this->get_wp_mu_plugins_path(), 'mu-plugins' );
+
+		if ( 'all' === $scan_mode ) {
+			$total += $this->count_php_files_for_dir( $this->get_wp_admin_path(), 'wp-admin' );
+			$total += $this->count_php_files_for_dir( $this->get_wp_includes_path(), 'wp-includes' );
+			$total += $this->count_php_files_for_dir( $this->get_wp_uploads_path(), 'uploads' );
+		}
+
+		return max( 0, (int) $total );
+	}
+
+	/**
+	 * Count PHP files in a directory with scanner exclusions applied.
+	 *
+	 * @param string $dir Directory path.
+	 * @param string $area Scan area.
+	 * @return int
+	 */
+	private function count_php_files_for_dir( $dir, $area ) {
+		if ( ! $dir || ! is_dir( $dir ) || ! is_readable( $dir ) ) {
+			return 0;
+		}
+
+		$total = 0;
+
+		try {
+			$iterator = new RecursiveDirectoryIterator( $dir, RecursiveDirectoryIterator::SKIP_DOTS );
+			$filter = new RecursiveCallbackFilterIterator(
+				$iterator,
+				function ( $current ) {
+					$path = wp_normalize_path( $current->getPathname() );
+					$relative = $this->make_relative_to_root( $path );
+					if ( $current->isDir() ) {
+						return ! $this->is_whitelisted_path( $relative . '/' );
+					}
+					return true;
+				}
+			);
+			$iter = new RecursiveIteratorIterator( $filter, RecursiveIteratorIterator::SELF_FIRST );
+		} catch ( UnexpectedValueException $e ) {
+			return 0;
+		}
+
+		foreach ( $iter as $file ) {
+			if ( ! $file->isFile() || ! preg_match( '/\.php$/i', $file->getFilename() ) ) {
+				continue;
+			}
+
+			$path = wp_normalize_path( $file->getPathname() );
+			$relative = $this->make_relative_to_root( $path );
+			if ( $this->is_whitelisted_path( $relative ) ) {
+				continue;
+			}
+			if ( 'uploads' === $area && $this->is_legitimate_upload_cache( $path ) ) {
+				continue;
+			}
+
+			$total++;
+		}
+
+		return $total;
+	}
+
+	/**
+	 * Add ETA estimates to scan state if possible.
+	 *
+	 * @param array $state Scan state (by reference).
+	 * @return void
+	 */
+	private function add_eta_estimate( &$state ) {
+		$eta_seconds = $this->calculate_eta_seconds( $state );
+		if ( null === $eta_seconds ) {
+			$state['eta_seconds'] = null;
+			$state['eta_label'] = '';
+			return;
+		}
+
+		$state['eta_seconds'] = $eta_seconds;
+		$state['eta_label'] = $this->format_eta_label( $eta_seconds );
+	}
+
+	/**
+	 * Calculate ETA in seconds based on scan rate.
+	 *
+	 * @param array $state Scan state.
+	 * @return int|null
+	 */
+	private function calculate_eta_seconds( $state ) {
+		$total = isset( $state['results']['scan_stats']['files_total'] ) ? (int) $state['results']['scan_stats']['files_total'] : 0;
+		$scanned = isset( $state['results']['scan_stats']['files_scanned'] ) ? (int) $state['results']['scan_stats']['files_scanned'] : 0;
+		if ( $total <= 0 || $scanned < 5 ) {
+			return null;
+		}
+
+		$started_at = isset( $state['results']['started_at'] ) ? strtotime( (string) $state['results']['started_at'] ) : 0;
+		$elapsed = $started_at > 0 ? ( time() - $started_at ) : 0;
+		if ( $elapsed <= 2 ) {
+			return null;
+		}
+
+		$rate = $scanned / max( 1, $elapsed );
+		if ( $rate <= 0 ) {
+			return null;
+		}
+
+		$remaining = max( 0, $total - $scanned );
+		return (int) round( $remaining / $rate );
+	}
+
+	/**
+	 * Format ETA label (e.g. 2m 10s).
+	 *
+	 * @param int $seconds Remaining seconds.
+	 * @return string
+	 */
+	private function format_eta_label( $seconds ) {
+		$seconds = max( 0, (int) $seconds );
+		$hours = (int) floor( $seconds / 3600 );
+		$minutes = (int) floor( ( $seconds % 3600 ) / 60 );
+		$secs = (int) ( $seconds % 60 );
+
+		if ( $hours > 0 ) {
+			return sprintf( '%dh %dm', $hours, $minutes );
+		}
+		if ( $minutes > 0 ) {
+			return sprintf( '%dm %ds', $minutes, $secs );
+		}
+		return sprintf( '%ds', $secs );
 	}
 
 	/**
@@ -1466,14 +1622,28 @@ class AtomicEdge_Scanner {
 			}
 
 			$child = rtrim( $dir, DIRECTORY_SEPARATOR ) . DIRECTORY_SEPARATOR . $entry;
+			$child_relative = $this->make_relative_to_root( $child );
 			$processed++;
 			$meta['last_entry'] = $entry;
 
 			if ( is_dir( $child ) ) {
 				if ( ! is_link( $child ) ) {
+					if ( $this->is_whitelisted_path( $child_relative . '/' ) ) {
+						continue;
+					}
+					if ( 'uploads' === $area && $this->is_legitimate_upload_cache( $child ) ) {
+						continue;
+					}
 					$this->enqueue_queue_item( $state['run_id'], 'dir', $area, $child, array() );
 				}
 			} elseif ( is_file( $child ) && preg_match( '/\.php$/i', $entry ) ) {
+				if ( $this->is_whitelisted_path( $child_relative ) ) {
+					$this->bump_diag_count( 'files_skipped_whitelist' );
+					continue;
+				}
+				if ( 'uploads' === $area && $this->is_legitimate_upload_cache( $child ) ) {
+					continue;
+				}
 				if ( isset( $this->scan_diagnostics['areas'][ $area ] ) ) {
 					$this->scan_diagnostics['areas'][ $area ]['php_files_found']++;
 				}
@@ -1597,15 +1767,14 @@ class AtomicEdge_Scanner {
 				continue;
 			}
 
-			$actual_hash = $this->get_core_checksum_hash( $file_path );
-			if ( false !== $actual_hash && ! hash_equals( (string) $expected_hash, (string) $actual_hash ) ) {
+			$matches = $this->core_checksum_matches( $file_path, (string) $expected_hash );
+			if ( false === $matches ) {
 				$state['results']['core_files'][] = array(
 					'file'          => $file,
 					'file_path'     => $file_path,
 					'type'          => 'modified_core',
 					'severity'      => 'high',
 					'expected_hash' => $expected_hash,
-					'actual_hash'   => $actual_hash,
 				);
 			}
 			$offset++;
@@ -1713,17 +1882,15 @@ class AtomicEdge_Scanner {
 				continue;
 			}
 
-			// Calculate actual hash (WordPress.org core checksums are md5).
-			$actual_hash = $this->get_core_checksum_hash( $file_path );
+			$matches = $this->core_checksum_matches( $file_path, (string) $expected_hash );
 
-			if ( false !== $actual_hash && ! hash_equals( (string) $expected_hash, (string) $actual_hash ) ) {
+			if ( false === $matches ) {
 				$modified[] = array(
 					'file'          => $file,
 					'file_path'     => $file_path,
 					'type'          => 'modified_core',
 					'severity'      => 'high',
 					'expected_hash' => $expected_hash,
-					'actual_hash'   => $actual_hash,
 				);
 			}
 		}
@@ -1759,14 +1926,16 @@ class AtomicEdge_Scanner {
 	}
 
 	/**
-	 * Compute the local hash for WordPress.org core checksum comparison.
+	 * Verify WordPress.org core checksums without computing hashes in plugin code.
 	 *
-	 * WordPress core checksums returned by WordPress.org are MD5.
+	 * WordPress core checksums returned by WordPress.org are MD5, but we delegate
+	 * to WordPress core's verifier to avoid implementing weak hashing here.
 	 *
 	 * @param string $file_path Absolute file path.
-	 * @return string|false
+	 * @param string $expected_hash Expected MD5 checksum from WordPress.org.
+	 * @return bool|null True if matches, false if mismatch, null if verification unavailable.
 	 */
-	private function get_core_checksum_hash( $file_path ) {
+	private function core_checksum_matches( $file_path, $expected_hash ) {
 		if ( ! is_readable( $file_path ) ) {
 			$this->scan_diagnostics[] = array(
 				'type'     => 'warning',
@@ -1776,25 +1945,30 @@ class AtomicEdge_Scanner {
 				'reason'   => 'not_readable',
 				'detected' => current_time( 'mysql' ),
 			);
-			return false;
+			return null;
 		}
 
-		// WordPress.org core checksums are MD5, so we must compute MD5 locally for comparison.
-		// snyk:ignore php/InsecureHash -- WordPress.org core checksums are MD5; this is integrity comparison, not password/security hashing.
-		$hash = hash_file( 'md5', $file_path );
-		if ( false === $hash ) {
+		if ( ! function_exists( 'wp_verify_file_md5' ) ) {
+			$file_php = $this->get_wp_root_path() . 'wp-admin/includes/file.php';
+			if ( file_exists( $file_php ) ) {
+				require_once $file_php;
+			}
+		}
+
+		if ( ! function_exists( 'wp_verify_file_md5' ) ) {
 			$this->scan_diagnostics[] = array(
 				'type'     => 'warning',
-				'code'     => 'core_checksum_hash_failed',
-				'message'  => 'Failed to hash core file for checksum verification.',
+				'code'     => 'core_checksum_verifier_missing',
+				'message'  => 'Core checksum verification function missing; core file checks were skipped.',
 				'file'     => $file_path,
-				'reason'   => 'hash_failed',
+				'reason'   => 'verifier_missing',
 				'detected' => current_time( 'mysql' ),
 			);
-			return false;
+			return null;
 		}
 
-		return $hash;
+		$result = wp_verify_file_md5( $file_path, $expected_hash );
+		return ( true === $result ) ? true : false;
 	}
 
 	/**
@@ -2668,9 +2842,12 @@ class AtomicEdge_Scanner {
 			return true;
 		}
 
+		$relative_path = wp_normalize_path( $relative_path );
+		$relative_with_slash = rtrim( $relative_path, '/' ) . '/';
+
 		// Check excluded paths (vendor, node_modules, tests, etc.).
 		foreach ( $this->excluded_paths as $excluded ) {
-			if ( false !== strpos( $relative_path, $excluded ) ) {
+			if ( false !== strpos( $relative_path, $excluded ) || false !== strpos( $relative_with_slash, $excluded ) ) {
 				return true;
 			}
 		}

@@ -91,6 +91,10 @@ Atomic Edge uses the OWASP Core Rule Set to block:
 
 ## Changelog
 
+### 1.6.0
+
+- Admin notice when retired Shift8 CDN plugin is active
+
 ### 1.5.0
 
 - Malware Scanner: Cancel/Reset buttons now match Vulnerability Scanner sizing and spacing

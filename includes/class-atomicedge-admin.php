@@ -45,6 +45,7 @@ class AtomicEdge_Admin {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_init', array( $this, 'handle_form_submissions' ) );
 		add_action( 'admin_notices', array( $this, 'display_admin_notices' ) );
+		add_action( 'admin_notices', array( $this, 'display_conflicting_plugin_notice' ) );
 	}
 
 	/**
@@ -306,6 +307,54 @@ class AtomicEdge_Admin {
 		}
 
 		delete_transient( 'atomicedge_admin_notices' );
+	}
+
+	/**
+	 * Display notice if Shift8 CDN plugin is active.
+	 *
+	 * @return void
+	 */
+	public function display_conflicting_plugin_notice() {
+		if ( ! current_user_can( 'activate_plugins' ) ) {
+			return;
+		}
+
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			$file_php = ABSPATH . 'wp-admin/includes/plugin.php';
+			if ( file_exists( $file_php ) ) {
+				require_once $file_php;
+			}
+		}
+
+		if ( ! function_exists( 'is_plugin_active' ) ) {
+			return;
+		}
+
+		$conflicting_plugin = 'shift8-cdn/shift8-cdn.php';
+		if ( ! is_plugin_active( $conflicting_plugin ) ) {
+			return;
+		}
+
+		$deactivate_url = wp_nonce_url(
+			admin_url( 'plugins.php?action=deactivate&plugin=' . rawurlencode( $conflicting_plugin ) ),
+			'deactivate-plugin_' . $conflicting_plugin
+		);
+
+		$message = sprintf(
+			/* translators: 1: plugin name, 2: deactivate link */
+			__( '%1$s is active. Atomic Edge Security should not run alongside the retired Shift8 CDN plugin. %2$s', 'atomic-edge-security' ),
+			esc_html__( 'Shift8 CDN', 'atomic-edge-security' ),
+			sprintf(
+				'<a href="%s">%s</a>',
+				esc_url( $deactivate_url ),
+				esc_html__( 'Deactivate Shift8 CDN', 'atomic-edge-security' )
+			)
+		);
+
+		printf(
+			'<div class="notice notice-warning"><p>%s</p></div>',
+			wp_kses_post( $message )
+		);
 	}
 
 	/**

@@ -91,6 +91,10 @@ Atomic Edge uses the OWASP Core Rule Set to block:
 
 ## Changelog
 
+### 1.5.0
+
+- Malware Scanner: Cancel/Reset buttons now match Vulnerability Scanner sizing and spacing
+
 ### 1.4.0
 
 - Malware Scanner: Cancel/Reset buttons now match Vulnerability Scanner styling

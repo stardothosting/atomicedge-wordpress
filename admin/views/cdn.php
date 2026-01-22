@@ -158,7 +158,7 @@ $atomicedge_cdn_last_purge = get_option( 'atomicedge_cdn_last_purge', '' );
 					<?php esc_html_e( 'Clear the CDN cache to serve fresh content. Use this after making significant changes to your site. Cache purge can only be performed once every 5 minutes.', 'atomic-edge-security' ); ?>
 				</p>
 				<p>
-					<button type="button" id="atomicedge-purge-cdn" class="button button-primary">
+					<button type="button" id="atomicedge-purge-cdn" class="button button-primary button-hero">
 						<span class="dashicons dashicons-trash" style="margin-top: 3px;"></span>
 						<?php esc_html_e( 'Purge Cache', 'atomic-edge-security' ); ?>
 					</button>

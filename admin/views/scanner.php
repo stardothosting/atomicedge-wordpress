@@ -57,12 +57,12 @@ $atomicedge_last_results = $atomicedge_scanner->get_last_results();
 							<?php esc_html_e( 'Run Scan', 'atomic-edge-security' ); ?>
 						</button>
 
-						<button type="button" id="atomicedge-cancel-scan" class="button">
+						<button type="button" id="atomicedge-cancel-scan" class="button button-hero atomicedge-secondary-button">
 							<span class="dashicons dashicons-no-alt"></span>
 							<?php esc_html_e( 'Cancel Scan', 'atomic-edge-security' ); ?>
 						</button>
 
-						<button type="button" id="atomicedge-reset-scan" class="button">
+						<button type="button" id="atomicedge-reset-scan" class="button button-hero atomicedge-secondary-button">
 							<span class="dashicons dashicons-trash"></span>
 							<?php esc_html_e( 'Reset Scan', 'atomic-edge-security' ); ?>
 						</button>

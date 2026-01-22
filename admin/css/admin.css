@@ -750,6 +750,7 @@
    ========================================================================== */
 
 .atomicedge-wrap .button-primary,
+
 .atomicedge-wrap .button-hero.button-primary {
 	background: #666AE5;
 	border-color: #5558c8;
@@ -757,11 +758,22 @@
 }
 
 /* Button with icon - use flexbox for proper alignment */
-.atomicedge-wrap .button-hero.button-primary {
+.atomicedge-wrap .button-hero {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	gap: 8px;
+}
+
+.atomicedge-wrap .atomicedge-secondary-button {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.atomicedge-wrap .atomicedge-secondary-button.button-hero {
+	min-height: 46px;
+	padding: 0 14px;
 }
 
 .atomicedge-wrap .button-hero .dashicons {

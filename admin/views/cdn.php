@@ -86,8 +86,7 @@ $atomicedge_cdn_last_purge = get_option( 'atomicedge_cdn_last_purge', '' );
 							<button type="button" id="atomicedge-cdn-refresh" class="button" style="margin-left: 10px;">
 								<span class="dashicons dashicons-update" style="margin-top: 3px;"></span>
 								<?php esc_html_e( 'Refresh Status', 'atomic-edge-security' ); ?>
-							</button>
-						</p>
+							</button>							<span id="atomicedge-cdn-refresh-status" class="atomicedge-inline-status"></span>						</p>
 					</div>
 				</div>
 			</div>
@@ -148,6 +147,7 @@ $atomicedge_cdn_last_purge = get_option( 'atomicedge_cdn_last_purge', '' );
 						<span class="dashicons dashicons-update" style="margin-top: 3px;"></span>
 						<?php esc_html_e( 'Refresh Status', 'atomic-edge-security' ); ?>
 					</button>
+					<span id="atomicedge-cdn-refresh-status" class="atomicedge-inline-status"></span>
 				</p>
 			</div>
 
@@ -285,12 +285,16 @@ $atomicedge_cdn_last_purge = get_option( 'atomicedge_cdn_last_purge', '' );
 			console.log('AtomicEdge CDN: Refresh button clicked');
 			e.preventDefault();
 			var $button = $(this);
+			var $status = $('#atomicedge-cdn-refresh-status');
+			
 			$button.prop('disabled', true).find('.dashicons').addClass('atomicedge-spinning');
+			$status.removeClass('atomicedge-status-success atomicedge-status-error').text('<?php echo esc_js( __( 'Refreshing...', 'atomic-edge-security' ) ); ?>');
 			
 			console.log('AtomicEdge CDN: Making AJAX request to', atomicedgeAdmin.ajaxUrl);
 			$.ajax({
 				url: atomicedgeAdmin.ajaxUrl,
 				type: 'POST',
+				timeout: 30000, // 30 second timeout
 				data: {
 					action: 'atomicedge_refresh_cdn_status',
 					nonce: atomicedgeAdmin.nonce
@@ -298,17 +302,29 @@ $atomicedge_cdn_last_purge = get_option( 'atomicedge_cdn_last_purge', '' );
 				success: function(response) {
 					console.log('AtomicEdge CDN: AJAX response', response);
 					if (response.success) {
-						// Show success message before reloading.
-						alert(response.data.message || '<?php echo esc_js( __( 'CDN status refreshed. Page will reload.', 'atomic-edge-security' ) ); ?>');
-						location.reload();
+						$status.addClass('atomicedge-status-success').text(response.data.message || '<?php echo esc_js( __( 'Status refreshed! Reloading...', 'atomic-edge-security' ) ); ?>');
+						// Brief delay to show success message before reload
+						setTimeout(function() {
+							location.reload();
+						}, 500);
 					} else {
-						alert(response.data ? response.data.message : '<?php echo esc_js( __( 'Failed to refresh status.', 'atomic-edge-security' ) ); ?>');
+						var errorMsg = response.data && response.data.message ? response.data.message : '<?php echo esc_js( __( 'Failed to refresh status.', 'atomic-edge-security' ) ); ?>';
+						$status.addClass('atomicedge-status-error').text(errorMsg);
 						$button.prop('disabled', false).find('.dashicons').removeClass('atomicedge-spinning');
+						console.error('AtomicEdge CDN: API returned error', response);
 					}
 				},
 				error: function(xhr, status, error) {
 					console.error('AtomicEdge CDN: AJAX error', status, error, xhr.responseText);
-					alert('<?php echo esc_js( __( 'Failed to connect to the server.', 'atomic-edge-security' ) ); ?>');
+					var errorMsg = '<?php echo esc_js( __( 'Connection failed.', 'atomic-edge-security' ) ); ?>';
+					if (status === 'timeout') {
+						errorMsg = '<?php echo esc_js( __( 'Request timed out. Please try again.', 'atomic-edge-security' ) ); ?>';
+					} else if (xhr.status === 0) {
+						errorMsg = '<?php echo esc_js( __( 'Network error. Check your connection.', 'atomic-edge-security' ) ); ?>';
+					} else if (xhr.status >= 500) {
+						errorMsg = '<?php echo esc_js( __( 'Server error. Please try again later.', 'atomic-edge-security' ) ); ?>';
+					}
+					$status.addClass('atomicedge-status-error').text(errorMsg);
 					$button.prop('disabled', false).find('.dashicons').removeClass('atomicedge-spinning');
 				}
 			});

@@ -144,6 +144,16 @@ class AtomicEdge_Admin {
 			'atomicedge-settings',
 			array( $this, 'render_settings_page' )
 		);
+
+		// 2FA Policy submenu.
+		add_submenu_page(
+			'atomic-edge-security',
+			__( '2FA Policy', 'atomic-edge-security' ),
+			__( '2FA Policy', 'atomic-edge-security' ),
+			'manage_options',
+			'atomicedge-2fa-policy',
+			array( $this, 'render_2fa_policy_page' )
+		);
 	}
 
 	/**
@@ -495,6 +505,19 @@ class AtomicEdge_Admin {
 		}
 
 		include ATOMICEDGE_PLUGIN_DIR . 'admin/views/settings.php';
+	}
+
+	/**
+	 * Render the 2FA policy settings page.
+	 *
+	 * @return void
+	 */
+	public function render_2fa_policy_page() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'atomic-edge-security' ) );
+		}
+
+		include ATOMICEDGE_PLUGIN_DIR . 'admin/views/2fa-policy.php';
 	}
 
 	/**

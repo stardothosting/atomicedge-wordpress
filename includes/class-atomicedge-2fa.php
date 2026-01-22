@@ -149,6 +149,12 @@ class AtomicEdge_2FA {
 
 		// Admin notices for conflicts.
 		add_action( 'admin_notices', array( $this, 'display_conflict_notice' ) );
+
+		// Admin notices for policy enforcement reminders.
+		add_action( 'admin_notices', array( $this, 'display_enforcement_reminder' ) );
+
+		// AJAX handler for dismissing the reminder.
+		add_action( 'wp_ajax_atomicedge_dismiss_2fa_reminder', array( $this, 'ajax_dismiss_reminder' ) );
 	}
 
 	/**
@@ -266,6 +272,11 @@ class AtomicEdge_2FA {
 		// Reset any rate limiting.
 		self::reset_rate_limit( $user_id );
 
+		// End grace period since user is now enrolled.
+		if ( class_exists( 'AtomicEdge_2FA_Policy' ) ) {
+			AtomicEdge_2FA_Policy::end_grace_period( $user_id );
+		}
+
 		self::log_event( $user_id, 'enrollment_completed' );
 
 		return array(
@@ -298,6 +309,12 @@ class AtomicEdge_2FA {
 		delete_user_meta( $user_id, self::META_PENDING_SECRET );
 		delete_user_meta( $user_id, self::META_LAST_USED );
 		self::reset_rate_limit( $user_id );
+
+		// Reset grace period so it starts fresh if policy still enforces.
+		if ( class_exists( 'AtomicEdge_2FA_Policy' ) ) {
+			delete_user_meta( $user_id, AtomicEdge_2FA_Policy::META_GRACE_START );
+			delete_user_meta( $user_id, AtomicEdge_2FA_Policy::META_NOTICE_DISMISSED );
+		}
 
 		self::log_event( $user_id, '2fa_disabled' );
 
@@ -733,6 +750,12 @@ class AtomicEdge_2FA {
 		delete_user_meta( $user_id, self::META_LAST_USED );
 		delete_user_meta( $user_id, self::META_SETUP_DATE );
 		delete_user_meta( $user_id, self::META_LOGIN_NONCE );
+
+		// Clean up policy-related meta.
+		if ( class_exists( 'AtomicEdge_2FA_Policy' ) ) {
+			delete_user_meta( $user_id, AtomicEdge_2FA_Policy::META_GRACE_START );
+			delete_user_meta( $user_id, AtomicEdge_2FA_Policy::META_NOTICE_DISMISSED );
+		}
 	}
 
 	/**
@@ -785,5 +808,126 @@ class AtomicEdge_2FA {
 	 */
 	public static function is_available() {
 		return AtomicEdge_2FA_Crypto::is_available();
+	}
+
+	/**
+	 * Display admin notice reminding users to set up 2FA if required.
+	 *
+	 * @return void
+	 */
+	public function display_enforcement_reminder() {
+		// Only check if policy class exists and user is logged in.
+		if ( ! class_exists( 'AtomicEdge_2FA_Policy' ) ) {
+			return;
+		}
+
+		$user_id = get_current_user_id();
+		if ( ! $user_id ) {
+			return;
+		}
+
+		// Get policy settings.
+		$settings = AtomicEdge_2FA_Policy::get_settings();
+
+		// Check if reminders are enabled and policy is active.
+		if ( empty( $settings['enabled'] ) || empty( $settings['show_reminders'] ) ) {
+			return;
+		}
+
+		// Check if user needs 2FA but doesn't have it.
+		if ( ! AtomicEdge_2FA_Policy::is_required_for_user( $user_id ) ) {
+			return;
+		}
+
+		if ( self::is_enabled_for_user( $user_id ) ) {
+			return;
+		}
+
+		// Check if reminder was recently dismissed.
+		if ( AtomicEdge_2FA_Policy::is_reminder_dismissed( $user_id ) ) {
+			return;
+		}
+
+		// Get grace period info.
+		$grace_days = AtomicEdge_2FA_Policy::get_grace_days_remaining( $user_id );
+		$is_urgent  = $grace_days <= 2 && $grace_days > 0;
+		$is_expired = $grace_days <= 0;
+
+		// Build the message.
+		if ( $is_expired ) {
+			$notice_class = 'notice-error';
+			$message      = __( 'Your grace period has expired. Please set up two-factor authentication immediately to maintain access to your account.', 'atomic-edge-security' );
+		} elseif ( $is_urgent ) {
+			$notice_class = 'notice-warning';
+			$message      = sprintf(
+				/* translators: %d: Number of days remaining */
+				_n(
+					'Your grace period expires in %d day! Please set up two-factor authentication now.',
+					'Your grace period expires in %d days! Please set up two-factor authentication now.',
+					$grace_days,
+					'atomic-edge-security'
+				),
+				$grace_days
+			);
+		} else {
+			$notice_class = 'notice-info';
+			$message      = sprintf(
+				/* translators: %d: Number of days remaining */
+				_n(
+					'Two-factor authentication is required for your role. You have %d day to set it up.',
+					'Two-factor authentication is required for your role. You have %d days to set it up.',
+					$grace_days,
+					'atomic-edge-security'
+				),
+				$grace_days
+			);
+		}
+
+		$profile_url = admin_url( 'profile.php#atomicedge-2fa-section' );
+
+		?>
+		<div class="notice <?php echo esc_attr( $notice_class ); ?> is-dismissible atomicedge-2fa-reminder" data-nonce="<?php echo esc_attr( wp_create_nonce( 'atomicedge_dismiss_2fa_reminder' ) ); ?>">
+			<p>
+				<span class="dashicons dashicons-shield-alt" style="vertical-align: middle; margin-right: 4px;"></span>
+				<strong><?php esc_html_e( 'AtomicEdge Security:', 'atomic-edge-security' ); ?></strong>
+				<?php echo esc_html( $message ); ?>
+				<a href="<?php echo esc_url( $profile_url ); ?>" class="button button-primary button-small" style="margin-left: 10px;">
+					<?php esc_html_e( 'Set Up 2FA', 'atomic-edge-security' ); ?>
+				</a>
+			</p>
+		</div>
+		<script>
+		jQuery(document).ready(function($) {
+			$('.atomicedge-2fa-reminder').on('click', '.notice-dismiss', function() {
+				var $notice = $(this).closest('.atomicedge-2fa-reminder');
+				$.post(ajaxurl, {
+					action: 'atomicedge_dismiss_2fa_reminder',
+					nonce: $notice.data('nonce')
+				});
+			});
+		});
+		</script>
+		<?php
+	}
+
+	/**
+	 * AJAX handler for dismissing the 2FA reminder notice.
+	 *
+	 * @return void
+	 */
+	public function ajax_dismiss_reminder() {
+		// Verify nonce.
+		if ( ! isset( $_POST['nonce'] ) ||
+			! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'atomicedge_dismiss_2fa_reminder' ) ) {
+			wp_send_json_error( 'Invalid nonce' );
+		}
+
+		$user_id = get_current_user_id();
+		if ( ! $user_id ) {
+			wp_send_json_error( 'Not logged in' );
+		}
+
+		AtomicEdge_2FA_Policy::dismiss_reminder( $user_id );
+		wp_send_json_success();
 	}
 }

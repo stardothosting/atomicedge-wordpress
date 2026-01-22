@@ -518,6 +518,7 @@ require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-cron.php';
 require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-2fa-crypto.php';
 require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-2fa-totp.php';
 require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-2fa-backup.php';
+require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-2fa-policy.php';
 require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-2fa.php';
 require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-2fa-login.php';
 // Main plugin class (depends on all components).

@@ -81,6 +81,27 @@ class AtomicEdge_2FA_Login {
 	 * @return void
 	 */
 	public function wp_login( $user_login, $user ) {
+		// Check policy enforcement first.
+		if ( class_exists( 'AtomicEdge_2FA_Policy' ) ) {
+			// Start or check grace period for users who need 2FA.
+			if ( AtomicEdge_2FA_Policy::is_required_for_user( $user->ID ) &&
+				! AtomicEdge_2FA::is_enabled_for_user( $user->ID ) ) {
+
+				// Initialize grace period if not started.
+				AtomicEdge_2FA_Policy::start_grace_period( $user->ID );
+
+				// Check if user should be blocked (grace period expired).
+				if ( AtomicEdge_2FA_Policy::should_block_login( $user->ID ) ) {
+					// Destroy the session WordPress just created.
+					$this->destroy_current_session( $user );
+
+					// Show the enforcement block page.
+					$this->show_enforcement_block( $user );
+					exit;
+				}
+			}
+		}
+
 		// Check if user has 2FA enabled.
 		if ( ! AtomicEdge_2FA::is_enabled_for_user( $user->ID ) ) {
 			return;
@@ -341,5 +362,78 @@ class AtomicEdge_2FA_Login {
 			$info['atomicedge_2fa_verified'] = true;
 		}
 		return $info;
+	}
+
+	/**
+	 * Display the enforcement block page.
+	 *
+	 * Shown when a user's role requires 2FA and their grace period has expired.
+	 *
+	 * @param WP_User $user User object.
+	 * @return void
+	 */
+	private function show_enforcement_block( $user ) {
+		login_header(
+			__( 'Two-Factor Authentication Required', 'atomic-edge-security' ),
+			''
+		);
+
+		?>
+		<div style="margin: 0 auto; max-width: 400px; text-align: center;">
+			<div style="background: #fef3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 16px; margin-bottom: 20px;">
+				<span class="dashicons dashicons-shield-alt" style="font-size: 48px; color: #856404; display: block; margin-bottom: 12px;"></span>
+				<h2 style="margin: 0 0 12px; color: #856404;">
+					<?php esc_html_e( 'Two-Factor Authentication Required', 'atomic-edge-security' ); ?>
+				</h2>
+				<p style="margin: 0; color: #856404;">
+					<?php esc_html_e( 'Your account role requires two-factor authentication to be enabled. Please set up 2FA before you can log in.', 'atomic-edge-security' ); ?>
+				</p>
+			</div>
+
+			<p>
+				<?php esc_html_e( 'Two-factor authentication adds an extra layer of security to your account by requiring a code from your phone in addition to your password.', 'atomic-edge-security' ); ?>
+			</p>
+
+			<p>
+				<?php
+				$grace_days = AtomicEdge_2FA_Policy::get_grace_days_remaining( $user->ID );
+				if ( $grace_days > 0 ) {
+					printf(
+						/* translators: %d: Number of days remaining */
+						esc_html(
+							_n(
+								'Your grace period has ended. You originally had %d day to set up 2FA.',
+								'Your grace period has ended. You originally had %d days to set up 2FA.',
+								$grace_days,
+								'atomic-edge-security'
+							)
+						),
+						esc_html( $grace_days )
+					);
+				} else {
+					esc_html_e( 'Your grace period has ended. Please contact your site administrator to set up 2FA.', 'atomic-edge-security' );
+				}
+				?>
+			</p>
+
+			<p style="margin-top: 20px;">
+				<a href="<?php echo esc_url( wp_login_url() ); ?>" class="button button-secondary">
+					<?php esc_html_e( '&larr; Back to Login', 'atomic-edge-security' ); ?>
+				</a>
+			</p>
+
+			<p class="description" style="margin-top: 20px;">
+				<?php
+				printf(
+					/* translators: %s: User's email address */
+					esc_html__( 'If you need assistance, please contact your site administrator. Your account email is: %s', 'atomic-edge-security' ),
+					'<code>' . esc_html( $user->user_email ) . '</code>'
+				);
+				?>
+			</p>
+		</div>
+		<?php
+
+		login_footer();
 	}
 }

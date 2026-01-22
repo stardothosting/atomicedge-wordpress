@@ -4,7 +4,7 @@ Tags: security, firewall, waf, malware, protection
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.7.0
+Stable tag: 1.8.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -88,6 +88,16 @@ Atomic Edge uses the OWASP Core Rule Set to block:
 6. Vulnerability scanner results
 
 == Changelog ==
+
+= 1.8.0 =
+* NEW: 2FA Enforcement Policy - Require two-factor authentication for specific user roles
+* Role-based 2FA enforcement (Administrator, Editor, etc.)
+* Configurable grace period before enforcement (1-90 days)
+* Grace period bypass option - allow login during grace period with reminders
+* Admin dashboard showing compliance status and non-compliant users
+* Admin notice reminders for users who need to set up 2FA
+* Dismissible reminders (24-hour reset) for less intrusive notifications
+* Policy settings page with intuitive UI under Atomic Edge menu
 
 = 1.7.0 =
 * NEW: Two-Factor Authentication (2FA) for WordPress login protection

@@ -154,6 +154,26 @@ class AtomicEdge_Admin {
 			'atomicedge-2fa-policy',
 			array( $this, 'render_2fa_policy_page' )
 		);
+
+		// 2FA User Management submenu.
+		add_submenu_page(
+			'atomic-edge-security',
+			__( '2FA Users', 'atomic-edge-security' ),
+			__( '2FA Users', 'atomic-edge-security' ),
+			'manage_options',
+			'atomicedge-2fa-users',
+			array( $this, 'render_2fa_users_page' )
+		);
+
+		// 2FA Audit Log submenu.
+		add_submenu_page(
+			'atomic-edge-security',
+			__( '2FA Audit Log', 'atomic-edge-security' ),
+			__( '2FA Audit Log', 'atomic-edge-security' ),
+			'manage_options',
+			'atomicedge-2fa-audit',
+			array( $this, 'render_2fa_audit_page' )
+		);
 	}
 
 	/**
@@ -518,6 +538,79 @@ class AtomicEdge_Admin {
 		}
 
 		include ATOMICEDGE_PLUGIN_DIR . 'admin/views/2fa-policy.php';
+	}
+
+	/**
+	 * Render the 2FA user management page.
+	 *
+	 * @return void
+	 */
+	public function render_2fa_users_page() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'atomic-edge-security' ) );
+		}
+
+		include ATOMICEDGE_PLUGIN_DIR . 'admin/views/2fa-users.php';
+	}
+
+	/**
+	 * Render the 2FA audit log page.
+	 *
+	 * @return void
+	 */
+	public function render_2fa_audit_page() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'atomic-edge-security' ) );
+		}
+
+		// Handle export action.
+		if ( isset( $_GET['action'] ) && 'export' === $_GET['action'] ) {
+			// Verify nonce.
+			if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ?? '' ) ), 'atomicedge_export_audit' ) ) {
+				wp_die( esc_html__( 'Security check failed.', 'atomic-edge-security' ) );
+			}
+
+			$this->export_audit_csv();
+			return;
+		}
+
+		include ATOMICEDGE_PLUGIN_DIR . 'admin/views/2fa-audit.php';
+	}
+
+	/**
+	 * Export audit log as CSV.
+	 *
+	 * @return void
+	 */
+	private function export_audit_csv() {
+		$entries = AtomicEdge_2FA_Audit::export( 1000 );
+
+		$filename = 'atomicedge-2fa-audit-' . gmdate( 'Y-m-d' ) . '.csv';
+
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename=' . $filename );
+		header( 'Pragma: no-cache' );
+		header( 'Expires: 0' );
+
+		$output = fopen( 'php://output', 'w' );
+
+		// CSV header.
+		fputcsv( $output, array( 'Date/Time', 'User', 'Email', 'Event', 'IP Address', 'Admin' ) );
+
+		// CSV data.
+		foreach ( $entries as $entry ) {
+			fputcsv( $output, array(
+				$entry['date'],
+				$entry['user'],
+				$entry['user_email'],
+				$entry['event'],
+				$entry['ip_address'],
+				$entry['admin'],
+			) );
+		}
+
+		fclose( $output );
+		exit;
 	}
 
 	/**

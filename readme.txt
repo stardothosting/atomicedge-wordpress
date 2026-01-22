@@ -4,7 +4,7 @@ Tags: security, firewall, waf, malware, protection
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.8.0
+Stable tag: 1.9.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -88,6 +88,21 @@ Atomic Edge uses the OWASP Core Rule Set to block:
 6. Vulnerability scanner results
 
 == Changelog ==
+
+= 1.9.0 =
+* NEW: 2FA Audit Log - Security audit trail for all 2FA-related events
+* Event logging: enrollment, disable, login success/failure, backup code usage, rate limiting
+* Filterable log viewer with pagination (by user, event type, date)
+* 30-day statistics dashboard with success/failure metrics
+* Security events section highlighting failed logins and suspicious activity
+* CSV export functionality for compliance and reporting
+* 90-day log retention with automatic cleanup
+* NEW: 2FA User Management - Admin interface for managing user 2FA status
+* View all users with 2FA status (enabled/disabled)
+* Search and filter users by 2FA status
+* Admin reset capability for locked-out users
+* Shows backup code counts and policy compliance status
+* Confirmation dialog for reset actions with admin audit logging
 
 = 1.8.0 =
 * NEW: 2FA Enforcement Policy - Require two-factor authentication for specific user roles

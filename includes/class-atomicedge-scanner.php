@@ -358,13 +358,24 @@ class AtomicEdge_Scanner {
 	 * @return string
 	 */
 	private function get_wp_root_path() {
-		// Prefer get_home_path() when available (admin context).
+		// Ensure get_home_path() is available by loading the admin file.php if needed.
+		// This is the WordPress-recommended way to get the installation root path.
+		if ( ! function_exists( 'get_home_path' ) ) {
+			// ABSPATH is the only internal constant allowed for building paths to admin files.
+			// Per WordPress plugin guidelines, we check file existence for test compatibility.
+			$file_php = ABSPATH . 'wp-admin/includes/file.php';
+			if ( file_exists( $file_php ) ) {
+				require_once $file_php;
+			}
+		}
+
+		// Now get_home_path() should be available.
 		if ( function_exists( 'get_home_path' ) ) {
 			return trailingslashit( wp_normalize_path( get_home_path() ) );
 		}
-		// Fallback: derive from plugin directory path (go up 3 levels from plugin dir).
-		// wp-content/plugins/atomicedge/ -> wp-content/plugins/ -> wp-content/ -> WP root.
-		return trailingslashit( wp_normalize_path( dirname( ATOMICEDGE_PLUGIN_DIR, 3 ) ) );
+
+		// Ultimate fallback: use ABSPATH (the WordPress installation directory).
+		return trailingslashit( wp_normalize_path( ABSPATH ) );
 	}
 
 	/**
@@ -382,9 +393,9 @@ class AtomicEdge_Scanner {
 	 * @return string
 	 */
 	private function get_wp_includes_path() {
-		// WPINC constant is 'wp-includes' - this is a core constant that's safe to use for the directory name.
-		$includes_dir = defined( 'WPINC' ) ? WPINC : 'wp-includes';
-		return wp_normalize_path( $this->get_wp_root_path() . $includes_dir );
+		// Use the standard 'wp-includes' directory name.
+		// This is always 'wp-includes' in all WordPress installations.
+		return wp_normalize_path( $this->get_wp_root_path() . 'wp-includes' );
 	}
 
 	/**

@@ -569,9 +569,22 @@ class AtomicEdge_Ajax {
 
 			update_option( 'atomicedge_site_data', $site_data );
 
+			// Sync edge-side optimization settings from API to local WP options.
+			// Note: js_minification and css_minification are plugin-local only, not synced.
+			if ( isset( $result['data']['optimization'] ) ) {
+				$optimization = $result['data']['optimization'];
+				if ( isset( $optimization['brotli'] ) ) {
+					update_option( 'atomicedge_cdn_brotli', (bool) $optimization['brotli'] );
+				}
+				if ( isset( $optimization['image_optimization'] ) ) {
+					update_option( 'atomicedge_cdn_image_optimization', (bool) $optimization['image_optimization'] );
+				}
+			}
+
 			wp_send_json_success( array(
 				'message'     => __( 'CDN status refreshed.', 'atomic-edge-security' ),
 				'cdn_enabled' => $site_data['cdn_enabled'] ?? false,
+				'optimization' => $result['data']['optimization'] ?? array(),
 				'debug'       => defined( 'WP_DEBUG' ) && WP_DEBUG ? $result : null,
 			) );
 		} else {
@@ -626,17 +639,20 @@ class AtomicEdge_Ajax {
 	public function ajax_update_cdn_settings() {
 		$post = $this->get_verified_post_fields( array( 'brotli', 'js_minification', 'css_minification', 'image_optimization' ) );
 
-		// Build settings array from provided values.
+		// JS/CSS minification are plugin-local only - save to WP options but don't sync to API.
+		if ( isset( $post['js_minification'] ) ) {
+			update_option( 'atomicedge_cdn_js_minification', 'true' === $post['js_minification'] || '1' === $post['js_minification'] );
+		}
+		if ( isset( $post['css_minification'] ) ) {
+			update_option( 'atomicedge_cdn_css_minification', 'true' === $post['css_minification'] || '1' === $post['css_minification'] );
+		}
+
+		// Build settings array for API - only edge-side settings (brotli, image_optimization).
+		// JS/CSS minification are already saved to local WP options above.
 		$settings = array();
 
 		if ( isset( $post['brotli'] ) ) {
 			$settings['brotli'] = 'true' === $post['brotli'] || '1' === $post['brotli'];
-		}
-		if ( isset( $post['js_minification'] ) ) {
-			$settings['js_minification'] = 'true' === $post['js_minification'] || '1' === $post['js_minification'];
-		}
-		if ( isset( $post['css_minification'] ) ) {
-			$settings['css_minification'] = 'true' === $post['css_minification'] || '1' === $post['css_minification'];
 		}
 		if ( isset( $post['image_optimization'] ) ) {
 			$settings['image_optimization'] = 'true' === $post['image_optimization'] || '1' === $post['image_optimization'];
@@ -649,6 +665,14 @@ class AtomicEdge_Ajax {
 		$result = $this->api->update_cdn_settings( $settings );
 
 		if ( $result['success'] ) {
+			// Sync edge-side settings to local WP options for page display.
+			if ( isset( $settings['brotli'] ) ) {
+				update_option( 'atomicedge_cdn_brotli', $settings['brotli'] );
+			}
+			if ( isset( $settings['image_optimization'] ) ) {
+				update_option( 'atomicedge_cdn_image_optimization', $settings['image_optimization'] );
+			}
+
 			wp_send_json_success( array(
 				'message' => __( 'CDN settings updated successfully.', 'atomic-edge-security' ),
 			) );

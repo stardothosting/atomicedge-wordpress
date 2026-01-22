@@ -79,6 +79,14 @@ class AtomicEdge_Ajax {
 
 		// Cache.
 		add_action( 'wp_ajax_atomicedge_clear_cache', array( $this, 'ajax_clear_cache' ) );
+
+		// Two-Factor Authentication.
+		add_action( 'wp_ajax_atomicedge_2fa_start_enrollment', array( $this, 'ajax_2fa_start_enrollment' ) );
+		add_action( 'wp_ajax_atomicedge_2fa_verify_enrollment', array( $this, 'ajax_2fa_verify_enrollment' ) );
+		add_action( 'wp_ajax_atomicedge_2fa_cancel_enrollment', array( $this, 'ajax_2fa_cancel_enrollment' ) );
+		add_action( 'wp_ajax_atomicedge_2fa_disable', array( $this, 'ajax_2fa_disable' ) );
+		add_action( 'wp_ajax_atomicedge_2fa_regenerate_codes', array( $this, 'ajax_2fa_regenerate_codes' ) );
+		add_action( 'wp_ajax_atomicedge_2fa_get_status', array( $this, 'ajax_2fa_get_status' ) );
 	}
 
 	/**
@@ -679,5 +687,224 @@ class AtomicEdge_Ajax {
 		} else {
 			wp_send_json_error( array( 'message' => $result['error'] ) );
 		}
+	}
+
+	/**
+	 * Start 2FA enrollment via AJAX.
+	 *
+	 * @return void
+	 */
+	public function ajax_2fa_start_enrollment() {
+		$this->verify_2fa_request();
+
+		$user_id = $this->get_2fa_user_id();
+
+		// Check if encryption is available.
+		if ( ! AtomicEdge_2FA::is_available() ) {
+			wp_send_json_error( array(
+				'message' => __( 'Two-factor authentication is not available. Your server may not support the required encryption features.', 'atomic-edge-security' ),
+			) );
+		}
+
+		// Check if already enabled.
+		if ( AtomicEdge_2FA::is_enabled_for_user( $user_id ) ) {
+			wp_send_json_error( array(
+				'message' => __( 'Two-factor authentication is already enabled.', 'atomic-edge-security' ),
+			) );
+		}
+
+		// Start enrollment.
+		$result = AtomicEdge_2FA::start_enrollment( $user_id );
+
+		if ( ! $result ) {
+			wp_send_json_error( array(
+				'message' => __( 'Failed to start enrollment. Please try again.', 'atomic-edge-security' ),
+			) );
+		}
+
+		wp_send_json_success( array(
+			'secret'           => $result['secret'],
+			'provisioning_uri' => $result['provisioning_uri'],
+		) );
+	}
+
+	/**
+	 * Verify 2FA enrollment via AJAX.
+	 *
+	 * @return void
+	 */
+	public function ajax_2fa_verify_enrollment() {
+		$this->verify_2fa_request();
+
+		$user_id = $this->get_2fa_user_id();
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_2fa_request.
+		$code = isset( $_POST['code'] ) ? sanitize_text_field( wp_unslash( $_POST['code'] ) ) : '';
+
+		if ( empty( $code ) ) {
+			wp_send_json_error( array(
+				'message' => __( 'Please enter the verification code.', 'atomic-edge-security' ),
+			) );
+		}
+
+		$result = AtomicEdge_2FA::complete_enrollment( $user_id, $code );
+
+		if ( ! $result['success'] ) {
+			wp_send_json_error( array( 'message' => $result['error'] ) );
+		}
+
+		// Format backup codes for display.
+		$user = get_userdata( $user_id );
+		$download_content = AtomicEdge_2FA_Backup::format_for_download(
+			$result['backup_codes'],
+			get_bloginfo( 'name' ),
+			$user ? $user->user_login : ''
+		);
+
+		wp_send_json_success( array(
+			'message'          => __( 'Two-factor authentication enabled successfully!', 'atomic-edge-security' ),
+			'backup_codes'     => $result['backup_codes'],
+			'download_content' => $download_content,
+		) );
+	}
+
+	/**
+	 * Cancel 2FA enrollment via AJAX.
+	 *
+	 * @return void
+	 */
+	public function ajax_2fa_cancel_enrollment() {
+		$this->verify_2fa_request();
+
+		$user_id = $this->get_2fa_user_id();
+
+		AtomicEdge_2FA::cancel_enrollment( $user_id );
+
+		wp_send_json_success( array(
+			'message' => __( 'Enrollment cancelled.', 'atomic-edge-security' ),
+		) );
+	}
+
+	/**
+	 * Disable 2FA via AJAX.
+	 *
+	 * @return void
+	 */
+	public function ajax_2fa_disable() {
+		$this->verify_2fa_request();
+
+		$user_id = $this->get_2fa_user_id();
+
+		// Require password confirmation for security.
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_2fa_request.
+		$password = isset( $_POST['password'] ) ? wp_unslash( $_POST['password'] ) : '';
+
+		if ( empty( $password ) ) {
+			wp_send_json_error( array(
+				'message' => __( 'Please enter your password to confirm.', 'atomic-edge-security' ),
+			) );
+		}
+
+		// Verify password.
+		$user = get_userdata( $user_id );
+		if ( ! $user || ! wp_check_password( $password, $user->user_pass, $user_id ) ) {
+			wp_send_json_error( array(
+				'message' => __( 'Incorrect password. Please try again.', 'atomic-edge-security' ),
+			) );
+		}
+
+		AtomicEdge_2FA::disable( $user_id );
+
+		wp_send_json_success( array(
+			'message' => __( 'Two-factor authentication has been disabled.', 'atomic-edge-security' ),
+		) );
+	}
+
+	/**
+	 * Regenerate backup codes via AJAX.
+	 *
+	 * @return void
+	 */
+	public function ajax_2fa_regenerate_codes() {
+		$this->verify_2fa_request();
+
+		$user_id = $this->get_2fa_user_id();
+
+		if ( ! AtomicEdge_2FA::is_enabled_for_user( $user_id ) ) {
+			wp_send_json_error( array(
+				'message' => __( 'Two-factor authentication is not enabled.', 'atomic-edge-security' ),
+			) );
+		}
+
+		$codes = AtomicEdge_2FA::regenerate_backup_codes( $user_id );
+
+		if ( ! $codes ) {
+			wp_send_json_error( array(
+				'message' => __( 'Failed to regenerate backup codes. Please try again.', 'atomic-edge-security' ),
+			) );
+		}
+
+		// Format for download.
+		$user = get_userdata( $user_id );
+		$download_content = AtomicEdge_2FA_Backup::format_for_download(
+			$codes,
+			get_bloginfo( 'name' ),
+			$user ? $user->user_login : ''
+		);
+
+		wp_send_json_success( array(
+			'message'          => __( 'Backup codes regenerated. Please save your new codes.', 'atomic-edge-security' ),
+			'backup_codes'     => $codes,
+			'download_content' => $download_content,
+		) );
+	}
+
+	/**
+	 * Get 2FA status via AJAX.
+	 *
+	 * @return void
+	 */
+	public function ajax_2fa_get_status() {
+		$this->verify_2fa_request();
+
+		$user_id = $this->get_2fa_user_id();
+		$status  = AtomicEdge_2FA::get_user_status( $user_id );
+
+		wp_send_json_success( $status );
+	}
+
+	/**
+	 * Verify 2FA AJAX request.
+	 *
+	 * @return void
+	 */
+	private function verify_2fa_request() {
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized immediately.
+		$nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
+
+		if ( ! $nonce || ! wp_verify_nonce( $nonce, 'atomicedge_2fa' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Security check failed.', 'atomic-edge-security' ) ) );
+		}
+
+		if ( ! current_user_can( 'read' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Unauthorized access.', 'atomic-edge-security' ) ) );
+		}
+	}
+
+	/**
+	 * Get the user ID for 2FA operations.
+	 *
+	 * @return int User ID.
+	 */
+	private function get_2fa_user_id() {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in verify_2fa_request.
+		$user_id = isset( $_POST['user_id'] ) ? absint( $_POST['user_id'] ) : get_current_user_id();
+
+		// Only allow admins to modify other users' 2FA.
+		if ( $user_id !== get_current_user_id() && ! current_user_can( 'edit_users' ) ) {
+			wp_send_json_error( array( 'message' => __( 'You cannot modify another user\'s settings.', 'atomic-edge-security' ) ) );
+		}
+
+		return $user_id;
 	}
 }

@@ -114,6 +114,9 @@ class AtomicEdge {
 		$this->scanner               = new AtomicEdge_Scanner();
 		$this->vulnerability_scanner = new AtomicEdge_Vulnerability_Scanner( $this->api );
 		$this->cron                  = new AtomicEdge_Cron( $this->api, $this->scanner );
+
+		// Initialize 2FA component (singleton).
+		AtomicEdge_2FA::get_instance();
 	}
 
 	/**

@@ -514,4 +514,11 @@ require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-vulnerability-sc
 require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-ajax.php';
 require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-admin.php';
 require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-cron.php';
+// 2FA classes (dependencies first).
+require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-2fa-crypto.php';
+require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-2fa-totp.php';
+require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-2fa-backup.php';
+require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-2fa.php';
+require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-2fa-login.php';
+// Main plugin class (depends on all components).
 require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge.php';

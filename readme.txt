@@ -4,7 +4,7 @@ Tags: security, firewall, waf, malware, protection
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.6.0
+Stable tag: 1.7.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -88,6 +88,15 @@ Atomic Edge uses the OWASP Core Rule Set to block:
 6. Vulnerability scanner results
 
 == Changelog ==
+
+= 1.7.0 =
+* NEW: Two-Factor Authentication (2FA) for WordPress login protection
+* TOTP authenticator app support (Google Authenticator, Authy, etc.)
+* Backup recovery codes with secure generation and one-time use
+* Encrypted secret storage using libsodium
+* Rate limiting on failed 2FA attempts with progressive lockout
+* 2FA settings integrated into User Profile page
+* Client-side QR code generation for authenticator app setup
 
 = 1.6.0 =
 * Admin notice when retired Shift8 CDN plugin is active

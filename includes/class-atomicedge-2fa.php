@@ -110,6 +110,18 @@ class AtomicEdge_2FA {
 	private $login_handler = null;
 
 	/**
+	 * Debug log helper - only logs when WP_DEBUG is true.
+	 *
+	 * @param string $message Log message.
+	 * @return void
+	 */
+	private static function debug_log( $message ) {
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'AtomicEdge 2FA: ' . $message );
+		}
+	}
+
+	/**
 	 * Get singleton instance.
 	 *
 	 * @return AtomicEdge_2FA
@@ -193,25 +205,36 @@ class AtomicEdge_2FA {
 	 * }
 	 */
 	public static function start_enrollment( $user_id ) {
+		self::debug_log( 'start_enrollment() called for user_id: ' . $user_id );
+
 		$user = get_userdata( $user_id );
 		if ( ! $user ) {
+			self::debug_log( 'start_enrollment() failed: invalid user' );
 			return new \WP_Error( 'invalid_user', __( 'Invalid user.', 'atomic-edge-security' ) );
 		}
+		self::debug_log( 'start_enrollment() user found: ' . $user->user_login );
 
 		// Verify encryption is available before starting.
+		self::debug_log( 'start_enrollment() checking encryption availability...' );
 		if ( ! AtomicEdge_2FA_Crypto::is_available() ) {
+			self::debug_log( 'start_enrollment() failed: encryption not available' );
 			AtomicEdge::log( '2FA enrollment failed: encryption not available', array( 'user_id' => $user_id ) );
 			return new \WP_Error(
 				'encryption_unavailable',
 				__( 'Two-factor authentication requires libsodium encryption which is not available on this server.', 'atomic-edge-security' )
 			);
 		}
+		self::debug_log( 'start_enrollment() encryption is available' );
 
+		self::debug_log( 'start_enrollment() generating secret...' );
 		$secret = AtomicEdge_2FA_TOTP::generate_secret();
+		self::debug_log( 'start_enrollment() secret generated, length: ' . strlen( $secret ) );
 
 		// Store encrypted pending secret.
+		self::debug_log( 'start_enrollment() encrypting secret...' );
 		$encrypted = AtomicEdge_2FA_Crypto::encrypt( $secret );
 		if ( is_wp_error( $encrypted ) ) {
+			self::debug_log( 'start_enrollment() encryption failed: ' . $encrypted->get_error_message() );
 			AtomicEdge::log( '2FA enrollment failed: encryption failed', array(
 				'user_id' => $user_id,
 				'error'   => $encrypted->get_error_message(),
@@ -222,21 +245,28 @@ class AtomicEdge_2FA {
 				sprintf( __( 'Encryption failed: %s', 'atomic-edge-security' ), $encrypted->get_error_message() )
 			);
 		}
+		self::debug_log( 'start_enrollment() encryption successful, encrypted length: ' . strlen( $encrypted ) );
 
 		// Clear any existing pending secret first (for clean state).
+		self::debug_log( 'start_enrollment() clearing old pending secret...' );
 		delete_user_meta( $user_id, self::META_PENDING_SECRET );
 
 		// Store the encrypted secret.
+		self::debug_log( 'start_enrollment() storing encrypted secret...' );
 		$result = update_user_meta( $user_id, self::META_PENDING_SECRET, $encrypted );
+		self::debug_log( 'start_enrollment() update_user_meta result: ' . var_export( $result, true ) );
 
 		// Verify it was actually saved (handles object cache issues).
 		// Force a fresh read from database by cleaning the cache.
 		if ( function_exists( 'wp_cache_delete' ) ) {
+			self::debug_log( 'start_enrollment() clearing user_meta cache...' );
 			wp_cache_delete( $user_id, 'user_meta' );
 		}
 		$verify = get_user_meta( $user_id, self::META_PENDING_SECRET, true );
+		self::debug_log( 'start_enrollment() verification read, length: ' . ( $verify ? strlen( $verify ) : 'empty/false' ) );
 
 		if ( empty( $verify ) ) {
+			self::debug_log( 'start_enrollment() failed: meta not persisted after write' );
 			AtomicEdge::log( '2FA enrollment failed: meta not persisted', array(
 				'user_id'       => $user_id,
 				'update_result' => $result,
@@ -246,6 +276,7 @@ class AtomicEdge_2FA {
 				__( 'Failed to save enrollment data. This may be caused by database issues or object caching. Please try again or contact support.', 'atomic-edge-security' )
 			);
 		}
+		self::debug_log( 'start_enrollment() meta verified, generating provisioning URI...' );
 
 		// Generate provisioning URI.
 		$provisioning_uri = AtomicEdge_2FA_TOTP::get_provisioning_uri(
@@ -253,8 +284,10 @@ class AtomicEdge_2FA {
 			$user->user_login,
 			get_bloginfo( 'name' )
 		);
+		self::debug_log( 'start_enrollment() provisioning URI generated' );
 
 		self::log_event( $user_id, 'enrollment_started' );
+		self::debug_log( 'start_enrollment() SUCCESS' );
 
 		return array(
 			'secret'           => $secret,

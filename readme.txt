@@ -4,7 +4,7 @@ Tags: security, firewall, waf, malware, protection
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.9.4
+Stable tag: 1.9.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -88,6 +88,11 @@ Atomic Edge uses the OWASP Core Rule Set to block:
 6. Vulnerability scanner results
 
 == Changelog ==
+
+= 1.9.5 =
+* IMPROVED: Added comprehensive debug logging for 2FA enrollment when WP_DEBUG is enabled
+* Debug logs show exact failure point in enrollment flow for easier troubleshooting
+* Logs cover: crypto availability checks, encryption steps, user meta operations
 
 = 1.9.4 =
 * FIX: Removed problematic sodium_memzero() call on plaintext that could cause encryption failures

@@ -690,44 +690,67 @@ class AtomicEdge_Ajax {
 	}
 
 	/**
+	 * Debug log helper - only logs when WP_DEBUG is true.
+	 *
+	 * @param string $message Log message.
+	 * @return void
+	 */
+	private function debug_log( $message ) {
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'AtomicEdge AJAX: ' . $message );
+		}
+	}
+
+	/**
 	 * Start 2FA enrollment via AJAX.
 	 *
 	 * @return void
 	 */
 	public function ajax_2fa_start_enrollment() {
+		$this->debug_log( 'ajax_2fa_start_enrollment() called' );
+
 		$this->verify_2fa_request();
 
 		$user_id = $this->get_2fa_user_id();
+		$this->debug_log( 'ajax_2fa_start_enrollment() user_id: ' . $user_id );
 
 		// Check if encryption is available.
+		$this->debug_log( 'ajax_2fa_start_enrollment() checking is_available...' );
 		if ( ! AtomicEdge_2FA::is_available() ) {
+			$this->debug_log( 'ajax_2fa_start_enrollment() FAILED: encryption not available' );
 			wp_send_json_error( array(
 				'message' => __( 'Two-factor authentication is not available. Your server may not support the required encryption features.', 'atomic-edge-security' ),
 			) );
 		}
+		$this->debug_log( 'ajax_2fa_start_enrollment() encryption is available' );
 
 		// Check if already enabled.
 		if ( AtomicEdge_2FA::is_enabled_for_user( $user_id ) ) {
+			$this->debug_log( 'ajax_2fa_start_enrollment() FAILED: already enabled' );
 			wp_send_json_error( array(
 				'message' => __( 'Two-factor authentication is already enabled.', 'atomic-edge-security' ),
 			) );
 		}
 
 		// Start enrollment.
+		$this->debug_log( 'ajax_2fa_start_enrollment() calling start_enrollment...' );
 		$result = AtomicEdge_2FA::start_enrollment( $user_id );
 
 		if ( is_wp_error( $result ) ) {
+			$this->debug_log( 'ajax_2fa_start_enrollment() FAILED: ' . $result->get_error_code() . ' - ' . $result->get_error_message() );
 			wp_send_json_error( array(
 				'message' => $result->get_error_message(),
 			) );
 		}
 
 		if ( ! $result ) {
+			$this->debug_log( 'ajax_2fa_start_enrollment() FAILED: result was false/empty' );
 			wp_send_json_error( array(
 				'message' => __( 'Failed to start enrollment. Please try again.', 'atomic-edge-security' ),
 			) );
 		}
 
+		$this->debug_log( 'ajax_2fa_start_enrollment() SUCCESS' );
 		wp_send_json_success( array(
 			'secret'           => $result['secret'],
 			'provisioning_uri' => $result['provisioning_uri'],

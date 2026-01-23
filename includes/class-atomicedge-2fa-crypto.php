@@ -29,15 +29,41 @@ class AtomicEdge_2FA_Crypto {
 	const KEY_SALT = 'atomicedge_2fa_v1';
 
 	/**
+	 * Debug log helper - only logs when WP_DEBUG is true.
+	 *
+	 * @param string $message Log message.
+	 * @return void
+	 */
+	private static function debug_log( $message ) {
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( 'AtomicEdge 2FA Crypto: ' . $message );
+		}
+	}
+
+	/**
 	 * Check if encryption is available.
 	 *
 	 * @return bool True if libsodium is available.
 	 */
 	public static function is_available() {
-		return function_exists( 'sodium_crypto_secretbox' ) &&
-			   function_exists( 'sodium_crypto_secretbox_open' ) &&
-			   defined( 'SODIUM_CRYPTO_SECRETBOX_NONCEBYTES' ) &&
-			   defined( 'SODIUM_CRYPTO_SECRETBOX_KEYBYTES' );
+		$has_secretbox      = function_exists( 'sodium_crypto_secretbox' );
+		$has_secretbox_open = function_exists( 'sodium_crypto_secretbox_open' );
+		$has_nonce_const    = defined( 'SODIUM_CRYPTO_SECRETBOX_NONCEBYTES' );
+		$has_key_const      = defined( 'SODIUM_CRYPTO_SECRETBOX_KEYBYTES' );
+
+		$available = $has_secretbox && $has_secretbox_open && $has_nonce_const && $has_key_const;
+
+		if ( ! $available ) {
+			self::debug_log( sprintf(
+				'is_available check failed: secretbox=%s, secretbox_open=%s, nonce_const=%s, key_const=%s',
+				$has_secretbox ? 'yes' : 'NO',
+				$has_secretbox_open ? 'yes' : 'NO',
+				$has_nonce_const ? 'yes' : 'NO',
+				$has_key_const ? 'yes' : 'NO'
+			) );
+		}
+
+		return $available;
 	}
 
 	/**
@@ -49,30 +75,46 @@ class AtomicEdge_2FA_Crypto {
 	 * @return string|\WP_Error Base64-encoded encrypted data, or WP_Error on failure.
 	 */
 	public static function encrypt( $plaintext ) {
+		self::debug_log( 'encrypt() called, plaintext length: ' . strlen( $plaintext ) );
+
 		if ( ! self::is_available() ) {
+			self::debug_log( 'encrypt() failed: sodium not available' );
 			return new \WP_Error( 'sodium_unavailable', 'libsodium functions not available' );
 		}
 
 		if ( empty( $plaintext ) ) {
+			self::debug_log( 'encrypt() failed: empty plaintext' );
 			return new \WP_Error( 'empty_plaintext', 'Empty data provided for encryption' );
 		}
 
 		try {
-			$key   = self::derive_key();
-			$nonce = random_bytes( SODIUM_CRYPTO_SECRETBOX_NONCEBYTES );
+			self::debug_log( 'encrypt() deriving key...' );
+			$key = self::derive_key();
+			self::debug_log( 'encrypt() key derived, length: ' . strlen( $key ) );
 
+			self::debug_log( 'encrypt() generating nonce...' );
+			$nonce = random_bytes( SODIUM_CRYPTO_SECRETBOX_NONCEBYTES );
+			self::debug_log( 'encrypt() nonce generated, length: ' . strlen( $nonce ) );
+
+			self::debug_log( 'encrypt() calling sodium_crypto_secretbox...' );
 			$ciphertext = sodium_crypto_secretbox( $plaintext, $nonce, $key );
+			self::debug_log( 'encrypt() ciphertext generated, length: ' . strlen( $ciphertext ) );
 
 			// Prepend nonce to ciphertext for storage.
 			$encrypted = $nonce . $ciphertext;
 
-			// Clear key from memory (don't zero plaintext - it's a local copy).
+			// Clear key from memory.
 			sodium_memzero( $key );
 
-			return base64_encode( $encrypted );
+			$result = base64_encode( $encrypted );
+			self::debug_log( 'encrypt() success, result length: ' . strlen( $result ) );
+
+			return $result;
 		} catch ( \Exception $e ) {
+			self::debug_log( 'encrypt() Exception: ' . $e->getMessage() );
 			return new \WP_Error( 'encrypt_exception', 'Encryption error: ' . $e->getMessage() );
 		} catch ( \Error $e ) {
+			self::debug_log( 'encrypt() Error: ' . $e->getMessage() );
 			return new \WP_Error( 'encrypt_error', 'Encryption fatal: ' . $e->getMessage() );
 		}
 	}

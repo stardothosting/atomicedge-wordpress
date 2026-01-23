@@ -4,7 +4,7 @@ Tags: security, firewall, waf, malware, protection
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.9.0
+Stable tag: 1.9.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -88,6 +88,10 @@ Atomic Edge uses the OWASP Core Rule Set to block:
 6. Vulnerability scanner results
 
 == Changelog ==
+
+= 1.9.1 =
+* SECURITY: Fixed potential XSS vulnerability in JavaScript error message display (admin.js)
+* Security audit: Verified proper escaping for all external data (WAF logs, analytics, 2FA audit logs)
 
 = 1.9.0 =
 * NEW: 2FA Audit Log - Security audit trail for all 2FA-related events

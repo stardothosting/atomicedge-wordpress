@@ -1,0 +1,280 @@
+<?php
+/**
+ * 2FA Audit Log Tab Content
+ *
+ * @package AtomicEdge
+ * @since   1.9.1
+ */
+
+// Prevent direct access.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+// Get current page and filters.
+$current_page = isset( $_GET['paged'] ) ? max( 1, absint( $_GET['paged'] ) ) : 1;
+$user_filter  = isset( $_GET['user_id'] ) ? absint( $_GET['user_id'] ) : 0;
+$event_filter = isset( $_GET['event'] ) ? sanitize_text_field( wp_unslash( $_GET['event'] ) ) : '';
+$per_page     = 25;
+
+// Get audit entries.
+$result = AtomicEdge_2FA_Audit::get_entries( array(
+	'user_id' => $user_filter,
+	'event'   => $event_filter,
+	'limit'   => $per_page,
+	'offset'  => ( $current_page - 1 ) * $per_page,
+) );
+
+$entries     = $result['entries'];
+$total       = $result['total'];
+$total_pages = ceil( $total / $per_page );
+
+// Get statistics.
+$stats = AtomicEdge_2FA_Audit::get_statistics( 30 );
+
+// Event types for filter dropdown.
+$event_types = array(
+	''                         => __( 'All Events', 'atomicedge' ),
+	'enrollment_started'       => __( 'Enrollment Started', 'atomicedge' ),
+	'enrollment_completed'     => __( 'Enrollment Completed', 'atomicedge' ),
+	'enrollment_cancelled'     => __( 'Enrollment Cancelled', 'atomicedge' ),
+	'2fa_disabled'             => __( '2FA Disabled', 'atomicedge' ),
+	'backup_codes_regenerated' => __( 'Backup Codes Regenerated', 'atomicedge' ),
+	'backup_code_used'         => __( 'Backup Code Used', 'atomicedge' ),
+	'login_success'            => __( 'Login Success', 'atomicedge' ),
+	'login_failed'             => __( 'Login Failed', 'atomicedge' ),
+	'rate_limited'             => __( 'Rate Limited', 'atomicedge' ),
+	'admin_reset'              => __( 'Admin Reset', 'atomicedge' ),
+);
+?>
+
+<p class="description" style="margin: 0 0 15px;">
+	<?php echo esc_html__( 'Security audit log showing all 2FA-related events. Logs are retained for 90 days.', 'atomicedge' ); ?>
+</p>
+
+<!-- Statistics Cards -->
+<div class="atomicedge-stats-grid">
+	<div class="atomicedge-stat-card" style="border-left-color: #0073aa;">
+		<div class="stat-value"><?php echo esc_html( number_format( $stats['total_events'] ) ); ?></div>
+		<div class="stat-label"><?php echo esc_html__( 'Events (30 days)', 'atomicedge' ); ?></div>
+	</div>
+	<div class="atomicedge-stat-card" style="border-left-color: #46b450;">
+		<div class="stat-value" style="color: #46b450;"><?php echo esc_html( number_format( $stats['login_success'] ) ); ?></div>
+		<div class="stat-label"><?php echo esc_html__( 'Successful Logins', 'atomicedge' ); ?></div>
+	</div>
+	<div class="atomicedge-stat-card" style="border-left-color: #dc3232;">
+		<div class="stat-value" style="color: #dc3232;"><?php echo esc_html( number_format( $stats['login_failed'] ) ); ?></div>
+		<div class="stat-label"><?php echo esc_html__( 'Failed Attempts', 'atomicedge' ); ?></div>
+	</div>
+	<div class="atomicedge-stat-card" style="border-left-color: #f0ad4e;">
+		<div class="stat-value" style="color: #f0ad4e;"><?php echo esc_html( number_format( $stats['backup_code_used'] ) ); ?></div>
+		<div class="stat-label"><?php echo esc_html__( 'Backup Codes Used', 'atomicedge' ); ?></div>
+	</div>
+</div>
+
+<!-- Filters -->
+<form method="get" action="" style="margin-bottom: 20px;">
+	<input type="hidden" name="page" value="atomicedge-2fa" />
+	<input type="hidden" name="tab" value="audit" />
+	
+	<select name="event" style="min-width: 200px;">
+		<?php foreach ( $event_types as $value => $label ) : ?>
+			<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $event_filter, $value ); ?>>
+				<?php echo esc_html( $label ); ?>
+			</option>
+		<?php endforeach; ?>
+	</select>
+	
+	<input type="number" name="user_id" value="<?php echo $user_filter ? esc_attr( $user_filter ) : ''; ?>" 
+		placeholder="<?php echo esc_attr__( 'Filter by User ID', 'atomicedge' ); ?>" style="width: 150px;" />
+	
+	<button type="submit" class="button"><?php echo esc_html__( 'Filter', 'atomicedge' ); ?></button>
+	
+	<?php if ( $user_filter || $event_filter ) : ?>
+		<a href="<?php echo esc_url( admin_url( 'admin.php?page=atomicedge-2fa&tab=audit' ) ); ?>" class="button">
+			<?php echo esc_html__( 'Clear Filters', 'atomicedge' ); ?>
+		</a>
+	<?php endif; ?>
+	
+	<!-- Export Button -->
+	<a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin.php?page=atomicedge-2fa&tab=audit&action=export' ), 'atomicedge_export_audit' ) ); ?>" 
+		class="button" style="float: right;">
+		<span class="dashicons dashicons-download" style="vertical-align: middle; margin-top: 3px;"></span>
+		<?php echo esc_html__( 'Export CSV', 'atomicedge' ); ?>
+	</a>
+</form>
+
+<!-- Log Table -->
+<table class="wp-list-table widefat fixed striped">
+	<thead>
+		<tr>
+			<th scope="col" style="width: 150px;"><?php echo esc_html__( 'Date/Time', 'atomicedge' ); ?></th>
+			<th scope="col" style="width: 130px;"><?php echo esc_html__( 'User', 'atomicedge' ); ?></th>
+			<th scope="col"><?php echo esc_html__( 'Event', 'atomicedge' ); ?></th>
+			<th scope="col" style="width: 120px;"><?php echo esc_html__( 'IP Address', 'atomicedge' ); ?></th>
+			<th scope="col" style="width: 100px;"><?php echo esc_html__( 'Admin', 'atomicedge' ); ?></th>
+		</tr>
+	</thead>
+	<tbody>
+		<?php if ( empty( $entries ) ) : ?>
+			<tr>
+				<td colspan="5" style="text-align: center; padding: 20px;">
+					<?php echo esc_html__( 'No audit log entries found.', 'atomicedge' ); ?>
+				</td>
+			</tr>
+		<?php else : ?>
+			<?php foreach ( $entries as $entry ) : ?>
+				<?php
+				$severity = AtomicEdge_2FA_Audit::get_event_severity( $entry['event'] );
+				$color    = '#0073aa';
+				if ( 'success' === $severity ) {
+					$color = '#46b450';
+				} elseif ( 'warning' === $severity ) {
+					$color = '#f0ad4e';
+				} elseif ( 'danger' === $severity ) {
+					$color = '#dc3232';
+				}
+				?>
+				<tr>
+					<td>
+						<span title="<?php echo esc_attr( wp_date( 'Y-m-d H:i:s', $entry['timestamp'] ) ); ?>">
+							<?php echo esc_html( wp_date( 'M j, g:i a', $entry['timestamp'] ) ); ?>
+						</span>
+					</td>
+					<td>
+						<?php if ( $entry['user_id'] ) : ?>
+							<a href="<?php echo esc_url( admin_url( 'user-edit.php?user_id=' . absint( $entry['user_id'] ) ) ); ?>">
+								<?php echo esc_html( $entry['user_login'] ); ?>
+							</a>
+						<?php else : ?>
+							<?php echo esc_html( $entry['user_login'] ); ?>
+						<?php endif; ?>
+					</td>
+					<td>
+						<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: <?php echo esc_attr( $color ); ?>; margin-right: 8px;"></span>
+						<?php echo esc_html( AtomicEdge_2FA_Audit::get_event_label( $entry['event'] ) ); ?>
+						<?php if ( ! empty( $entry['context']['reason'] ) ) : ?>
+							<br><small style="color: #666; margin-left: 16px;"><?php echo esc_html( $entry['context']['reason'] ); ?></small>
+						<?php endif; ?>
+					</td>
+					<td>
+						<code style="font-size: 11px;"><?php echo esc_html( $entry['ip_address'] ); ?></code>
+					</td>
+					<td>
+						<?php if ( ! empty( $entry['admin_login'] ) ) : ?>
+							<?php echo esc_html( $entry['admin_login'] ); ?>
+						<?php else : ?>
+							<span style="color: #999;">—</span>
+						<?php endif; ?>
+					</td>
+				</tr>
+			<?php endforeach; ?>
+		<?php endif; ?>
+	</tbody>
+</table>
+
+<!-- Pagination -->
+<?php if ( $total_pages > 1 ) : ?>
+	<div class="tablenav bottom">
+		<div class="tablenav-pages">
+			<span class="displaying-num">
+				<?php
+				printf(
+					/* translators: %s: number of items */
+					esc_html( _n( '%s item', '%s items', $total, 'atomicedge' ) ),
+					esc_html( number_format_i18n( $total ) )
+				);
+				?>
+			</span>
+			<span class="pagination-links">
+				<?php
+				$base_url = add_query_arg(
+					array(
+						'page'    => 'atomicedge-2fa',
+						'tab'     => 'audit',
+						'user_id' => $user_filter ?: false,
+						'event'   => $event_filter ?: false,
+					),
+					admin_url( 'admin.php' )
+				);
+				
+				if ( $current_page > 1 ) {
+					printf(
+						'<a class="first-page button" href="%s"><span aria-hidden="true">&laquo;</span></a>',
+						esc_url( add_query_arg( 'paged', 1, $base_url ) )
+					);
+					printf(
+						'<a class="prev-page button" href="%s"><span aria-hidden="true">&lsaquo;</span></a>',
+						esc_url( add_query_arg( 'paged', $current_page - 1, $base_url ) )
+					);
+				} else {
+					echo '<span class="tablenav-pages-navspan button disabled" aria-hidden="true">&laquo;</span>';
+					echo '<span class="tablenav-pages-navspan button disabled" aria-hidden="true">&lsaquo;</span>';
+				}
+				?>
+				
+				<span class="paging-input">
+					<?php echo esc_html( $current_page ); ?> / <?php echo esc_html( $total_pages ); ?>
+				</span>
+				
+				<?php
+				if ( $current_page < $total_pages ) {
+					printf(
+						'<a class="next-page button" href="%s"><span aria-hidden="true">&rsaquo;</span></a>',
+						esc_url( add_query_arg( 'paged', $current_page + 1, $base_url ) )
+					);
+					printf(
+						'<a class="last-page button" href="%s"><span aria-hidden="true">&raquo;</span></a>',
+						esc_url( add_query_arg( 'paged', $total_pages, $base_url ) )
+					);
+				} else {
+					echo '<span class="tablenav-pages-navspan button disabled" aria-hidden="true">&rsaquo;</span>';
+					echo '<span class="tablenav-pages-navspan button disabled" aria-hidden="true">&raquo;</span>';
+				}
+				?>
+			</span>
+		</div>
+	</div>
+<?php endif; ?>
+
+<!-- Security Alerts -->
+<?php
+$security_events = AtomicEdge_2FA_Audit::get_security_events( 10 );
+if ( ! empty( $security_events ) ) :
+?>
+	<h3 style="margin-top: 30px;"><?php echo esc_html__( 'Recent Security Events', 'atomicedge' ); ?></h3>
+	<p class="description"><?php echo esc_html__( 'Failed logins, rate limits, and admin actions.', 'atomicedge' ); ?></p>
+	
+	<table class="wp-list-table widefat fixed striped" style="margin-top: 10px;">
+		<thead>
+			<tr>
+				<th scope="col" style="width: 150px;"><?php echo esc_html__( 'Date/Time', 'atomicedge' ); ?></th>
+				<th scope="col" style="width: 130px;"><?php echo esc_html__( 'User', 'atomicedge' ); ?></th>
+				<th scope="col"><?php echo esc_html__( 'Event', 'atomicedge' ); ?></th>
+				<th scope="col" style="width: 120px;"><?php echo esc_html__( 'IP Address', 'atomicedge' ); ?></th>
+			</tr>
+		</thead>
+		<tbody>
+			<?php foreach ( $security_events as $entry ) : ?>
+				<tr>
+					<td><?php echo esc_html( wp_date( 'M j, g:i a', $entry['timestamp'] ) ); ?></td>
+					<td>
+						<?php if ( $entry['user_id'] ) : ?>
+							<a href="<?php echo esc_url( admin_url( 'user-edit.php?user_id=' . absint( $entry['user_id'] ) ) ); ?>">
+								<?php echo esc_html( $entry['user_login'] ); ?>
+							</a>
+						<?php else : ?>
+							<?php echo esc_html( $entry['user_login'] ); ?>
+						<?php endif; ?>
+					</td>
+					<td>
+						<span style="color: #dc3232; font-weight: 500;">
+							<?php echo esc_html( AtomicEdge_2FA_Audit::get_event_label( $entry['event'] ) ); ?>
+						</span>
+					</td>
+					<td><code style="font-size: 11px;"><?php echo esc_html( $entry['ip_address'] ); ?></code></td>
+				</tr>
+			<?php endforeach; ?>
+		</tbody>
+	</table>
+<?php endif; ?>

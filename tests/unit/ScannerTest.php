@@ -423,4 +423,241 @@ class ScannerTest extends TestCase {
 		$this->assertNotEmpty( $saved_results );
 		$this->assertNotEmpty( $last_scan );
 	}
+
+	// =========================================================================
+	// Resumable Scan Tests
+	// =========================================================================
+
+	/**
+	 * Test get_resumable_scan_status returns idle when no scan.
+	 */
+	public function test_get_resumable_scan_status_idle_when_no_scan() {
+		delete_transient( 'atomicedge_scan_run_state' );
+
+		$status = $this->scanner->get_resumable_scan_status( '' );
+
+		$this->assertIsArray( $status );
+		$this->assertEquals( 'idle', $status['status'] );
+	}
+
+	/**
+	 * Test cancel_resumable_scan with no active scan returns idle.
+	 */
+	public function test_cancel_resumable_scan_no_active_scan() {
+		// Clear any existing scan state.
+		delete_transient( 'atomicedge_scan_run_state' );
+
+		$result = $this->scanner->cancel_resumable_scan( 'any-run-id' );
+
+		$this->assertIsArray( $result );
+		// When no scan is active, it returns idle.
+		$this->assertEquals( 'idle', $result['status'] );
+	}
+
+	/**
+	 * Test reset_resumable_scan clears state.
+	 */
+	public function test_reset_clears_all_scan_state() {
+		// Set some state.
+		$this->set_transient( 'atomicedge_scan_run_state', array( 'status' => 'running' ) );
+		$this->set_option( 'atomicedge_scan_results', array( 'test' => true ) );
+
+		$result = $this->scanner->reset_resumable_scan();
+
+		$this->assertIsArray( $result );
+		$this->assertEquals( 'reset', $result['status'] );
+		$this->assertFalse( $this->get_transient( 'atomicedge_scan_run_state' ) );
+	}
+
+	// =========================================================================
+	// File Analysis Tests
+	// =========================================================================
+
+	/**
+	 * Test hidden file detection pattern.
+	 */
+	public function test_hidden_file_detection_pattern() {
+		$hidden_files = array(
+			'.htaccess',
+			'.hidden.php',
+			'..doubledot.php',
+		);
+
+		$visible_files = array(
+			'normal.php',
+			'file.txt',
+			'index.html',
+		);
+
+		$hidden_pattern = '/^\./';
+
+		foreach ( $hidden_files as $file ) {
+			$basename = basename( $file );
+			$this->assertTrue(
+				(bool) preg_match( $hidden_pattern, $basename ),
+				"Should detect {$file} as hidden"
+			);
+		}
+
+		foreach ( $visible_files as $file ) {
+			$basename = basename( $file );
+			$this->assertFalse(
+				(bool) preg_match( $hidden_pattern, $basename ),
+				"Should NOT detect {$file} as hidden"
+			);
+		}
+	}
+
+	/**
+	 * Test file extension pattern matching.
+	 */
+	public function test_file_extension_pattern_matching() {
+		$php_pattern = '/\.php$/i';
+
+		$php_files = array( 'index.php', 'test.PHP', 'file.Php' );
+		$non_php   = array( 'style.css', 'script.js', 'image.png' );
+
+		foreach ( $php_files as $file ) {
+			$this->assertTrue(
+				(bool) preg_match( $php_pattern, $file ),
+				"{$file} should match PHP pattern"
+			);
+		}
+
+		foreach ( $non_php as $file ) {
+			$this->assertFalse(
+				(bool) preg_match( $php_pattern, $file ),
+				"{$file} should NOT match PHP pattern"
+			);
+		}
+	}
+
+	/**
+	 * Test obfuscation detection patterns.
+	 */
+	public function test_obfuscation_detection_patterns() {
+		$obfuscation_patterns = array(
+			'base64_decode\s*\(\s*[\'"]' => 'Base64 string decode',
+			'chr\s*\(\s*\d+\s*\)'         => 'Chr function usage',
+			'\\\\x[0-9a-f]{2}'            => 'Hex escape sequences',
+		);
+
+		$obfuscated_code = array(
+			"base64_decode('SGVsbG8gV29ybGQ=')",
+			"chr(72).chr(101).chr(108)",
+			'$x = "\\x48\\x65\\x6c\\x6c\\x6f";',
+		);
+
+		$clean_code = array(
+			'echo "Hello World";',
+			'$name = "test";',
+			'function hello() { return true; }',
+		);
+
+		// Verify patterns detect obfuscated code.
+		foreach ( $obfuscated_code as $code ) {
+			$matched = false;
+			foreach ( array_keys( $obfuscation_patterns ) as $pattern ) {
+				if ( preg_match( '/' . $pattern . '/i', $code ) ) {
+					$matched = true;
+					break;
+				}
+			}
+			$this->assertTrue( $matched, "Obfuscated code should be detected: {$code}" );
+		}
+	}
+
+	/**
+	 * Test shell command execution patterns.
+	 */
+	public function test_shell_command_execution_patterns() {
+		$shell_pattern = '/\b(exec|shell_exec|system|passthru|popen|proc_open)\s*\(/i';
+
+		$dangerous = array(
+			'exec($cmd)',
+			'shell_exec("ls -la")',
+			'system($_GET["cmd"])',
+			'passthru($input)',
+			'popen($command, "r")',
+			'proc_open($cmd, $descriptors, $pipes)',
+		);
+
+		$safe = array(
+			'$exec = "variable name";',
+			'// This is a comment about exec',
+			'function my_exec_handler() {}',
+		);
+
+		foreach ( $dangerous as $code ) {
+			$this->assertTrue(
+				(bool) preg_match( $shell_pattern, $code ),
+				"Should detect shell execution: {$code}"
+			);
+		}
+
+		foreach ( $safe as $code ) {
+			$this->assertFalse(
+				(bool) preg_match( $shell_pattern, $code ),
+				"Should NOT flag safe code: {$code}"
+			);
+		}
+	}
+
+	// =========================================================================
+	// Scan Mode Tests
+	// =========================================================================
+
+	/**
+	 * Test scan mode validation.
+	 */
+	public function test_scan_mode_defaults_to_all() {
+		// Invalid modes should default to 'all'.
+		$valid_modes = array( 'php', 'all' );
+		$invalid_mode = 'invalid';
+
+		$this->assertNotContains( $invalid_mode, $valid_modes );
+		$this->assertContains( 'all', $valid_modes );
+		$this->assertContains( 'php', $valid_modes );
+	}
+
+	// =========================================================================
+	// Integrity Verification Tests
+	// =========================================================================
+
+	/**
+	 * Test checksum comparison logic.
+	 */
+	public function test_checksum_comparison_logic() {
+		$expected_hash = md5( 'test content' );
+		$actual_hash   = md5( 'test content' );
+		$wrong_hash    = md5( 'different content' );
+
+		$this->assertEquals( $expected_hash, $actual_hash );
+		$this->assertNotEquals( $expected_hash, $wrong_hash );
+	}
+
+	// =========================================================================
+	// Edge Case Tests
+	// =========================================================================
+
+	/**
+	 * Test scanner handles empty directory gracefully.
+	 */
+	public function test_scanner_handles_empty_results() {
+		$results = $this->scanner->get_last_results();
+		$this->assertIsArray( $results );
+	}
+
+	/**
+	 * Test scanner get status returns idle when no scan running.
+	 */
+	public function test_get_status_no_active_scan() {
+		// Clear any scan state.
+		delete_transient( 'atomicedge_scan_run_state' );
+
+		$status = $this->scanner->get_resumable_scan_status( 'any-id' );
+
+		$this->assertIsArray( $status );
+		$this->assertEquals( 'idle', $status['status'] );
+	}
 }

@@ -572,6 +572,248 @@ class ApiTest extends TestCase {
 	}
 
 	// =========================================================================
+	// Edge Case Tests - JSON Parsing
+	// =========================================================================
+
+	/**
+	 * Test API handles malformed JSON response.
+	 */
+	public function test_api_handles_malformed_json() {
+		$this->setup_connected_api();
+
+		Functions\when( 'wp_remote_request' )->justReturn(
+			array(
+				'response' => array( 'code' => 200 ),
+				'body'     => 'not valid json { broken',
+			)
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn( 'not valid json { broken' );
+
+		$api    = $this->create_api_instance();
+		$result = $api->get_site_info();
+
+		// Should handle gracefully - either success false or null data.
+		$this->assertIsArray( $result );
+	}
+
+	/**
+	 * Test API handles empty response body.
+	 */
+	public function test_api_handles_empty_response_body() {
+		$this->setup_connected_api();
+
+		Functions\when( 'wp_remote_request' )->justReturn(
+			array(
+				'response' => array( 'code' => 200 ),
+				'body'     => '',
+			)
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn( '' );
+
+		$api    = $this->create_api_instance();
+		$result = $api->get_site_info();
+
+		$this->assertIsArray( $result );
+	}
+
+	// =========================================================================
+	// Edge Case Tests - HTTP Status Codes
+	// =========================================================================
+
+	/**
+	 * Test API handles 401 Unauthorized response.
+	 */
+	public function test_api_handles_401_unauthorized() {
+		$this->setup_connected_api();
+
+		Functions\when( 'wp_remote_request' )->justReturn(
+			array(
+				'response' => array( 'code' => 401 ),
+				'body'     => wp_json_encode( array( 'error' => 'Unauthorized' ) ),
+			)
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 401 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn( wp_json_encode( array( 'error' => 'Unauthorized' ) ) );
+
+		$api    = $this->create_api_instance();
+		$result = $api->get_site_info();
+
+		$this->assertFalse( $result['success'] );
+		$this->assertEquals( 401, $result['code'] );
+	}
+
+	/**
+	 * Test API handles 403 Forbidden response.
+	 */
+	public function test_api_handles_403_forbidden() {
+		$this->setup_connected_api();
+
+		Functions\when( 'wp_remote_request' )->justReturn(
+			array(
+				'response' => array( 'code' => 403 ),
+				'body'     => wp_json_encode( array( 'error' => 'Forbidden' ) ),
+			)
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 403 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn( wp_json_encode( array( 'error' => 'Forbidden' ) ) );
+
+		$api    = $this->create_api_instance();
+		$result = $api->get_site_info();
+
+		$this->assertFalse( $result['success'] );
+		$this->assertEquals( 403, $result['code'] );
+	}
+
+	/**
+	 * Test API handles 404 Not Found response.
+	 */
+	public function test_api_handles_404_not_found() {
+		$this->setup_connected_api();
+
+		Functions\when( 'wp_remote_request' )->justReturn(
+			array(
+				'response' => array( 'code' => 404 ),
+				'body'     => wp_json_encode( array( 'error' => 'Not found' ) ),
+			)
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 404 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn( wp_json_encode( array( 'error' => 'Not found' ) ) );
+
+		$api    = $this->create_api_instance();
+		$result = $api->get_site_info();
+
+		$this->assertFalse( $result['success'] );
+		$this->assertEquals( 404, $result['code'] );
+	}
+
+	/**
+	 * Test API handles 429 Rate Limited response.
+	 */
+	public function test_api_handles_429_rate_limited() {
+		$this->setup_connected_api();
+
+		Functions\when( 'wp_remote_request' )->justReturn(
+			array(
+				'response' => array( 'code' => 429 ),
+				'body'     => wp_json_encode( array( 'error' => 'Too many requests' ) ),
+			)
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 429 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn( wp_json_encode( array( 'error' => 'Too many requests' ) ) );
+
+		$api    = $this->create_api_instance();
+		$result = $api->get_site_info();
+
+		$this->assertFalse( $result['success'] );
+		$this->assertEquals( 429, $result['code'] );
+	}
+
+	/**
+	 * Test API handles 503 Service Unavailable response.
+	 */
+	public function test_api_handles_503_service_unavailable() {
+		$this->setup_connected_api();
+
+		Functions\when( 'wp_remote_request' )->justReturn(
+			array(
+				'response' => array( 'code' => 503 ),
+				'body'     => wp_json_encode( array( 'error' => 'Service unavailable' ) ),
+			)
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 503 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn( wp_json_encode( array( 'error' => 'Service unavailable' ) ) );
+
+		$api    = $this->create_api_instance();
+		$result = $api->get_site_info();
+
+		$this->assertFalse( $result['success'] );
+		$this->assertEquals( 503, $result['code'] );
+	}
+
+	// =========================================================================
+	// Edge Case Tests - IP Validation Edge Cases
+	// =========================================================================
+
+	/**
+	 * Test IP validation with leading zeros.
+	 */
+	public function test_ip_with_leading_zeros() {
+		// PHP's filter_var may handle this differently across versions.
+		$result = $this->api->is_valid_ip( '192.168.001.001' );
+		$this->assertIsBool( $result );
+	}
+
+	/**
+	 * Test IP validation with IPv4-mapped IPv6 address.
+	 */
+	public function test_ipv4_mapped_ipv6() {
+		// ::ffff:192.168.1.1 format.
+		$result = $this->api->is_valid_ip( '::ffff:192.168.1.1' );
+		$this->assertTrue( $result );
+	}
+
+	/**
+	 * Test IP validation with negative CIDR.
+	 */
+	public function test_ip_with_negative_cidr() {
+		$this->assertFalse( $this->api->is_valid_ip( '192.168.1.0/-1' ) );
+	}
+
+	// =========================================================================
+	// Edge Case Tests - Cache Handling
+	// =========================================================================
+
+	/**
+	 * Test analytics cache key includes period.
+	 */
+	public function test_analytics_cache_key_includes_period() {
+		$cached_24h = array( 'success' => true, 'data' => array( 'requests' => 100 ) );
+		$cached_7d  = array( 'success' => true, 'data' => array( 'requests' => 700 ) );
+
+		$this->set_transient( 'atomicedge_analytics_24h', $cached_24h );
+		$this->set_transient( 'atomicedge_analytics_7d', $cached_7d );
+
+		$this->setup_connected_api();
+		$api = $this->create_api_instance();
+
+		$result_24h = $api->get_analytics( '24h' );
+		$result_7d  = $api->get_analytics( '7d' );
+
+		// Should return different cached values.
+		$this->assertEquals( 100, $result_24h['data']['requests'] );
+		$this->assertEquals( 700, $result_7d['data']['requests'] );
+	}
+
+	// =========================================================================
+	// Edge Case Tests - Connection State
+	// =========================================================================
+
+	/**
+	 * Test disconnect when not connected.
+	 */
+	public function test_disconnect_when_not_connected() {
+		global $wpdb;
+
+		$wpdb          = $this->getMockBuilder( \stdClass::class )
+			->addMethods( array( 'query', 'prepare' ) )
+			->getMock();
+		$wpdb->options = 'wp_options';
+		$wpdb->method( 'prepare' )->willReturn( 'DELETE QUERY' );
+		$wpdb->method( 'query' )->willReturn( true );
+
+		$this->set_option( 'atomicedge_connected', false );
+
+		$api    = $this->create_api_instance();
+		$result = $api->disconnect();
+
+		// Should succeed gracefully even if not connected.
+		$this->assertIsArray( $result );
+		$this->assertArrayHasKey( 'success', $result );
+	}
+
+	// =========================================================================
 	// Helper Methods
 	// =========================================================================
 

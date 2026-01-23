@@ -557,6 +557,433 @@ class AjaxTest extends TestCase {
 
 		$this->assertEquals( 'success', $this->json_response_type );
 	}
+
+	// =========================================================================
+	// IP Rules AJAX Tests - Additional
+	// =========================================================================
+
+	/**
+	 * Test get_ip_rules success.
+	 */
+	public function test_ajax_get_ip_rules_success() {
+		$ip_rules = array(
+			'whitelist' => array( '192.168.1.1' ),
+			'blacklist' => array( '10.0.0.1' ),
+		);
+
+		$this->mock_api->method( 'get_ip_rules' )
+			->willReturn( array( 'success' => true, 'data' => $ip_rules ) );
+
+		try {
+			$this->ajax->ajax_get_ip_rules();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+		$this->assertEquals( $ip_rules, $this->json_response );
+	}
+
+	/**
+	 * Test get_ip_rules error response.
+	 */
+	public function test_ajax_get_ip_rules_error() {
+		$this->mock_api->method( 'get_ip_rules' )
+			->willReturn( array( 'success' => false, 'error' => 'API error' ) );
+
+		try {
+			$this->ajax->ajax_get_ip_rules();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+	}
+
+	/**
+	 * Test remove_ip requires IP.
+	 */
+	public function test_ajax_remove_ip_requires_ip() {
+		$_POST['ip']   = '';
+		$_POST['type'] = 'whitelist';
+
+		try {
+			$this->ajax->ajax_remove_ip();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+		$this->assertStringContainsString( 'required', $this->json_response['message'] );
+	}
+
+	/**
+	 * Test add_ip_blacklist rejects empty IP.
+	 */
+	public function test_ajax_add_ip_blacklist_rejects_empty_ip() {
+		$_POST['ip'] = '';
+
+		try {
+			$this->ajax->ajax_add_ip_blacklist();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+	}
+
+	/**
+	 * Test add_ip_blacklist rejects invalid IP.
+	 */
+	public function test_ajax_add_ip_blacklist_rejects_invalid_ip() {
+		$_POST['ip'] = 'invalid';
+
+		$this->mock_api->method( 'is_valid_ip' )->willReturn( false );
+
+		try {
+			$this->ajax->ajax_add_ip_blacklist();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+	}
+
+	/**
+	 * Test add_ip_whitelist API error propagates.
+	 */
+	public function test_ajax_add_ip_whitelist_api_error() {
+		$_POST['ip'] = '192.168.1.1';
+
+		$this->mock_api->method( 'is_valid_ip' )->willReturn( true );
+		$this->mock_api->method( 'add_ip_whitelist' )
+			->willReturn( array( 'success' => false, 'error' => 'Duplicate IP' ) );
+
+		try {
+			$this->ajax->ajax_add_ip_whitelist();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+		$this->assertEquals( 'Duplicate IP', $this->json_response['message'] );
+	}
+
+	/**
+	 * Test add_ip_blacklist API error propagates.
+	 */
+	public function test_ajax_add_ip_blacklist_api_error() {
+		$_POST['ip'] = '10.0.0.1';
+
+		$this->mock_api->method( 'is_valid_ip' )->willReturn( true );
+		$this->mock_api->method( 'add_ip_blacklist' )
+			->willReturn( array( 'success' => false, 'error' => 'Rate limited' ) );
+
+		try {
+			$this->ajax->ajax_add_ip_blacklist();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+		$this->assertEquals( 'Rate limited', $this->json_response['message'] );
+	}
+
+	/**
+	 * Test remove_ip API error propagates.
+	 */
+	public function test_ajax_remove_ip_api_error() {
+		$_POST['ip']   = '192.168.1.1';
+		$_POST['type'] = 'blacklist';
+
+		$this->mock_api->method( 'remove_ip' )
+			->willReturn( array( 'success' => false, 'error' => 'Not found' ) );
+
+		try {
+			$this->ajax->ajax_remove_ip();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+		$this->assertEquals( 'Not found', $this->json_response['message'] );
+	}
+
+	// =========================================================================
+	// Geo Rules AJAX Tests - Additional
+	// =========================================================================
+
+	/**
+	 * Test get_geo_rules error response.
+	 */
+	public function test_ajax_get_geo_rules_error() {
+		$this->mock_api->method( 'get_geo_rules' )
+			->willReturn( array( 'success' => false, 'error' => 'Connection failed' ) );
+
+		try {
+			$this->ajax->ajax_get_geo_rules();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+	}
+
+	/**
+	 * Test update_geo_rules disabled state.
+	 */
+	public function test_ajax_update_geo_rules_disabled() {
+		$_POST['enabled']   = 'false';
+		$_POST['mode']      = 'whitelist';
+		$_POST['countries'] = array();
+
+		$this->mock_api->expects( $this->once() )
+			->method( 'update_geo_rules' )
+			->with(
+				$this->callback(
+					function ( $rules ) {
+						return $rules['enabled'] === false;
+					}
+				)
+			)
+			->willReturn( array( 'success' => true ) );
+
+		try {
+			$this->ajax->ajax_update_geo_rules();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+	}
+
+	/**
+	 * Test update_geo_rules API error.
+	 */
+	public function test_ajax_update_geo_rules_api_error() {
+		$_POST['enabled']   = 'true';
+		$_POST['mode']      = 'blacklist';
+		$_POST['countries'] = array( 'US' );
+
+		$this->mock_api->method( 'update_geo_rules' )
+			->willReturn( array( 'success' => false, 'error' => 'Update failed' ) );
+
+		try {
+			$this->ajax->ajax_update_geo_rules();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+	}
+
+	// =========================================================================
+	// CDN AJAX Tests
+	// =========================================================================
+
+	/**
+	 * Test get_cdn_status success.
+	 */
+	public function test_ajax_get_cdn_status_success() {
+		$cdn_data = array(
+			'cdn_enabled' => true,
+			'cdn_url'     => 'https://cdn.example.com',
+		);
+
+		$this->mock_api->method( 'get_cdn_status' )
+			->willReturn( array( 'success' => true, 'data' => $cdn_data ) );
+
+		try {
+			$this->ajax->ajax_get_cdn_status();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+		$this->assertEquals( $cdn_data, $this->json_response );
+	}
+
+	/**
+	 * Test get_cdn_status error.
+	 */
+	public function test_ajax_get_cdn_status_error() {
+		$this->mock_api->method( 'get_cdn_status' )
+			->willReturn( array( 'success' => false, 'error' => 'CDN unavailable' ) );
+
+		try {
+			$this->ajax->ajax_get_cdn_status();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+	}
+
+	/**
+	 * Test purge_cdn_cache success.
+	 */
+	public function test_ajax_purge_cdn_cache_success() {
+		$this->mock_api->method( 'purge_cdn_cache' )
+			->willReturn( array(
+				'success' => true,
+				'data'    => array( 'message' => 'Cache purged', 'purged_at' => '2024-01-01T00:00:00Z' ),
+			) );
+
+		try {
+			$this->ajax->ajax_purge_cdn_cache();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+	}
+
+	/**
+	 * Test purge_cdn_cache error - CDN disabled.
+	 */
+	public function test_ajax_purge_cdn_cache_cdn_disabled() {
+		$this->mock_api->method( 'purge_cdn_cache' )
+			->willReturn( array(
+				'success' => false,
+				'error'   => 'CDN disabled',
+				'data'    => array( 'error' => 'cdn_disabled' ),
+			) );
+
+		try {
+			$this->ajax->ajax_purge_cdn_cache();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+		$this->assertStringContainsString( 'not enabled', $this->json_response['message'] );
+	}
+
+	/**
+	 * Test purge_cdn_cache error - cooldown active.
+	 */
+	public function test_ajax_purge_cdn_cache_cooldown() {
+		$this->mock_api->method( 'purge_cdn_cache' )
+			->willReturn( array(
+				'success' => false,
+				'error'   => 'Rate limited',
+				'data'    => array( 'error' => 'cooldown_active' ),
+			) );
+
+		try {
+			$this->ajax->ajax_purge_cdn_cache();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+		$this->assertStringContainsString( 'wait', $this->json_response['message'] );
+	}
+
+	/**
+	 * Test update_cdn_settings with no settings.
+	 */
+	public function test_ajax_update_cdn_settings_no_settings() {
+		// Don't set any CDN settings.
+		Functions\when( 'update_option' )->justReturn( true );
+
+		try {
+			$this->ajax->ajax_update_cdn_settings();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+		$this->assertStringContainsString( 'No settings', $this->json_response['message'] );
+	}
+
+	/**
+	 * Test update_cdn_settings success.
+	 */
+	public function test_ajax_update_cdn_settings_success() {
+		$_POST['brotli']             = 'true';
+		$_POST['image_optimization'] = 'true';
+		$_POST['js_minification']    = 'true';
+		$_POST['css_minification']   = 'false';
+
+		Functions\when( 'update_option' )->justReturn( true );
+
+		$this->mock_api->expects( $this->once() )
+			->method( 'update_cdn_settings' )
+			->willReturn( array( 'success' => true ) );
+
+		try {
+			$this->ajax->ajax_update_cdn_settings();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+	}
+
+	/**
+	 * Test update_cdn_settings API error.
+	 */
+	public function test_ajax_update_cdn_settings_api_error() {
+		$_POST['brotli'] = 'true';
+
+		Functions\when( 'update_option' )->justReturn( true );
+
+		$this->mock_api->method( 'update_cdn_settings' )
+			->willReturn( array( 'success' => false, 'error' => 'Update failed' ) );
+
+		try {
+			$this->ajax->ajax_update_cdn_settings();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+	}
+
+	// =========================================================================
+	// WAF Logs AJAX Tests - Additional
+	// =========================================================================
+
+	/**
+	 * Test get_waf_logs error response.
+	 */
+	public function test_ajax_get_waf_logs_error() {
+		$this->mock_api->method( 'get_waf_logs' )
+			->willReturn( array( 'success' => false, 'error' => 'Log fetch failed' ) );
+
+		try {
+			$this->ajax->ajax_get_waf_logs();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+	}
+
+	/**
+	 * Test get_waf_logs per_page minimum enforcement.
+	 */
+	public function test_ajax_get_waf_logs_per_page_minimum() {
+		$_POST['per_page'] = 0; // Below minimum.
+
+		$this->mock_api->expects( $this->once() )
+			->method( 'get_waf_logs' )
+			->with(
+				$this->callback(
+					function ( $args ) {
+						return $args['per_page'] === 50; // Should default.
+					}
+				)
+			)
+			->willReturn( array( 'success' => true, 'data' => array() ) );
+
+		try {
+			$this->ajax->ajax_get_waf_logs();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+	}
 }
 
 // Custom exception for simulating AJAX exit.

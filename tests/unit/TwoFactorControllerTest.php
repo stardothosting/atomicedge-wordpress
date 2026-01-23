@@ -541,4 +541,246 @@ class TwoFactorControllerTest extends TestCase {
 		$expected = time() + ( 10 * 60 );
 		$this->assertEqualsWithDelta( $expected, $nonce['expiration'], 5 );
 	}
+
+	// =========================================================================
+	// Edge Case Tests - Expired Nonce
+	// =========================================================================
+
+	/**
+	 * Test verify_login_nonce returns false for expired nonce.
+	 */
+	public function test_verify_login_nonce_returns_false_when_expired() {
+		// Create nonce with immediate expiration (in the past).
+		$nonce_data = array(
+			'key'        => \AtomicEdge_2FA_Crypto::random_hex( 32 ),
+			'expiration' => time() - 1, // Already expired.
+		);
+		$stored = array(
+			'key'        => hash_hmac( 'md5', $nonce_data['key'], 'test_salt_nonce' ),
+			'expiration' => $nonce_data['expiration'],
+		);
+		$this->user_meta[ $this->test_user_id . '_' . \AtomicEdge_2FA::META_LOGIN_NONCE ] = $stored;
+
+		$this->assertFalse( \AtomicEdge_2FA::verify_login_nonce( $this->test_user_id, $nonce_data['key'] ) );
+	}
+
+	/**
+	 * Test expired nonce is deleted after failed verification.
+	 */
+	public function test_expired_nonce_is_deleted_after_verification() {
+		$nonce_key = $this->test_user_id . '_' . \AtomicEdge_2FA::META_LOGIN_NONCE;
+		$stored    = array(
+			'key'        => 'some_hash',
+			'expiration' => time() - 1,
+		);
+		$this->user_meta[ $nonce_key ] = $stored;
+
+		\AtomicEdge_2FA::verify_login_nonce( $this->test_user_id, 'any_key' );
+
+		$this->assertArrayNotHasKey( $nonce_key, $this->user_meta );
+	}
+
+	// =========================================================================
+	// Edge Case Tests - Get User Secret
+	// =========================================================================
+
+	/**
+	 * Test get_user_secret returns false when no secret stored.
+	 */
+	public function test_get_user_secret_returns_false_when_empty() {
+		$this->assertFalse( \AtomicEdge_2FA::get_user_secret( $this->test_user_id ) );
+	}
+
+	/**
+	 * Test get_user_secret returns decrypted secret.
+	 */
+	public function test_get_user_secret_returns_decrypted_secret() {
+		$secret    = \AtomicEdge_2FA_TOTP::generate_secret();
+		$encrypted = \AtomicEdge_2FA_Crypto::encrypt( $secret );
+		$this->user_meta[ $this->test_user_id . '_' . \AtomicEdge_2FA::META_TOTP_SECRET ] = $encrypted;
+
+		$result = \AtomicEdge_2FA::get_user_secret( $this->test_user_id );
+
+		$this->assertEquals( $secret, $result );
+	}
+
+	// =========================================================================
+	// Edge Case Tests - Backup Codes
+	// =========================================================================
+
+	/**
+	 * Test verify_backup_code returns false with empty codes.
+	 */
+	public function test_verify_backup_code_returns_false_with_empty_codes() {
+		$this->user_meta[ $this->test_user_id . '_' . \AtomicEdge_2FA::META_BACKUP_CODES ] = '';
+
+		$this->assertFalse( \AtomicEdge_2FA::verify_backup_code( $this->test_user_id, 'ABCD-EFGH' ) );
+	}
+
+	/**
+	 * Test verify_backup_code returns false when no codes stored.
+	 */
+	public function test_verify_backup_code_returns_false_without_codes() {
+		$this->assertFalse( \AtomicEdge_2FA::verify_backup_code( $this->test_user_id, 'ABCD-EFGH' ) );
+	}
+
+	// =========================================================================
+	// Edge Case Tests - Complete Enrollment Decryption Failure
+	// =========================================================================
+
+	/**
+	 * Test complete_enrollment fails with corrupted pending secret.
+	 */
+	public function test_complete_enrollment_fails_with_corrupted_secret() {
+		// Store a corrupted/invalid encrypted value.
+		$this->user_meta[ $this->test_user_id . '_' . \AtomicEdge_2FA::META_PENDING_SECRET ] = 'invalid_encrypted_data';
+
+		$result = \AtomicEdge_2FA::complete_enrollment( $this->test_user_id, '123456' );
+
+		$this->assertFalse( $result['success'] );
+		$this->assertStringContainsString( 'decrypt', strtolower( $result['error'] ) );
+	}
+
+	// =========================================================================
+	// Edge Case Tests - Rate Limiting Edge Cases
+	// =========================================================================
+
+	/**
+	 * Test record_failed_attempt below threshold does not lockout.
+	 */
+	public function test_record_failed_attempt_below_threshold_no_lockout() {
+		$lockout = \AtomicEdge_2FA::record_failed_attempt( $this->test_user_id );
+
+		$this->assertFalse( $lockout );
+		$this->assertFalse( \AtomicEdge_2FA::is_rate_limited( $this->test_user_id ) );
+	}
+
+	/**
+	 * Test record_failed_attempt exactly at threshold triggers lockout.
+	 */
+	public function test_record_failed_attempt_at_threshold_triggers_lockout() {
+		// Get to 2 failures.
+		\AtomicEdge_2FA::record_failed_attempt( $this->test_user_id );
+		\AtomicEdge_2FA::record_failed_attempt( $this->test_user_id );
+
+		// The 3rd failure should trigger lockout.
+		$lockout = \AtomicEdge_2FA::record_failed_attempt( $this->test_user_id );
+
+		$this->assertIsInt( $lockout );
+		$this->assertEquals( 60, $lockout ); // 1 minute lockout.
+	}
+
+	// =========================================================================
+	// Edge Case Tests - Disable When Not Enabled
+	// =========================================================================
+
+	/**
+	 * Test disable succeeds even when 2FA was not enabled.
+	 */
+	public function test_disable_succeeds_when_not_enabled() {
+		// No 2FA data set.
+		$result = \AtomicEdge_2FA::disable( $this->test_user_id );
+
+		$this->assertTrue( $result );
+	}
+
+	// =========================================================================
+	// Edge Case Tests - User Status Edge Cases
+	// =========================================================================
+
+	/**
+	 * Test get_user_status returns nulls for dates when not set.
+	 */
+	public function test_get_user_status_returns_null_dates_when_not_set() {
+		$status = \AtomicEdge_2FA::get_user_status( $this->test_user_id );
+
+		$this->assertNull( $status['setup_date'] );
+		$this->assertNull( $status['last_used'] );
+	}
+
+	/**
+	 * Test get_user_status returns zero codes when none stored.
+	 */
+	public function test_get_user_status_returns_zero_codes_when_none_stored() {
+		$status = \AtomicEdge_2FA::get_user_status( $this->test_user_id );
+
+		$this->assertEquals( 0, $status['codes_remaining'] );
+		$this->assertEquals( 8, $status['codes_total'] );
+	}
+
+	// =========================================================================
+	// Edge Case Tests - Delete Login Nonce
+	// =========================================================================
+
+	/**
+	 * Test delete_login_nonce removes nonce.
+	 */
+	public function test_delete_login_nonce_removes_nonce() {
+		$nonce_key = $this->test_user_id . '_' . \AtomicEdge_2FA::META_LOGIN_NONCE;
+		$this->user_meta[ $nonce_key ] = array(
+			'key'        => 'test_hash',
+			'expiration' => time() + 600,
+		);
+
+		\AtomicEdge_2FA::delete_login_nonce( $this->test_user_id );
+
+		$this->assertArrayNotHasKey( $nonce_key, $this->user_meta );
+	}
+
+	// =========================================================================
+	// Edge Case Tests - Record Success
+	// =========================================================================
+
+	/**
+	 * Test record_success updates last_used timestamp.
+	 */
+	public function test_record_success_updates_last_used() {
+		$before = time();
+		\AtomicEdge_2FA::record_success( $this->test_user_id );
+		$after = time();
+
+		$last_used_key = $this->test_user_id . '_' . \AtomicEdge_2FA::META_LAST_USED;
+		$this->assertArrayHasKey( $last_used_key, $this->user_meta );
+		$this->assertGreaterThanOrEqual( $before, $this->user_meta[ $last_used_key ] );
+		$this->assertLessThanOrEqual( $after, $this->user_meta[ $last_used_key ] );
+	}
+
+	// =========================================================================
+	// Edge Case Tests - Is Available
+	// =========================================================================
+
+	/**
+	 * Test is_available reflects crypto availability.
+	 */
+	public function test_is_available_reflects_crypto() {
+		$result = \AtomicEdge_2FA::is_available();
+
+		// Should be true when OpenSSL is available.
+		$this->assertIsBool( $result );
+	}
+
+	// =========================================================================
+	// Edge Case Tests - Log Event
+	// =========================================================================
+
+	/**
+	 * Test log_event triggers action hook.
+	 */
+	public function test_log_event_triggers_action() {
+		$captured_args = array();
+
+		Functions\when( 'do_action' )->alias(
+			function ( $hook, ...$args ) use ( &$captured_args ) {
+				if ( 'atomicedge_2fa_event' === $hook ) {
+					$captured_args = $args;
+				}
+			}
+		);
+
+		\AtomicEdge_2FA::log_event( $this->test_user_id, 'test_event', array( 'foo' => 'bar' ) );
+
+		$this->assertEquals( $this->test_user_id, $captured_args[0] );
+		$this->assertEquals( 'test_event', $captured_args[1] );
+		$this->assertEquals( array( 'foo' => 'bar' ), $captured_args[2] );
+	}
 }

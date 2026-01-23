@@ -63,6 +63,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\WP_CLI' ) ) {
 		public static $logs = array();
 		public static $successes = array();
 		public static $errors = array();
+		public static $warnings = array();
 		public static $commands = array();
 
 		public static function log( $message ) {
@@ -74,7 +75,11 @@ if ( ! class_exists( __NAMESPACE__ . '\\WP_CLI' ) ) {
 		}
 
 		public static function error( $message, $exit = true ) {
-			self::$errors[] = array( 'message' => $message, 'exit' => $exit );
+			self::$errors[] = $message;
+		}
+
+		public static function warning( $message ) {
+			self::$warnings[] = $message;
 		}
 
 		public static function add_command( $name, $class ) {
@@ -85,6 +90,7 @@ if ( ! class_exists( __NAMESPACE__ . '\\WP_CLI' ) ) {
 			self::$logs = array();
 			self::$successes = array();
 			self::$errors = array();
+			self::$warnings = array();
 			self::$commands = array();
 		}
 	}
@@ -505,6 +511,8 @@ if ( ! class_exists( 'WP_Error' ) ) {
 			return ! empty( $this->errors );
 		}
 	}
+	// Alias the namespaced WP_Error to global namespace.
+	class_alias( 'AtomicEdge\Tests\WP_Error', 'WP_Error' );
 }
 
 // Include plugin classes for testing.
@@ -524,3 +532,21 @@ require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-2fa.php';
 require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-2fa-login.php';
 // Main plugin class (depends on all components).
 require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge.php';
+
+// WP_CLI\Utils namespace stub for format_items (used by CLI commands).
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedNamespaceFound
+namespace WP_CLI\Utils;
+if ( ! function_exists( __NAMESPACE__ . '\\format_items' ) ) {
+	/**
+	 * Stub for WP_CLI\Utils\format_items in tests.
+	 *
+	 * @param string $format Format type.
+	 * @param array  $items  Items to format.
+	 * @param array  $fields Fields to display.
+	 * @return void
+	 */
+	function format_items( $format, $items, $fields ) {
+		// No-op for testing.
+	}
+}
+// phpcs:enable

@@ -109,7 +109,7 @@
             }, function(errorData) {
                 $('#atomicedge-summary-widget .atomicedge-widget-content')
                     .removeClass('atomicedge-loading')
-                    .html('<p class="atomicedge-error">' + (errorData && errorData.message ? errorData.message : atomicedgeAdmin.strings.error) + '</p>');
+                    .html('<p class="atomicedge-error">' + self.escapeHtml(errorData && errorData.message ? errorData.message : atomicedgeAdmin.strings.error) + '</p>');
             });
         },
 

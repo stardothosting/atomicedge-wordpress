@@ -16,6 +16,9 @@ Atomic Edge Security connects your WordPress site to the Atomic Edge WAF/CDN ser
 
 = Features =
 
+* **Two-Factor Authentication (2FA)** - Protect WordPress logins with TOTP authenticator apps (Google Authenticator, Authy, etc.)
+* **2FA Enforcement Policies** - Require 2FA for specific user roles with configurable grace periods
+* **2FA Audit Logging** - Complete security audit trail for all 2FA events
 * **Web Application Firewall (WAF)** - Block SQL injection, XSS, and other attacks with OWASP Core Rules
 * **Real-time Analytics** - Monitor traffic, blocked threats, and security events in real-time
 * **IP Access Control** - Easily whitelist or blacklist IP addresses and CIDR ranges
@@ -77,6 +80,18 @@ Atomic Edge uses the OWASP Core Rule Set to block:
 * Remote File Inclusion
 * Local File Inclusion
 * And many more common attack vectors
+
+= Does Two-Factor Authentication (2FA) work without an Atomic Edge account? =
+
+Yes! The 2FA feature works independently and does not require an Atomic Edge account or API connection. It uses industry-standard TOTP (Time-based One-Time Password) compatible with Google Authenticator, Authy, 1Password, and other authenticator apps.
+
+= What are the server requirements for 2FA? =
+
+2FA requires PHP 7.2+ with either:
+* Native libsodium extension (recommended, included in most modern PHP installations), OR
+* WordPress 5.2+ (which includes sodium_compat, a pure PHP fallback)
+
+The plugin automatically detects and uses the best available option.
 
 == Screenshots ==
 

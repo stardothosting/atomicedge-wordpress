@@ -83,6 +83,18 @@ Atomic Edge uses the OWASP Core Rule Set to block:
 - Local File Inclusion
 - And many more common attack vectors
 
+### Does Two-Factor Authentication (2FA) work without an Atomic Edge account?
+
+Yes! The 2FA feature works independently and does not require an Atomic Edge account or API connection. It uses industry-standard TOTP (Time-based One-Time Password) compatible with Google Authenticator, Authy, 1Password, and other authenticator apps.
+
+### What are the server requirements for 2FA?
+
+2FA requires PHP 7.2+ with either:
+- Native libsodium extension (recommended, included in most modern PHP installations), OR
+- WordPress 5.2+ (which includes sodium_compat, a pure PHP fallback)
+
+The plugin automatically detects and uses the best available option.
+
 ## Screenshots
 
 1. Dashboard showing security summary

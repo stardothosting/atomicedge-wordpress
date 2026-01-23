@@ -401,7 +401,7 @@
 
 	// Initialize on document ready.
 	$(document).ready(function() {
-		if ($('#atomicedge-2fa').length) {
+		if ($('#atomicedge-2fa-section').length) {
 			AtomicEdge2FA.init();
 		}
 	});

@@ -113,10 +113,12 @@ class TwoFactorCryptoTest extends TestCase {
 	}
 
 	/**
-	 * Test encrypt returns false for empty input.
+	 * Test encrypt returns WP_Error for empty input.
 	 */
-	public function test_encrypt_returns_false_for_empty_input() {
-		$this->assertFalse( \AtomicEdge_2FA_Crypto::encrypt( '' ) );
+	public function test_encrypt_returns_error_for_empty_input() {
+		$result = \AtomicEdge_2FA_Crypto::encrypt( '' );
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertEquals( 'empty_plaintext', $result->get_error_code() );
 	}
 
 	/**

@@ -211,11 +211,15 @@ class AtomicEdge_2FA {
 
 		// Store encrypted pending secret.
 		$encrypted = AtomicEdge_2FA_Crypto::encrypt( $secret );
-		if ( false === $encrypted ) {
-			AtomicEdge::log( '2FA enrollment failed: encryption failed', array( 'user_id' => $user_id ) );
+		if ( is_wp_error( $encrypted ) ) {
+			AtomicEdge::log( '2FA enrollment failed: encryption failed', array(
+				'user_id' => $user_id,
+				'error'   => $encrypted->get_error_message(),
+			) );
 			return new \WP_Error(
 				'encryption_failed',
-				__( 'Failed to encrypt the secret. Please check server configuration.', 'atomic-edge-security' )
+				/* translators: %s: specific error message */
+				sprintf( __( 'Encryption failed: %s', 'atomic-edge-security' ), $encrypted->get_error_message() )
 			);
 		}
 

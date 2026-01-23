@@ -46,15 +46,15 @@ class AtomicEdge_2FA_Crypto {
 	 * Uses sodium_crypto_secretbox (XSalsa20-Poly1305).
 	 *
 	 * @param string $plaintext The data to encrypt.
-	 * @return string|false Base64-encoded encrypted data, or false on failure.
+	 * @return string|\WP_Error Base64-encoded encrypted data, or WP_Error on failure.
 	 */
 	public static function encrypt( $plaintext ) {
 		if ( ! self::is_available() ) {
-			return false;
+			return new \WP_Error( 'sodium_unavailable', 'libsodium functions not available' );
 		}
 
 		if ( empty( $plaintext ) ) {
-			return false;
+			return new \WP_Error( 'empty_plaintext', 'Empty data provided for encryption' );
 		}
 
 		try {
@@ -66,13 +66,14 @@ class AtomicEdge_2FA_Crypto {
 			// Prepend nonce to ciphertext for storage.
 			$encrypted = $nonce . $ciphertext;
 
-			// Clear sensitive data from memory.
+			// Clear key from memory (don't zero plaintext - it's a local copy).
 			sodium_memzero( $key );
-			sodium_memzero( $plaintext );
 
 			return base64_encode( $encrypted );
-		} catch ( Exception $e ) {
-			return false;
+		} catch ( \Exception $e ) {
+			return new \WP_Error( 'encrypt_exception', 'Encryption error: ' . $e->getMessage() );
+		} catch ( \Error $e ) {
+			return new \WP_Error( 'encrypt_error', 'Encryption fatal: ' . $e->getMessage() );
 		}
 	}
 

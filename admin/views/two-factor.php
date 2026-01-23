@@ -20,7 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 $is_available = AtomicEdge_2FA::is_available();
 ?>
 
-<div class="atomicedge-2fa-section" id="atomicedge-2fa">
+<div class="atomicedge-2fa-section" id="atomicedge-2fa-section">
 	<h2>
 		<span class="dashicons dashicons-lock"></span>
 		<?php esc_html_e( 'Two-Factor Authentication', 'atomic-edge-security' ); ?>

@@ -28,6 +28,25 @@
 		 */
 		init: function() {
 			this.bindEvents();
+			this.handleHashScroll();
+		},
+
+		/**
+		 * Handle scrolling to 2FA section if hash is present.
+		 * WordPress profile pages may delay rendering, so we use a timeout.
+		 */
+		handleHashScroll: function() {
+			if (window.location.hash === '#atomicedge-2fa-section') {
+				// Delay to ensure DOM is fully rendered
+				setTimeout(function() {
+					var $section = $('#atomicedge-2fa-section');
+					if ($section.length) {
+						$('html, body').animate({
+							scrollTop: $section.offset().top - 50
+						}, 300);
+					}
+				}, 100);
+			}
 		},
 
 		/**

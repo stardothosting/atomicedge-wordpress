@@ -4,7 +4,7 @@ Tags: security, firewall, waf, malware, protection
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.9.6
+Stable tag: 1.9.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -88,6 +88,10 @@ Atomic Edge uses the OWASP Core Rule Set to block:
 6. Vulnerability scanner results
 
 == Changelog ==
+
+= 1.9.7 =
+* FIX: 2FA encryption now works with sodium_compat polyfill (servers without native libsodium extension)
+* sodium_memzero() calls now only execute when native libsodium is available
 
 = 1.9.6 =
 * FIX: 2FA setup link from admin notice now correctly scrolls to the 2FA section on profile page

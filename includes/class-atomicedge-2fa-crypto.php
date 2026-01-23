@@ -103,8 +103,10 @@ class AtomicEdge_2FA_Crypto {
 			// Prepend nonce to ciphertext for storage.
 			$encrypted = $nonce . $ciphertext;
 
-			// Clear key from memory.
-			sodium_memzero( $key );
+			// Clear key from memory (only if native libsodium is available).
+			if ( extension_loaded( 'sodium' ) ) {
+				sodium_memzero( $key );
+			}
 
 			$result = base64_encode( $encrypted );
 			self::debug_log( 'encrypt() success, result length: ' . strlen( $result ) );
@@ -152,8 +154,10 @@ class AtomicEdge_2FA_Crypto {
 
 			$plaintext = sodium_crypto_secretbox_open( $ciphertext, $nonce, $key );
 
-			// Clear sensitive data from memory.
-			sodium_memzero( $key );
+			// Clear sensitive data from memory (only if native libsodium is available).
+			if ( extension_loaded( 'sodium' ) ) {
+				sodium_memzero( $key );
+			}
 
 			return $plaintext;
 		} catch ( Exception $e ) {

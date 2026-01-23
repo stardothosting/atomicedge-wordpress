@@ -187,7 +187,7 @@ class AtomicEdge_2FA {
 	 * Generates a new secret and stores it temporarily until verified.
 	 *
 	 * @param int $user_id User ID.
-	 * @return array {
+	 * @return array|WP_Error {
 	 *     @type string $secret          Base32-encoded secret (for display).
 	 *     @type string $provisioning_uri URI for QR code.
 	 * }
@@ -195,13 +195,16 @@ class AtomicEdge_2FA {
 	public static function start_enrollment( $user_id ) {
 		$user = get_userdata( $user_id );
 		if ( ! $user ) {
-			return false;
+			return new \WP_Error( 'invalid_user', __( 'Invalid user.', 'atomic-edge-security' ) );
 		}
 
 		// Verify encryption is available before starting.
 		if ( ! AtomicEdge_2FA_Crypto::is_available() ) {
 			AtomicEdge::log( '2FA enrollment failed: encryption not available', array( 'user_id' => $user_id ) );
-			return false;
+			return new \WP_Error(
+				'encryption_unavailable',
+				__( 'Two-factor authentication requires libsodium encryption which is not available on this server.', 'atomic-edge-security' )
+			);
 		}
 
 		$secret = AtomicEdge_2FA_TOTP::generate_secret();
@@ -210,7 +213,10 @@ class AtomicEdge_2FA {
 		$encrypted = AtomicEdge_2FA_Crypto::encrypt( $secret );
 		if ( false === $encrypted ) {
 			AtomicEdge::log( '2FA enrollment failed: encryption failed', array( 'user_id' => $user_id ) );
-			return false;
+			return new \WP_Error(
+				'encryption_failed',
+				__( 'Failed to encrypt the secret. Please check server configuration.', 'atomic-edge-security' )
+			);
 		}
 
 		// Clear any existing pending secret first (for clean state).
@@ -231,7 +237,10 @@ class AtomicEdge_2FA {
 				'user_id'       => $user_id,
 				'update_result' => $result,
 			) );
-			return false;
+			return new \WP_Error(
+				'meta_not_saved',
+				__( 'Failed to save enrollment data. This may be caused by database issues or object caching. Please try again or contact support.', 'atomic-edge-security' )
+			);
 		}
 
 		// Generate provisioning URI.

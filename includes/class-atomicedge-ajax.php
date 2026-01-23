@@ -716,6 +716,12 @@ class AtomicEdge_Ajax {
 		// Start enrollment.
 		$result = AtomicEdge_2FA::start_enrollment( $user_id );
 
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( array(
+				'message' => $result->get_error_message(),
+			) );
+		}
+
 		if ( ! $result ) {
 			wp_send_json_error( array(
 				'message' => __( 'Failed to start enrollment. Please try again.', 'atomic-edge-security' ),

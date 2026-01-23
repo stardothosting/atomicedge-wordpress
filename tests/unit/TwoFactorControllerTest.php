@@ -166,12 +166,13 @@ class TwoFactorControllerTest extends TestCase {
 	}
 
 	/**
-	 * Test start_enrollment returns false for invalid user.
+	 * Test start_enrollment returns WP_Error for invalid user.
 	 */
-	public function test_start_enrollment_returns_false_for_invalid_user() {
+	public function test_start_enrollment_returns_error_for_invalid_user() {
 		$result = \AtomicEdge_2FA::start_enrollment( 99999 );
 
-		$this->assertFalse( $result );
+		$this->assertInstanceOf( \WP_Error::class, $result );
+		$this->assertEquals( 'invalid_user', $result->get_error_code() );
 	}
 
 	/**

@@ -7,7 +7,7 @@ Connect your WordPress site to Atomic Edge for enterprise-grade WAF protection, 
 | Requires at least | WordPress 5.8 |
 | Tested up to | WordPress 6.9 |
 | Requires PHP | 7.4 |
-| Stable tag | 1.3.7 |
+| Stable tag | 1.9.2 |
 | License | GPLv2 or later |
 | License URI | https://www.gnu.org/licenses/gpl-2.0.html |
 
@@ -17,6 +17,9 @@ Atomic Edge Security connects your WordPress site to the Atomic Edge WAF/CDN ser
 
 ## Features
 
+- **Two-Factor Authentication (2FA)** - Protect WordPress logins with TOTP authenticator apps
+- **2FA Enforcement Policies** - Require 2FA for specific user roles with configurable grace periods
+- **2FA Audit Logging** - Complete security audit trail for all 2FA events
 - **Web Application Firewall (WAF)** - Block SQL injection, XSS, and other attacks with OWASP Core Rules
 - **Real-time Analytics** - Monitor traffic, blocked threats, and security events in real-time
 - **IP Access Control** - Easily whitelist or blacklist IP addresses and CIDR ranges
@@ -43,8 +46,8 @@ Vulnerability scanning is available when connected and uses Atomic Edge's vulner
 
 ## Installation
 
-1. Upload the `atomicedge` folder to the `/wp-content/plugins/` directory
-2. Activate the plugin through the “Plugins” menu in WordPress
+1. Upload the \`atomicedge\` folder to the \`/wp-content/plugins/\` directory
+2. Activate the plugin through the "Plugins" menu in WordPress
 3. Go to Atomic Edge > Settings and enter your API key
 4. Your site is now protected
 
@@ -91,6 +94,54 @@ Atomic Edge uses the OWASP Core Rule Set to block:
 
 ## Changelog
 
+### 1.9.2
+
+- FIX: 2FA enrollment now works on servers with persistent object caching (Redis, Memcached)
+- Added cache bypass for enrollment state verification
+- Added debug logging for 2FA enrollment failures
+
+### 1.9.1
+
+- SECURITY: Fixed potential XSS vulnerability in JavaScript error message display (admin.js)
+- Security audit: Verified proper escaping for all external data (WAF logs, analytics, 2FA audit logs)
+
+### 1.9.0
+
+- NEW: 2FA Audit Log - Security audit trail for all 2FA-related events
+- Event logging: enrollment, disable, login success/failure, backup code usage, rate limiting
+- Filterable log viewer with pagination (by user, event type, date)
+- 30-day statistics dashboard with success/failure metrics
+- Security events section highlighting failed logins and suspicious activity
+- CSV export functionality for compliance and reporting
+- 90-day log retention with automatic cleanup
+- NEW: 2FA User Management - Admin interface for managing user 2FA status
+- View all users with 2FA status (enabled/disabled)
+- Search and filter users by 2FA status
+- Admin reset capability for locked-out users
+- Shows backup code counts and policy compliance status
+- Confirmation dialog for reset actions with admin audit logging
+
+### 1.8.0
+
+- NEW: 2FA Enforcement Policy - Require two-factor authentication for specific user roles
+- Role-based 2FA enforcement (Administrator, Editor, etc.)
+- Configurable grace period before enforcement (1-90 days)
+- Grace period bypass option - allow login during grace period with reminders
+- Admin dashboard showing compliance status and non-compliant users
+- Admin notice reminders for users who need to set up 2FA
+- Dismissible reminders (24-hour reset) for less intrusive notifications
+- Policy settings page with intuitive UI under Atomic Edge menu
+
+### 1.7.0
+
+- NEW: Two-Factor Authentication (2FA) for WordPress login protection
+- TOTP authenticator app support (Google Authenticator, Authy, etc.)
+- Backup recovery codes with secure generation and one-time use
+- Encrypted secret storage using libsodium
+- Rate limiting on failed 2FA attempts with progressive lockout
+- 2FA settings integrated into User Profile page
+- Client-side QR code generation for authenticator app setup
+
 ### 1.6.0
 
 - Admin notice when retired Shift8 CDN plugin is active
@@ -107,6 +158,23 @@ Atomic Edge uses the OWASP Core Rule Set to block:
 - Malware Scanner: Progress now uses stable totals and ETA
 - Scanner: Core checksum verification now uses WordPress core verifier
 
+### 1.3.7
+
+- Fixed CDN settings sync: Brotli and image optimization now properly sync between plugin and AtomicEdge dashboard
+- JS/CSS minification settings are now plugin-local only (they don't require edge-side configuration)
+- CDN "Refresh Status" now pulls latest edge-side optimization settings from API
+
+### 1.3.3
+
+- WordPress.org Plugin Review Team compliance: refactored path handling to use WordPress API functions
+- WordPress.org Plugin Review Team compliance: AJAX handlers now sanitize all inputs at point of retrieval
+- WordPress.org Plugin Review Team compliance: improved file inclusion guards for test compatibility
+- Added recursive array sanitization support for complex AJAX request data
+
+### 1.3.0
+
+- Text domain updated to match WordPress.org plugin slug
+
 ### 1.2.0
 
 - Malware scanner: resumable scanning with DB-backed queue, improved progress reporting, and live activity log
@@ -118,7 +186,7 @@ Atomic Edge uses the OWASP Core Rule Set to block:
 ### 1.0.6
 
 - Updated malware scanner results to show full file paths
-- Improved vulnerability scanner UX (scan summary jump links and consistent “More Info” links)
+- Improved vulnerability scanner UX (scan summary jump links and consistent "More Info" links)
 - Simplified Settings page to focus on connection and core configuration
 
 ### 1.0.0
@@ -131,6 +199,14 @@ Atomic Edge uses the OWASP Core Rule Set to block:
 - Malware scanner
 
 ## Upgrade Notice
+
+### 1.9.2
+
+2FA enrollment fix for servers with Redis/Memcached object caching.
+
+### 1.9.1
+
+Security fix for XSS vulnerability - update recommended.
 
 ### 1.0.0
 

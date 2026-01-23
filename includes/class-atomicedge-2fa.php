@@ -198,11 +198,41 @@ class AtomicEdge_2FA {
 			return false;
 		}
 
+		// Verify encryption is available before starting.
+		if ( ! AtomicEdge_2FA_Crypto::is_available() ) {
+			AtomicEdge::log( '2FA enrollment failed: encryption not available', array( 'user_id' => $user_id ) );
+			return false;
+		}
+
 		$secret = AtomicEdge_2FA_TOTP::generate_secret();
 
 		// Store encrypted pending secret.
 		$encrypted = AtomicEdge_2FA_Crypto::encrypt( $secret );
-		update_user_meta( $user_id, self::META_PENDING_SECRET, $encrypted );
+		if ( false === $encrypted ) {
+			AtomicEdge::log( '2FA enrollment failed: encryption failed', array( 'user_id' => $user_id ) );
+			return false;
+		}
+
+		// Clear any existing pending secret first (for clean state).
+		delete_user_meta( $user_id, self::META_PENDING_SECRET );
+
+		// Store the encrypted secret.
+		$result = update_user_meta( $user_id, self::META_PENDING_SECRET, $encrypted );
+
+		// Verify it was actually saved (handles object cache issues).
+		// Force a fresh read from database by cleaning the cache.
+		if ( function_exists( 'wp_cache_delete' ) ) {
+			wp_cache_delete( $user_id, 'user_meta' );
+		}
+		$verify = get_user_meta( $user_id, self::META_PENDING_SECRET, true );
+
+		if ( empty( $verify ) ) {
+			AtomicEdge::log( '2FA enrollment failed: meta not persisted', array(
+				'user_id'       => $user_id,
+				'update_result' => $result,
+			) );
+			return false;
+		}
 
 		// Generate provisioning URI.
 		$provisioning_uri = AtomicEdge_2FA_TOTP::get_provisioning_uri(
@@ -231,9 +261,19 @@ class AtomicEdge_2FA {
 	 * }
 	 */
 	public static function complete_enrollment( $user_id, $code ) {
+		// Force fresh read from database (bypass object cache).
+		if ( function_exists( 'wp_cache_delete' ) ) {
+			wp_cache_delete( $user_id, 'user_meta' );
+		}
+
 		// Get pending secret.
 		$encrypted = get_user_meta( $user_id, self::META_PENDING_SECRET, true );
 		if ( empty( $encrypted ) ) {
+			AtomicEdge::log( '2FA verify failed: no pending secret', array(
+				'user_id'    => $user_id,
+				'meta_key'   => self::META_PENDING_SECRET,
+				'meta_value' => $encrypted,
+			) );
 			return array(
 				'success' => false,
 				'error'   => __( 'No pending enrollment found. Please start setup again.', 'atomic-edge-security' ),

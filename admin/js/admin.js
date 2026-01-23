@@ -995,8 +995,12 @@
                         return;
                     }
 
-                    // Continue stepping until complete.
-                    self.state.scan.pollTimeout = setTimeout(pollStep, 500);
+                    // Adaptive polling: wait a fraction of the server's time budget.
+                    // For short budgets (5s), poll quickly (300ms).
+                    // For longer budgets (20s), poll less frequently (800ms).
+                    var timeBudget = stepData && stepData.time_budget ? parseInt(stepData.time_budget, 10) : 8;
+                    var pollDelay = Math.min(800, Math.max(300, timeBudget * 40));
+                    self.state.scan.pollTimeout = setTimeout(pollStep, pollDelay);
                 }, function(err) {
                     clearInterval(progressInterval);
                     $progress.hide();

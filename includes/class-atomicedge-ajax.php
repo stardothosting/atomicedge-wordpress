@@ -385,7 +385,8 @@ class AtomicEdge_Ajax {
 		$run_id = isset( $post['run_id'] ) ? sanitize_text_field( $post['run_id'] ) : '';
 
 		$scanner = AtomicEdge::get_instance()->scanner;
-		$state = $scanner->step_resumable_scan( $run_id, 8 );
+		// Pass 0 to auto-detect optimal time budget based on server config.
+		$state = $scanner->step_resumable_scan( $run_id, 0 );
 
 		if ( isset( $state['status'] ) && 'complete' === $state['status'] ) {
 			// Fire completion hook with the saved final results.

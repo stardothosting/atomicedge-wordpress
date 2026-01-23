@@ -352,6 +352,31 @@ class AtomicEdge_Scanner {
 	}
 
 	/**
+	 * Get optimal time budget for a scan step based on server configuration.
+	 *
+	 * Adapts to the server's max_execution_time setting to maximize work per step
+	 * while staying safe from timeouts.
+	 *
+	 * @return int Time budget in seconds (5-25 range).
+	 */
+	private function get_optimal_time_budget() {
+		// Get max_execution_time (0 means no limit).
+		$max_time = (int) ini_get( 'max_execution_time' );
+
+		// If unlimited or very high (like local dev with 300s), use a comfortable 20s.
+		if ( 0 === $max_time || $max_time >= 120 ) {
+			return 20;
+		}
+
+		// For typical shared hosting (30s), use 50% to be safe (15s).
+		// For restrictive hosting (15-20s), use 60% to balance safety with progress.
+		$budget = (int) ( $max_time * 0.5 );
+
+		// Clamp to reasonable range: minimum 5s, maximum 25s.
+		return max( 5, min( 25, $budget ) );
+	}
+
+	/**
 	 * Get normalized WordPress root path with trailing slash.
 	 *
 	 * Uses WordPress function APIs where available, avoiding direct use of internal constants.
@@ -590,10 +615,10 @@ class AtomicEdge_Scanner {
 	 * Perform a single time-sliced scan step.
 	 *
 	 * @param string $run_id Optional run id.
-	 * @param int    $time_budget_seconds Time budget.
+	 * @param int    $time_budget_seconds Time budget (0 = auto-detect based on server config).
 	 * @return array Updated run state.
 	 */
-	public function step_resumable_scan( $run_id = '', $time_budget_seconds = 8 ) {
+	public function step_resumable_scan( $run_id = '', $time_budget_seconds = 0 ) {
 		$this->ensure_queue_table_exists();
 
 		$state = $this->get_resumable_scan_state();
@@ -615,7 +640,15 @@ class AtomicEdge_Scanner {
 			: $this->get_default_scan_diagnostics();
 
 		$started = microtime( true );
+
+		// Auto-detect optimal time budget based on server configuration.
+		if ( $time_budget_seconds <= 0 ) {
+			$time_budget_seconds = $this->get_optimal_time_budget();
+		}
 		$time_budget_seconds = max( 1, (int) $time_budget_seconds );
+
+		// Store the time budget in state so JS can adapt polling interval.
+		$state['time_budget'] = $time_budget_seconds;
 
 		if ( ! isset( $state['log'] ) || ! is_array( $state['log'] ) ) {
 			$state['log'] = array();

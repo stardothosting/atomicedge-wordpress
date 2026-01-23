@@ -7,7 +7,7 @@ Connect your WordPress site to Atomic Edge for enterprise-grade WAF protection, 
 | Requires at least | WordPress 5.8 |
 | Tested up to | WordPress 6.9 |
 | Requires PHP | 7.4 |
-| Stable tag | 1.9.8 |
+| Stable tag | 1.9.9 |
 | License | GPLv2 or later |
 | License URI | https://www.gnu.org/licenses/gpl-2.0.html |
 
@@ -105,6 +105,13 @@ The plugin automatically detects and uses the best available option.
 6. Vulnerability scanner results
 
 ## Changelog
+
+### 1.9.9
+
+- IMPROVED: Malware scanner now adapts to server performance (faster on capable servers)
+- Scanner time budget auto-detects based on max_execution_time setting
+- Adaptive polling reduces overhead on slow/shared hosting
+- On servers with 30s timeout: ~15s per step; with 300s+: ~20s per step
 
 ### 1.9.8
 

@@ -104,6 +104,15 @@ The plugin automatically detects and uses the best available option.
 
 == Changelog ==
 
+= 2.0.0 =
+* MAJOR: CDN architecture overhaul - simplified URL management for better reliability
+* REMOVED: User-configurable CDN URLs (prevented URL corruption bugs from form serialization)
+* NEW: Developer constant support - define ATOMICEDGE_CDN_DEV_URL in wp-config.php for local testing
+* IMPROVED: CDN enable logic simplified - now only checks local switch + CDN URL availability
+* REMOVED: Dashboard status gating - CDN works with local settings only (no API calls required)
+* FIXED: Consistent UI design pattern across all admin pages (logo, wrapper classes, headings)
+* FIXED: 2FA settings page now matches design pattern of other plugin pages
+
 = 1.9.9 =
 * IMPROVED: Malware scanner now adapts to server performance (faster on capable servers)
 * Scanner time budget auto-detects based on max_execution_time setting
@@ -134,15 +143,6 @@ The plugin automatically detects and uses the best available option.
 = 1.9.3 =
 * IMPROVED: 2FA enrollment now shows specific error messages (encryption unavailable, encryption failed, database issues)
 * Better diagnostics for troubleshooting 2FA setup failures
-
-= 2.0.0 =
-* MAJOR: CDN architecture overhaul - simplified URL management for better reliability
-* REMOVED: User-configurable CDN URLs (prevented URL corruption bugs from form serialization)
-* NEW: Developer constant support - define ATOMICEDGE_CDN_DEV_URL in wp-config.php for local testing
-* IMPROVED: CDN enable logic simplified - now only checks local switch + CDN URL availability
-* REMOVED: Dashboard status gating - CDN works with local settings only (no API calls required)
-* FIXED: Consistent UI design pattern across all admin pages (logo, wrapper classes, headings)
-* FIXED: 2FA settings page now matches design pattern of other plugin pages
 
 = 1.9.2 =
 * FIX: 2FA enrollment now works on servers with persistent object caching (Redis, Memcached)

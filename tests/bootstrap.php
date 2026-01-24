@@ -359,6 +359,32 @@ function setup_default_mocks() {
 		}
 	);
 
+	// Formatting functions.
+	Functions\when( 'size_format' )->alias(
+		function ( $bytes, $decimals = 0 ) {
+			$units = array( 'B', 'KB', 'MB', 'GB', 'TB' );
+			$bytes = max( $bytes, 0 );
+			$pow   = floor( ( $bytes ? log( $bytes ) : 0 ) / log( 1024 ) );
+			$pow   = min( $pow, count( $units ) - 1 );
+			$bytes /= pow( 1024, $pow );
+			return round( $bytes, $decimals ) . ' ' . $units[ $pow ];
+		}
+	);
+
+	// Site URL functions.
+	Functions\when( 'get_site_url' )->justReturn( 'http://example.com' );
+	Functions\when( 'home_url' )->justReturn( 'http://example.com' );
+	Functions\when( 'site_url' )->justReturn( 'http://example.com' );
+	Functions\when( 'content_url' )->justReturn( 'http://example.com/wp-content' );
+	Functions\when( 'includes_url' )->justReturn( 'http://example.com/wp-includes/' );
+
+	// URL parsing functions.
+	Functions\when( 'wp_parse_url' )->alias(
+		function ( $url, $component = -1 ) {
+			return parse_url( $url, $component );
+		}
+	);
+
 	// Time functions.
 	Functions\when( 'current_time' )->alias(
 		function ( $type ) {
@@ -522,6 +548,11 @@ require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-vulnerability-sc
 require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-ajax.php';
 require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-admin.php';
 require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-cron.php';
+// CDN classes.
+require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-cdn-rules.php';
+require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-cdn.php';
+require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-cdn-rewrite.php';
+require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-dev-mode.php';
 // 2FA classes (dependencies first).
 require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-2fa-crypto.php';
 require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-2fa-totp.php';

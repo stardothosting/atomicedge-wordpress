@@ -3,7 +3,7 @@
  * Plugin Name: Atomic Edge Security
  * Plugin URI: https://atomicedge.io/wordpress
  * Description: Connect your WordPress site to Atomic Edge WAF/CDN for advanced security protection, analytics, and access control management.
- * Version: 1.9.9
+ * Version: 2.0.0
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Tested up to: 6.9
@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'ATOMICEDGE_VERSION', '1.9.9' );
+define( 'ATOMICEDGE_VERSION', '2.0.0' );
 define( 'ATOMICEDGE_PLUGIN_FILE', __FILE__ );
 define( 'ATOMICEDGE_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ATOMICEDGE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -107,11 +107,17 @@ function atomicedge_init() {
 	// Include required files.
 	require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge.php';
 	require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-api.php';
+	require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-dev-mode.php';
 	require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-admin.php';
 	require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-ajax.php';
 	require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-scanner.php';
 	require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-vulnerability-scanner.php';
 	require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-cron.php';
+
+	// CDN classes.
+	require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-cdn-rules.php';
+	require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-cdn-rewrite.php';
+	require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-cdn.php';
 
 	// Two-Factor Authentication classes.
 	require_once ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-2fa-crypto.php';

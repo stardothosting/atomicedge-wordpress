@@ -76,6 +76,8 @@ class AtomicEdge_Ajax {
 		add_action( 'wp_ajax_atomicedge_refresh_cdn_status', array( $this, 'ajax_refresh_cdn_status' ) );
 		add_action( 'wp_ajax_atomicedge_purge_cdn_cache', array( $this, 'ajax_purge_cdn_cache' ) );
 		add_action( 'wp_ajax_atomicedge_update_cdn_settings', array( $this, 'ajax_update_cdn_settings' ) );
+		add_action( 'wp_ajax_atomicedge_save_cdn_settings', array( $this, 'ajax_save_cdn_settings' ) );
+		add_action( 'wp_ajax_atomicedge_clear_minify_cache', array( $this, 'ajax_clear_minify_cache' ) );
 
 		// Cache.
 		add_action( 'wp_ajax_atomicedge_clear_cache', array( $this, 'ajax_clear_cache' ) );
@@ -136,6 +138,31 @@ class AtomicEdge_Ajax {
 			return array_map( array( $this, 'sanitize_post_value' ), $value );
 		}
 		return sanitize_text_field( (string) $value );
+	}
+
+	/**
+	 * Sanitize and normalize a URL, ensuring it has a proper scheme.
+	 *
+	 * Simple approach: if URL doesn't start with http:// or https://, add the default scheme.
+	 * Then let esc_url_raw() handle validation.
+	 *
+	 * @param string $url            The URL to sanitize.
+	 * @param string $default_scheme Default scheme to use ('http' or 'https').
+	 * @return string Sanitized URL with proper scheme.
+	 */
+	private function sanitize_url_with_scheme( $url, $default_scheme = 'https' ) {
+		$url = trim( $url );
+
+		if ( empty( $url ) ) {
+			return '';
+		}
+
+		// Only add scheme if URL doesn't already have http:// or https://.
+		if ( ! preg_match( '#^https?://#i', $url ) ) {
+			$url = $default_scheme . '://' . $url;
+		}
+
+		return esc_url_raw( $url );
 	}
 
 	/**
@@ -687,6 +714,106 @@ class AtomicEdge_Ajax {
 			) );
 		} else {
 			wp_send_json_error( array( 'message' => $result['error'] ) );
+		}
+	}
+
+	/**
+	 * Save CDN settings from the tabbed settings form.
+	 *
+	 * Handles all CDN settings across General, Minification, and Advanced tabs.
+	 *
+	 * @return void
+	 */
+	public function ajax_save_cdn_settings() {
+		$post = $this->get_verified_post_fields( array( 'formData' ) );
+
+		if ( empty( $post['formData'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'No form data provided.', 'atomic-edge-security' ) ) );
+		}
+
+		// Parse the serialized form data.
+		parse_str( $post['formData'], $form_data );
+
+		// DEBUG: Log raw form data to trace corruption.
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+		error_log( 'AtomicEdge CDN Save - Raw formData: ' . $post['formData'] );
+		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log, WordPress.PHP.DevelopmentFunctions.error_log_print_r
+		error_log( 'AtomicEdge CDN Save - Parsed form_data: ' . print_r( $form_data, true ) );
+
+		// Verify nonce from form data.
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Already sanitized by get_verified_post_fields.
+		$form_nonce = isset( $form_data['atomicedge_cdn_nonce'] ) ? sanitize_text_field( $form_data['atomicedge_cdn_nonce'] ) : '';
+		if ( ! wp_verify_nonce( $form_nonce, 'atomicedge_cdn_settings' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Security check failed.', 'atomic-edge-security' ) ) );
+		}
+
+		// General tab settings.
+		$cdn_local_enabled = isset( $form_data['atomicedge_cdn_local_enabled'] ) && 'on' === $form_data['atomicedge_cdn_local_enabled'];
+		update_option( 'atomicedge_cdn_local_enabled', $cdn_local_enabled ? 'on' : 'off' );
+
+		// File type settings.
+		$cdn_css = isset( $form_data['atomicedge_cdn_css'] ) && 'on' === $form_data['atomicedge_cdn_css'];
+		update_option( 'atomicedge_cdn_css', $cdn_css ? 'on' : 'off' );
+
+		$cdn_js = isset( $form_data['atomicedge_cdn_js'] ) && 'on' === $form_data['atomicedge_cdn_js'];
+		update_option( 'atomicedge_cdn_js', $cdn_js ? 'on' : 'off' );
+
+		$cdn_media = isset( $form_data['atomicedge_cdn_media'] ) && 'on' === $form_data['atomicedge_cdn_media'];
+		update_option( 'atomicedge_cdn_media', $cdn_media ? 'on' : 'off' );
+
+		// Note: CDN URL comes from dashboard - no user-configurable URL needed.
+
+		// Minification tab settings.
+		$minify_css = isset( $form_data['atomicedge_cdn_minify_css'] ) && 'on' === $form_data['atomicedge_cdn_minify_css'];
+		update_option( 'atomicedge_cdn_minify_css', $minify_css ? 'on' : 'off' );
+
+		$minify_js = isset( $form_data['atomicedge_cdn_minify_js'] ) && 'on' === $form_data['atomicedge_cdn_minify_js'];
+		update_option( 'atomicedge_cdn_minify_js', $minify_js ? 'on' : 'off' );
+
+		$minify_html = isset( $form_data['atomicedge_cdn_minify_html'] ) && 'on' === $form_data['atomicedge_cdn_minify_html'];
+		update_option( 'atomicedge_cdn_minify_html', $minify_html ? 'on' : 'off' );
+
+		// Advanced tab settings.
+		if ( isset( $form_data['atomicedge_cdn_reject_files'] ) ) {
+			$reject_files = sanitize_textarea_field( $form_data['atomicedge_cdn_reject_files'] );
+			update_option( 'atomicedge_cdn_reject_files', $reject_files );
+		}
+
+		$dns_prefetch = isset( $form_data['atomicedge_cdn_dns_prefetch'] ) && 'on' === $form_data['atomicedge_cdn_dns_prefetch'];
+		update_option( 'atomicedge_cdn_dns_prefetch', $dns_prefetch ? 'on' : 'off' );
+
+		wp_send_json_success( array(
+			'message' => __( 'CDN settings saved successfully.', 'atomic-edge-security' ),
+		) );
+	}
+
+	/**
+	 * Clear the minification cache via AJAX.
+	 *
+	 * @return void
+	 */
+	public function ajax_clear_minify_cache() {
+		$this->get_verified_post_fields( array() );
+
+		// Check if CDN class is available.
+		if ( ! class_exists( 'AtomicEdge_CDN' ) ) {
+			wp_send_json_error( array( 'message' => __( 'CDN module not available.', 'atomic-edge-security' ) ) );
+		}
+
+		$result = AtomicEdge_CDN::clear_minified_cache();
+
+		if ( $result['success'] ) {
+			wp_send_json_success( array(
+				'message' => sprintf(
+					/* translators: %d: Number of files deleted */
+					__( 'Cleared %d cached files.', 'atomic-edge-security' ),
+					$result['deleted']
+				),
+			) );
+		} else {
+			wp_send_json_error( array(
+				'message' => $result['error'] ?? __( 'Failed to clear cache.', 'atomic-edge-security' ),
+			) );
 		}
 	}
 

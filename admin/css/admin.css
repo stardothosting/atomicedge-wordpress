@@ -1336,3 +1336,42 @@
 	margin-left: 4px;
 	margin-right: 0;
 }
+
+/* Development Mode Notice */
+.atomicedge-dev-mode-notice {
+	background: linear-gradient(135deg, #f0e6fa 0%, #e6f0fa 100%);
+	border: 2px dashed #9854cf;
+	border-radius: 8px;
+	padding: 16px 20px;
+	margin-bottom: 20px;
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+}
+
+.atomicedge-dev-mode-notice .dashicons {
+	color: #9854cf;
+	font-size: 24px;
+	width: 24px;
+	height: 24px;
+	flex-shrink: 0;
+}
+
+.atomicedge-dev-mode-notice strong {
+	color: #6b21a8;
+}
+
+.atomicedge-dev-mode-notice p {
+	margin: 0 0 4px 0;
+}
+
+.atomicedge-dev-mode-notice p:last-child {
+	margin-bottom: 0;
+}
+
+.atomicedge-dev-mode-notice code {
+	background: rgba(152, 84, 207, 0.1);
+	padding: 2px 6px;
+	border-radius: 3px;
+	font-size: 12px;
+}

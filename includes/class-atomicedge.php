@@ -117,6 +117,11 @@ class AtomicEdge {
 
 		// Initialize 2FA component (singleton).
 		AtomicEdge_2FA::get_instance();
+
+		// Initialize CDN components (frontend only, when CDN is enabled).
+		if ( ! is_admin() && AtomicEdge_CDN::is_cdn_enabled() ) {
+			new AtomicEdge_CDN_Rewrite();
+		}
 	}
 
 	/**

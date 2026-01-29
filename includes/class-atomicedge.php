@@ -160,7 +160,7 @@ class AtomicEdge {
 		// Enqueue Chart.js for analytics.
 		wp_enqueue_script(
 			'atomicedge-chartjs',
-			ATOMICEDGE_PLUGIN_URL . 'assets/js/chart.min.js',
+			ATOMICEDGE_PLUGIN_URL . 'admin/assets/js/chart.min.js',
 			array(),
 			'4.4.1',
 			true

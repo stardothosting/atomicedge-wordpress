@@ -38,7 +38,7 @@ class AtomicEdge_Scanner {
 	/**
 	 * Relative path (from plugin dir) to the shipped integrity manifest.
 	 */
-	private const INTEGRITY_MANIFEST_REL_PATH = 'assets/integrity/atomicedge-manifest.json';
+	private const INTEGRITY_MANIFEST_REL_PATH = 'admin/assets/integrity/atomicedge-manifest.json';
 
 	/**
 	 * Whitelisted plugin slugs known to use suspicious-looking but legitimate code.

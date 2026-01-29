@@ -16,7 +16,7 @@ $atomicedge_is_connected = $atomicedge_dev_mode ? true : $this->api->is_connecte
 $atomicedge_site_data    = AtomicEdge_Dev_Mode::get_effective_site_data();
 ?>
 <div class="wrap atomicedge-wrap">
-	<h1><img src="<?php echo esc_url( ATOMICEDGE_PLUGIN_URL . 'assets/images/logo.svg' ); ?>" alt="<?php esc_attr_e( 'Atomic Edge', 'atomic-edge-security' ); ?>" class="atomicedge-logo" /></h1>
+	<h1><img src="<?php echo esc_url( ATOMICEDGE_PLUGIN_URL . 'admin/images/logo.svg' ); ?>" alt="<?php esc_attr_e( 'Atomic Edge', 'atomic-edge-security' ); ?>" class="atomicedge-logo" /></h1>
 
 	<?php
 	// Show dev mode notice.

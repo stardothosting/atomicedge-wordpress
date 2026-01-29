@@ -34,7 +34,7 @@ $using_dev_constant = defined( 'ATOMICEDGE_CDN_DEV_URL' ) && ATOMICEDGE_CDN_DEV_
 // Test URL.
 $test_url = '';
 if ( ! empty( $cdn_hostname ) ) {
-	$test_url = 'https://' . $cdn_hostname . '/wp-content/plugins/atomicedge/assets/images/logo.svg';
+	$test_url = 'https://' . $cdn_hostname . '/wp-content/plugins/atomicedge/admin/images/logo.svg';
 }
 ?>
 

@@ -88,3 +88,8 @@ svn/
 codacy-results.sarif
 codacy-results.json
 *.sarif
+
+push.sh
+wp-deploy/*
+svn/*
+push.exclude

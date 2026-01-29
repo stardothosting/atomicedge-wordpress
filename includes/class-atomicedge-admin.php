@@ -575,7 +575,7 @@ class AtomicEdge_Admin {
 	private function render_not_connected_notice() {
 		?>
 		<div class="wrap atomicedge-wrap">
-			<h1><img src="<?php echo esc_url( ATOMICEDGE_PLUGIN_URL . 'assets/images/logo.svg' ); ?>" alt="<?php esc_attr_e( 'Atomic Edge', 'atomic-edge-security' ); ?>" class="atomicedge-logo" /></h1>
+			<h1><img src="<?php echo esc_url( ATOMICEDGE_PLUGIN_URL . 'admin/images/logo.svg' ); ?>" alt="<?php esc_attr_e( 'Atomic Edge', 'atomic-edge-security' ); ?>" class="atomicedge-logo" /></h1>
 			<div class="notice notice-warning">
 				<p>
 					<?php

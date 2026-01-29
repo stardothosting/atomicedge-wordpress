@@ -21,12 +21,14 @@ Atomic Edge Security connects your WordPress site to the Atomic Edge WAF/CDN ser
 - **2FA Enforcement Policies** - Require 2FA for specific user roles with configurable grace periods
 - **2FA Audit Logging** - Complete security audit trail for all 2FA events
 - **Web Application Firewall (WAF)** - Block SQL injection, XSS, and other attacks with OWASP Core Rules
+- **Content Delivery Network (CDN)** - Serve static assets from global edge servers for faster page loads
 - **Real-time Analytics** - Monitor traffic, blocked threats, and security events in real-time
 - **IP Access Control** - Easily whitelist or blacklist IP addresses and CIDR ranges
 - **Geographic Blocking** - Block or allow access based on visitor country
 - **Malware Scanner** - Scan WordPress files for modifications and suspicious code patterns
 - **Vulnerability Scanner** - Check WordPress core, plugins, and themes for known vulnerabilities (requires Atomic Edge connection)
 - **WAF Log Viewer** - See exactly what threats are being blocked
+- **WP-CLI Integration** - Run security scans from the command line
 
 ## How It Works
 
@@ -97,14 +99,26 @@ The plugin automatically detects and uses the best available option.
 
 ## Screenshots
 
-1. Dashboard showing security summary
-2. Analytics page with traffic graphs
-3. WAF logs showing blocked attacks
-4. IP access control management
-5. Malware scanner results
-6. Vulnerability scanner results
+1. Dashboard summary showing connection status, security overview, and quick actions
+2. Analytics page with traffic graphs and data for requests and blocked threats
+3. WAF log viewer displaying security incidents and blocked attacks in real-time
+4. Access control management for IP whitelist, blacklist, and geographic blocking
+5. Malware scanner to scan your entire WordPress installation for malicious files
+6. Vulnerability scanner highlighting insecure or vulnerable core, themes, and plugins
+7. CDN settings page for configuring content delivery and asset optimization
+8. Two-Factor Authentication settings for securing WordPress login with TOTP apps
 
 ## Changelog
+
+### 2.0.0
+
+- MAJOR: CDN architecture overhaul - simplified URL management for better reliability
+- REMOVED: User-configurable CDN URLs (prevented URL corruption bugs from form serialization)
+- NEW: Developer constant support - define ATOMICEDGE_CDN_DEV_URL in wp-config.php for local testing
+- IMPROVED: CDN enable logic simplified - now only checks local switch + CDN URL availability
+- REMOVED: Dashboard status gating - CDN works with local settings only (no API calls required)
+- FIXED: Consistent UI design pattern across all admin pages (logo, wrapper classes, headings)
+- FIXED: 2FA settings page now matches design pattern of other plugin pages
 
 ### 1.9.9
 

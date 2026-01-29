@@ -684,7 +684,7 @@ class AtomicEdge_2FA {
 		// QR code generator (client-side).
 		wp_enqueue_script(
 			'atomicedge-qrcode',
-			ATOMICEDGE_PLUGIN_URL . 'assets/js/qrcode.min.js',
+			ATOMICEDGE_PLUGIN_URL . 'admin/assets/js/qrcode.min.js',
 			array(),
 			ATOMICEDGE_VERSION,
 			true

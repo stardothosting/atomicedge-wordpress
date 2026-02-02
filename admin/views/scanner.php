@@ -66,10 +66,25 @@ $atomicedge_last_results = $atomicedge_scanner->get_last_results();
 							<span class="dashicons dashicons-trash"></span>
 							<?php esc_html_e( 'Reset Scan', 'atomic-edge-security' ); ?>
 						</button>
+
+						<?php if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) : ?>
+							<button type="button" id="atomicedge-debug-test" class="button button-hero" style="background: #9b59b6; border-color: #8e44ad; color: #fff;">
+								<span class="dashicons dashicons-performance"></span>
+								<?php esc_html_e( 'Debug Test (500 files)', 'atomic-edge-security' ); ?>
+							</button>
+						<?php endif; ?>
 					</div>
 				</div>
 			</div>
 		</div>
+
+		<!-- Debug Test Results (only shown in WP_DEBUG mode) -->
+		<?php if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) : ?>
+		<div id="atomicedge-debug-results" class="atomicedge-results-section" style="display: none; background: #f9f3ff; border: 2px solid #9b59b6; padding: 15px; margin-bottom: 20px;">
+			<h3 style="color: #8e44ad; margin-top: 0;"><?php esc_html_e( 'Debug Test Results', 'atomic-edge-security' ); ?></h3>
+			<pre id="atomicedge-debug-output" style="background: #fff; padding: 10px; overflow: auto; max-height: 400px;"></pre>
+		</div>
+		<?php endif; ?>
 
 		<!-- Scan Progress -->
 		<div id="atomicedge-scan-progress" class="atomicedge-scan-progress" style="display: none;">

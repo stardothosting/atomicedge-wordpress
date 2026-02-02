@@ -65,6 +65,7 @@ class AtomicEdge_Ajax {
 		add_action( 'wp_ajax_atomicedge_get_scan_results', array( $this, 'ajax_get_scan_results' ) );
 		add_action( 'wp_ajax_atomicedge_cancel_scan', array( $this, 'ajax_cancel_scan' ) );
 		add_action( 'wp_ajax_atomicedge_reset_scan', array( $this, 'ajax_reset_scan' ) );
+		add_action( 'wp_ajax_atomicedge_scan_debug_test', array( $this, 'ajax_scan_debug_test' ) );
 
 		// Vulnerability Scanner.
 		add_action( 'wp_ajax_atomicedge_run_vulnerability_scan', array( $this, 'ajax_run_vulnerability_scan' ) );
@@ -475,6 +476,28 @@ class AtomicEdge_Ajax {
 		$scanner = AtomicEdge::get_instance()->scanner;
 		$state = $scanner->reset_resumable_scan();
 		wp_send_json_success( $state );
+	}
+
+	/**
+	 * Run a quick debug test scan (limited files) for development.
+	 *
+	 * Only available when WP_DEBUG is true. Runs a real scan on 500 files
+	 * to test performance without waiting for 30,000+ files.
+	 *
+	 * @return void
+	 */
+	public function ajax_scan_debug_test() {
+		$this->get_verified_post_fields( array() );
+
+		// Only allow in debug mode.
+		if ( ! defined( 'WP_DEBUG' ) || ! WP_DEBUG ) {
+			wp_send_json_error( array( 'message' => 'Debug mode not enabled' ) );
+		}
+
+		$scanner = AtomicEdge::get_instance()->scanner;
+		$results = $scanner->run_debug_test( 500 );
+
+		wp_send_json_success( $results );
 	}
 
 	/**

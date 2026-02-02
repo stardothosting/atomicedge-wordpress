@@ -644,6 +644,78 @@
             if ($('.atomicedge-vuln-filter').length > 0) {
                 self.initVulnerabilitySeverityFilters();
             }
+
+            // Debug test button (only present when WP_DEBUG is true)
+            if ($('#atomicedge-debug-test').length > 0) {
+                $('#atomicedge-debug-test').on('click', function() {
+                    self.runDebugTest();
+                });
+            }
+        },
+
+        /**
+         * Run debug scan test (500 files) - only visible when WP_DEBUG is true.
+         */
+        runDebugTest: function() {
+            var self = this;
+            var $button = $('#atomicedge-debug-test');
+            var $results = $('#atomicedge-debug-results');
+            var $output = $('#atomicedge-debug-output');
+
+            if ($button.prop('disabled')) {
+                return;
+            }
+
+            $button.prop('disabled', true).text('Testing...');
+            $results.show();
+            $output.text('Running debug scan on 500 files...\n');
+
+            this.ajax('atomicedge_scan_debug_test', {}, function(data) {
+                $button.prop('disabled', false).text('Debug Test (500 files)');
+                
+                // Format and display results
+                var output = '=== Debug Scan Results ===\n\n';
+                output += 'Files Found: ' + (data.files_found || 0) + '\n';
+                output += 'Files Scanned: ' + (data.files_scanned || 0) + '\n';
+                output += 'Quick Rejected: ' + (data.files_quick_rejected || 0) + '\n';
+                output += 'Regex Scanned: ' + (data.files_regex_scanned || 0) + '\n';
+                output += 'Quick Rejection Rate: ' + (data.quick_rejection_rate || 'N/A') + '\n\n';
+                
+                if (data.timing) {
+                    output += '--- Timing ---\n';
+                    output += 'Enumeration: ' + (data.timing.enumeration_ms || 0) + ' ms\n';
+                    output += 'Scanning: ' + (data.timing.scanning_ms || 0) + ' ms\n';
+                    output += 'Total: ' + (data.timing.total_seconds || 0) + ' seconds\n';
+                }
+                
+                if (data.files_per_second) {
+                    output += 'Rate: ' + data.files_per_second + ' files/sec\n';
+                }
+                
+                if (data.issues_found && data.issues_found.length > 0) {
+                    output += '\n--- Issues Found: ' + data.issues_found.length + ' ---\n';
+                    data.issues_found.slice(0, 10).forEach(function(issue) {
+                        output += '  ' + self.escapeHtml(issue.file) + ' (' + self.escapeHtml(issue.type) + ')\n';
+                    });
+                    if (data.issues_found.length > 10) {
+                        output += '  ... and ' + (data.issues_found.length - 10) + ' more\n';
+                    }
+                } else {
+                    output += '\nNo issues found.\n';
+                }
+                
+                if (data.server_info) {
+                    output += '\n--- Server Info ---\n';
+                    output += 'PHP: ' + (data.server_info.php_version || 'N/A') + '\n';
+                    output += 'Max Execution: ' + (data.server_info.max_execution_time || 'N/A') + 's\n';
+                    output += 'Memory Limit: ' + (data.server_info.memory_limit || 'N/A') + '\n';
+                }
+                
+                $output.text(output);
+            }, function(err) {
+                $button.prop('disabled', false).text('Debug Test (500 files)');
+                $output.text('Error: ' + self.escapeHtml((err && err.message) ? err.message : 'Unknown error'));
+            });
         },
 
         /**

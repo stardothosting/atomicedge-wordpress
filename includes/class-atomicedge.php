@@ -183,7 +183,7 @@ class AtomicEdge {
 			true
 		);
 
-		// Localize script with data.
+		// Localize script with data for main admin.js.
 		wp_localize_script(
 			'atomicedge-admin',
 			'atomicedgeAdmin',
@@ -203,6 +203,27 @@ class AtomicEdge {
 				),
 			)
 		);
+
+		// Enqueue Adaptive Defense JavaScript on its page.
+		if ( strpos( $hook, 'atomicedge-adaptive-defense' ) !== false ) {
+			wp_enqueue_script(
+				'atomicedge-adaptive-defense',
+				ATOMICEDGE_PLUGIN_URL . 'admin/js/adaptive-defense.js',
+				array( 'jquery' ),
+				$version,
+				true
+			);
+
+			// Localize script with data for adaptive-defense.js.
+			wp_localize_script(
+				'atomicedge-adaptive-defense',
+				'atomicedge_admin',
+				array(
+					'ajax_url' => admin_url( 'admin-ajax.php' ),
+					'nonce'    => wp_create_nonce( 'atomicedge_ajax' ),
+				)
+			);
+		}
 	}
 
 	/**

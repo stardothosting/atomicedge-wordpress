@@ -4,7 +4,7 @@ Tags: security, firewall, waf, malware, protection
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 2.1.0
+Stable tag: 2.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -19,6 +19,7 @@ Atomic Edge Security connects your WordPress site to the Atomic Edge WAF/CDN ser
 * **Two-Factor Authentication (2FA)** - Protect WordPress logins with TOTP authenticator apps (Google Authenticator, Authy, etc.)
 * **2FA Enforcement Policies** - Require 2FA for specific user roles with configurable grace periods
 * **2FA Audit Logging** - Complete security audit trail for all 2FA events
+* **Adaptive Defense** - AI-powered threat detection that automatically identifies and blocks malicious actors
 * **Web Application Firewall (WAF)** - Block SQL injection, XSS, and other attacks with OWASP Core Rules
 * **Content Delivery Network (CDN)** - Serve static assets from global edge servers for faster page loads
 * **Real-time Analytics** - Monitor traffic, blocked threats, and security events in real-time
@@ -105,8 +106,17 @@ The plugin automatically detects and uses the best available option.
 6. Vulnerability scanner highlighting insecure or vulnerable core, themes, and plugins
 7. CDN settings page for configuring content delivery and asset optimization
 8. Two-Factor Authentication settings for securing WordPress login with TOTP apps
+9. Adaptive Defense dashboard showing AI-powered threat detections and automatic IP blocking
 
 == Changelog ==
+
+= 2.2.0 =
+* NEW: Adaptive Defense - AI-powered threat detection and automatic IP blocking
+* View real-time threat status and blocked IPs from the WordPress admin
+* Actor profiles with behavioral analysis metrics
+* Threat detection log with AI confidence scores
+* Requires Atomic Edge Pro or Enterprise plan
+* IMPROVED: API contract validation for better error messages
 
 = 2.1.0 =
 * MAJOR PERFORMANCE: Malware scanner now 100x faster through batch database operations

@@ -90,6 +90,16 @@ class AtomicEdge_Ajax {
 		add_action( 'wp_ajax_atomicedge_2fa_disable', array( $this, 'ajax_2fa_disable' ) );
 		add_action( 'wp_ajax_atomicedge_2fa_regenerate_codes', array( $this, 'ajax_2fa_regenerate_codes' ) );
 		add_action( 'wp_ajax_atomicedge_2fa_get_status', array( $this, 'ajax_2fa_get_status' ) );
+
+		// Adaptive Defense.
+		add_action( 'wp_ajax_atomicedge_get_adaptive_defense', array( $this, 'ajax_get_adaptive_defense' ) );
+		add_action( 'wp_ajax_atomicedge_get_actor_profiles', array( $this, 'ajax_get_actor_profiles' ) );
+		add_action( 'wp_ajax_atomicedge_get_threat_detections', array( $this, 'ajax_get_threat_detections' ) );
+		add_action( 'wp_ajax_atomicedge_get_threat_detection_detail', array( $this, 'ajax_get_threat_detection_detail' ) );
+		add_action( 'wp_ajax_atomicedge_block_ip', array( $this, 'ajax_block_ip' ) );
+		add_action( 'wp_ajax_atomicedge_unblock_ip', array( $this, 'ajax_unblock_ip' ) );
+		add_action( 'wp_ajax_atomicedge_delete_actor', array( $this, 'ajax_delete_actor' ) );
+		add_action( 'wp_ajax_atomicedge_dismiss_detection', array( $this, 'ajax_dismiss_detection' ) );
 	}
 
 	/**
@@ -851,6 +861,207 @@ class AtomicEdge_Ajax {
 			error_log( 'AtomicEdge AJAX: ' . $message );
 		}
 	}
+
+	// =========================================================================
+	// Adaptive Defense AJAX Handlers
+	// =========================================================================
+
+	/**
+	 * Get Adaptive Defense status and overview data.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_adaptive_defense() {
+		$this->get_verified_post_fields( array() );
+
+		$response = $this->api->get_adaptive_defense();
+
+		if ( $response['success'] ) {
+			wp_send_json_success( $response['data'] );
+		} else {
+			wp_send_json_error( array( 'message' => $response['error'] ?? __( 'Failed to fetch Adaptive Defense data.', 'atomic-edge-security' ) ) );
+		}
+	}
+
+	/**
+	 * Get actor profiles (paginated).
+	 *
+	 * @return void
+	 */
+	public function ajax_get_actor_profiles() {
+		$post = $this->get_verified_post_fields( array( 'page', 'per_page', 'filter', 'search' ) );
+
+		$args = array(
+			'page'     => isset( $post['page'] ) ? absint( $post['page'] ) : 1,
+			'per_page' => isset( $post['per_page'] ) ? absint( $post['per_page'] ) : 25,
+			'filter'   => isset( $post['filter'] ) ? $post['filter'] : 'all',
+		);
+
+		if ( ! empty( $post['search'] ) ) {
+			$args['search'] = $post['search'];
+		}
+
+		$response = $this->api->get_actor_profiles( $args );
+
+		if ( $response['success'] ) {
+			wp_send_json_success( $response['data'] );
+		} else {
+			wp_send_json_error( array( 'message' => $response['error'] ?? __( 'Failed to fetch actor profiles.', 'atomic-edge-security' ) ) );
+		}
+	}
+
+	/**
+	 * Get threat detections (paginated).
+	 *
+	 * @return void
+	 */
+	public function ajax_get_threat_detections() {
+		$post = $this->get_verified_post_fields( array( 'page', 'per_page', 'status' ) );
+
+		$args = array(
+			'page'     => isset( $post['page'] ) ? absint( $post['page'] ) : 1,
+			'per_page' => isset( $post['per_page'] ) ? absint( $post['per_page'] ) : 25,
+			'status'   => isset( $post['status'] ) ? $post['status'] : 'all',
+		);
+
+		$response = $this->api->get_threat_detections( $args );
+
+		if ( $response['success'] ) {
+			wp_send_json_success( $response['data'] );
+		} else {
+			wp_send_json_error( array( 'message' => $response['error'] ?? __( 'Failed to fetch threat detections.', 'atomic-edge-security' ) ) );
+		}
+	}
+
+	/**
+	 * Get threat detection detail.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_threat_detection_detail() {
+		$post = $this->get_verified_post_fields( array( 'detection_id' ) );
+
+		if ( empty( $post['detection_id'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'Detection ID is required.', 'atomic-edge-security' ) ) );
+		}
+
+		$response = $this->api->get_threat_detection_detail( absint( $post['detection_id'] ) );
+
+		if ( $response['success'] ) {
+			wp_send_json_success( $response['data'] );
+		} else {
+			wp_send_json_error( array( 'message' => $response['error'] ?? __( 'Failed to fetch detection details.', 'atomic-edge-security' ) ) );
+		}
+	}
+
+	/**
+	 * Block an IP address via Adaptive Defense.
+	 *
+	 * @return void
+	 */
+	public function ajax_block_ip() {
+		$post = $this->get_verified_post_fields( array( 'ip', 'duration_hours', 'permanent' ) );
+
+		if ( empty( $post['ip'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'IP address is required.', 'atomic-edge-security' ) ) );
+		}
+
+		$ip             = $post['ip'];
+		$duration_hours = isset( $post['duration_hours'] ) ? absint( $post['duration_hours'] ) : 24;
+		$permanent      = isset( $post['permanent'] ) && 'true' === $post['permanent'];
+
+		$response = $this->api->block_ip( $ip, $duration_hours, $permanent );
+
+		if ( $response['success'] ) {
+			wp_send_json_success( array(
+				'message' => sprintf(
+					/* translators: %s: IP address */
+					__( 'IP address %s has been blocked.', 'atomic-edge-security' ),
+					esc_html( $ip )
+				),
+				'data'    => $response['data'] ?? array(),
+			) );
+		} else {
+			wp_send_json_error( array( 'message' => $response['error'] ?? __( 'Failed to block IP address.', 'atomic-edge-security' ) ) );
+		}
+	}
+
+	/**
+	 * Unblock an IP address via Adaptive Defense.
+	 *
+	 * @return void
+	 */
+	public function ajax_unblock_ip() {
+		$post = $this->get_verified_post_fields( array( 'ip' ) );
+
+		if ( empty( $post['ip'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'IP address is required.', 'atomic-edge-security' ) ) );
+		}
+
+		$response = $this->api->unblock_ip( $post['ip'] );
+
+		if ( $response['success'] ) {
+			wp_send_json_success( array(
+				'message' => sprintf(
+					/* translators: %s: IP address */
+					__( 'IP address %s has been unblocked.', 'atomic-edge-security' ),
+					esc_html( $post['ip'] )
+				),
+			) );
+		} else {
+			wp_send_json_error( array( 'message' => $response['error'] ?? __( 'Failed to unblock IP address.', 'atomic-edge-security' ) ) );
+		}
+	}
+
+	/**
+	 * Delete an actor profile.
+	 *
+	 * @return void
+	 */
+	public function ajax_delete_actor() {
+		$post = $this->get_verified_post_fields( array( 'actor_id' ) );
+
+		if ( empty( $post['actor_id'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'Actor ID is required.', 'atomic-edge-security' ) ) );
+		}
+
+		$response = $this->api->delete_actor_profile( absint( $post['actor_id'] ) );
+
+		if ( $response['success'] ) {
+			wp_send_json_success( array(
+				'message' => __( 'Actor profile has been deleted.', 'atomic-edge-security' ),
+			) );
+		} else {
+			wp_send_json_error( array( 'message' => $response['error'] ?? __( 'Failed to delete actor profile.', 'atomic-edge-security' ) ) );
+		}
+	}
+
+	/**
+	 * Dismiss a threat detection.
+	 *
+	 * @return void
+	 */
+	public function ajax_dismiss_detection() {
+		$post = $this->get_verified_post_fields( array( 'detection_id' ) );
+
+		if ( empty( $post['detection_id'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'Detection ID is required.', 'atomic-edge-security' ) ) );
+		}
+
+		$response = $this->api->dismiss_threat_detection( absint( $post['detection_id'] ) );
+
+		if ( $response['success'] ) {
+			wp_send_json_success( array(
+				'message' => __( 'Threat detection has been dismissed.', 'atomic-edge-security' ),
+			) );
+		} else {
+			wp_send_json_error( array( 'message' => $response['error'] ?? __( 'Failed to dismiss detection.', 'atomic-edge-security' ) ) );
+		}
+	}
+
+	// =========================================================================
+	// Two-Factor Authentication AJAX Handlers
+	// =========================================================================
 
 	/**
 	 * Start 2FA enrollment via AJAX.

@@ -407,7 +407,7 @@ class AtomicEdge_API {
 			return $cached;
 		}
 
-		$response = $this->request( 'GET', '/wp/cdn/status' );
+		$response = $this->request( 'GET', '/cdn/status' );
 
 		if ( $response['success'] ) {
 			// Cache for 5 minutes since CDN status can change.
@@ -423,7 +423,7 @@ class AtomicEdge_API {
 	 * @return array Response with success status.
 	 */
 	public function purge_cdn_cache() {
-		$response = $this->request( 'POST', '/wp/cdn/purge' );
+		$response = $this->request( 'POST', '/cdn/purge' );
 
 		if ( $response['success'] ) {
 			// Clear cached CDN status since purge time changed.
@@ -440,7 +440,7 @@ class AtomicEdge_API {
 	 * @return array Response with success status.
 	 */
 	public function update_cdn_settings( $settings ) {
-		$response = $this->request( 'PUT', '/wp/cdn/settings', $settings );
+		$response = $this->request( 'PUT', '/cdn/settings', $settings );
 
 		if ( $response['success'] ) {
 			// Clear cached CDN status.
@@ -448,6 +448,197 @@ class AtomicEdge_API {
 		}
 
 		return $response;
+	}
+
+	// =========================================================================
+	// Adaptive Defense API Methods
+	// =========================================================================
+
+	/**
+	 * Get Adaptive Defense status and overview data.
+	 *
+	 * @return array Status data or error.
+	 */
+	public function get_adaptive_defense() {
+		$cache_key = 'atomicedge_adaptive_defense';
+		$cached    = get_transient( $cache_key );
+
+		if ( false !== $cached ) {
+			return $cached;
+		}
+
+		$response = $this->request( 'GET', '/adaptive-defense' );
+
+		if ( $response['success'] ) {
+			// Cache for 2 minutes since this data can change frequently.
+			set_transient( $cache_key, $response, 2 * MINUTE_IN_SECONDS );
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Get paginated list of actor profiles.
+	 *
+	 * @param array $args Query arguments (page, per_page, filter, search).
+	 * @return array Actor profiles or error.
+	 */
+	public function get_actor_profiles( $args = array() ) {
+		$defaults = array(
+			'page'     => 1,
+			'per_page' => 25,
+			'filter'   => 'all',
+		);
+		$args     = wp_parse_args( $args, $defaults );
+
+		$cache_key = 'atomicedge_actors_' . hash( 'sha256', (string) wp_json_encode( $args ) );
+		$cached    = get_transient( $cache_key );
+
+		if ( false !== $cached ) {
+			return $cached;
+		}
+
+		$response = $this->request( 'GET', '/adaptive-defense/actors', $args );
+
+		if ( $response['success'] ) {
+			set_transient( $cache_key, $response, 2 * MINUTE_IN_SECONDS );
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Get paginated list of threat detections.
+	 *
+	 * @param array $args Query arguments (page, per_page, status).
+	 * @return array Threat detections or error.
+	 */
+	public function get_threat_detections( $args = array() ) {
+		$defaults = array(
+			'page'     => 1,
+			'per_page' => 25,
+			'status'   => 'all',
+		);
+		$args     = wp_parse_args( $args, $defaults );
+
+		$cache_key = 'atomicedge_detections_' . hash( 'sha256', (string) wp_json_encode( $args ) );
+		$cached    = get_transient( $cache_key );
+
+		if ( false !== $cached ) {
+			return $cached;
+		}
+
+		$response = $this->request( 'GET', '/adaptive-defense/detections', $args );
+
+		if ( $response['success'] ) {
+			set_transient( $cache_key, $response, 2 * MINUTE_IN_SECONDS );
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Get detailed information about a specific threat detection.
+	 *
+	 * @param int $detection_id The detection ID.
+	 * @return array Detection details or error.
+	 */
+	public function get_threat_detection_detail( $detection_id ) {
+		$response = $this->request( 'GET', '/adaptive-defense/detections/' . intval( $detection_id ) );
+		return $response;
+	}
+
+	/**
+	 * Block an IP address via Adaptive Defense.
+	 *
+	 * @param string $ip             IP address to block.
+	 * @param int    $duration_hours Duration in hours (default 24).
+	 * @param bool   $permanent      Whether the block is permanent.
+	 * @return array Result.
+	 */
+	public function block_ip( $ip, $duration_hours = 24, $permanent = false ) {
+		$data = array(
+			'ip'             => $ip,
+			'duration_hours' => $duration_hours,
+			'permanent'      => $permanent,
+		);
+
+		$response = $this->request( 'POST', '/adaptive-defense/block', $data );
+
+		if ( $response['success'] ) {
+			// Clear caches.
+			$this->clear_adaptive_defense_cache();
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Unblock an IP address via Adaptive Defense.
+	 *
+	 * @param string $ip IP address to unblock.
+	 * @return array Result.
+	 */
+	public function unblock_ip( $ip ) {
+		$response = $this->request( 'POST', '/adaptive-defense/unblock', array( 'ip' => $ip ) );
+
+		if ( $response['success'] ) {
+			$this->clear_adaptive_defense_cache();
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Delete an actor profile.
+	 *
+	 * @param int $actor_id The actor profile ID.
+	 * @return array Result.
+	 */
+	public function delete_actor_profile( $actor_id ) {
+		$response = $this->request( 'DELETE', '/adaptive-defense/actors/' . intval( $actor_id ) );
+
+		if ( $response['success'] ) {
+			$this->clear_adaptive_defense_cache();
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Dismiss a threat detection.
+	 *
+	 * @param int $detection_id The detection ID.
+	 * @return array Result.
+	 */
+	public function dismiss_threat_detection( $detection_id ) {
+		$response = $this->request( 'POST', '/adaptive-defense/detections/' . intval( $detection_id ) . '/dismiss' );
+
+		if ( $response['success'] ) {
+			$this->clear_adaptive_defense_cache();
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Clear Adaptive Defense related caches.
+	 *
+	 * @return void
+	 */
+	private function clear_adaptive_defense_cache() {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query(
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s OR option_name LIKE %s",
+				'_transient_atomicedge_adaptive%',
+				'_transient_timeout_atomicedge_adaptive%',
+				'_transient_atomicedge_actors%',
+				'_transient_atomicedge_detections%'
+			)
+		);
 	}
 
 	/**

@@ -85,6 +85,16 @@ class AtomicEdge_Admin {
 			array( $this, 'render_analytics_page' )
 		);
 
+		// Adaptive Defense submenu.
+		add_submenu_page(
+			'atomic-edge-security',
+			__( 'Adaptive Defense', 'atomic-edge-security' ),
+			__( 'Adaptive Defense', 'atomic-edge-security' ),
+			'manage_options',
+			'atomicedge-adaptive-defense',
+			array( $this, 'render_adaptive_defense_page' )
+		);
+
 		// WAF Logs submenu.
 		add_submenu_page(
 			'atomic-edge-security',
@@ -505,6 +515,26 @@ class AtomicEdge_Admin {
 		}
 
 		include ATOMICEDGE_PLUGIN_DIR . 'admin/views/settings.php';
+	}
+
+	/**
+	 * Render Adaptive Defense page.
+	 *
+	 * AI-powered threat detection with tabbed interface.
+	 *
+	 * @return void
+	 */
+	public function render_adaptive_defense_page() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'atomic-edge-security' ) );
+		}
+
+		if ( ! $this->api->is_connected() ) {
+			$this->render_not_connected_notice();
+			return;
+		}
+
+		include ATOMICEDGE_PLUGIN_DIR . 'admin/views/adaptive-defense.php';
 	}
 
 	/**

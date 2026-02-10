@@ -268,9 +268,7 @@ class AtomicEdge_CDN {
 		}
 
 		echo '<meta http-equiv="x-dns-prefetch-control" content="on">' . "\n";
-		echo '<link rel="dns-prefetch" href="//' . esc_attr( $cdn_prefix ) . esc_attr( ATOMICEDGE_CDN_SUFFIX_FREE ) . '" />' . "\n";
-		echo '<link rel="dns-prefetch" href="//' . esc_attr( $cdn_prefix ) . esc_attr( ATOMICEDGE_CDN_SUFFIX_FREE_ALT ) . '" />' . "\n";
-		echo '<link rel="dns-prefetch" href="//' . esc_attr( $cdn_prefix ) . esc_attr( ATOMICEDGE_CDN_SUFFIX_PAID ) . '" />' . "\n";
+		echo '<link rel="dns-prefetch" href="//' . esc_attr( $cdn_prefix ) . esc_attr( ATOMICEDGE_CDN_SUFFIX ) . '" />' . "\n";
 	}
 
 	/**
@@ -310,18 +308,13 @@ class AtomicEdge_CDN {
 			return $parsed['host'] ?? '';
 		}
 
-		// Build from prefix + suffix.
+		// Build from prefix + unified suffix.
 		$cdn_prefix = $site_data['cdn_prefix'] ?? '';
 		if ( empty( $cdn_prefix ) ) {
 			return '';
 		}
 
-		$suffix = get_transient( ATOMICEDGE_CDN_PLAN_CHECK );
-		if ( empty( $suffix ) ) {
-			$suffix = ATOMICEDGE_CDN_SUFFIX_FREE_ALT;
-		}
-
-		return $cdn_prefix . $suffix;
+		return $cdn_prefix . ATOMICEDGE_CDN_SUFFIX;
 	}
 
 	/**

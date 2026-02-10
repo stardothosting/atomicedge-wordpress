@@ -3,7 +3,6 @@
  * AtomicEdge CDN Rule Definitions
  *
  * Constants and rules used throughout CDN operations.
- * Maintains compatibility with Shift8 CDN during migration.
  *
  * @package AtomicEdge
  * @since   2.0.0
@@ -19,21 +18,26 @@ if ( ! defined( 'ATOMICEDGE_API_URL' ) ) {
 	define( 'ATOMICEDGE_API_URL', 'https://dashboard.atomicedge.io' );
 }
 
-// CDN Suffixes - Must match Shift8 CDN for backward compatibility during migration.
-// These are the legacy suffixes that existed in the Shift8 CDN system.
+// Unified CDN Suffix - All users use the same suffix now.
+// The paid/free tier distinction has been removed.
+if ( ! defined( 'ATOMICEDGE_CDN_SUFFIX' ) ) {
+	define( 'ATOMICEDGE_CDN_SUFFIX', '.wpcdn.shift8cdn.com' );
+}
+
+// Legacy constants kept for backward compatibility (all point to the unified suffix).
 if ( ! defined( 'ATOMICEDGE_CDN_SUFFIX_PAID' ) ) {
-	define( 'ATOMICEDGE_CDN_SUFFIX_PAID', '.wpcdn.shift8cdn.com' );
+	define( 'ATOMICEDGE_CDN_SUFFIX_PAID', ATOMICEDGE_CDN_SUFFIX );
 }
 
 if ( ! defined( 'ATOMICEDGE_CDN_SUFFIX_FREE' ) ) {
-	define( 'ATOMICEDGE_CDN_SUFFIX_FREE', '.cdn.shift8web.ca' );
+	define( 'ATOMICEDGE_CDN_SUFFIX_FREE', ATOMICEDGE_CDN_SUFFIX );
 }
 
 if ( ! defined( 'ATOMICEDGE_CDN_SUFFIX_FREE_ALT' ) ) {
-	define( 'ATOMICEDGE_CDN_SUFFIX_FREE_ALT', '.cdn.shift8web.com' );
+	define( 'ATOMICEDGE_CDN_SUFFIX_FREE_ALT', ATOMICEDGE_CDN_SUFFIX );
 }
 
-// Transient key for plan/suffix checking.
+// Transient key for plan/suffix checking (kept for backward compatibility, no longer needed).
 if ( ! defined( 'ATOMICEDGE_CDN_PLAN_CHECK' ) ) {
 	define( 'ATOMICEDGE_CDN_PLAN_CHECK', 'atomicedge_cdn_plan_check' );
 }

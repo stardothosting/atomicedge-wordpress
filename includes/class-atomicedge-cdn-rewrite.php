@@ -101,13 +101,8 @@ class AtomicEdge_CDN_Rewrite {
 			return '';
 		}
 
-		// Determine suffix based on plan.
-		$suffix = get_transient( ATOMICEDGE_CDN_PLAN_CHECK );
-		if ( empty( $suffix ) ) {
-			$suffix = ATOMICEDGE_CDN_SUFFIX_FREE_ALT;
-		}
-
-		return 'https://' . $cdn_prefix . $suffix;
+		// All users use the unified CDN suffix now.
+		return 'https://' . $cdn_prefix . ATOMICEDGE_CDN_SUFFIX;
 	}
 
 	/**

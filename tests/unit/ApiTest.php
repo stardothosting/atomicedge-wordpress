@@ -814,6 +814,214 @@ class ApiTest extends TestCase {
 	}
 
 	// =========================================================================
+	// Malware Signature API Tests
+	// =========================================================================
+
+	/**
+	 * Test get_malware_signatures returns signatures from API.
+	 */
+	public function test_get_malware_signatures_returns_data_from_api() {
+		$this->setup_connected_api();
+
+		$signature_data = array(
+			'version'          => '1.0.0',
+			'updated_at'       => '2026-02-12T12:00:00+00:00',
+			'patterns'         => array(
+				'code_execution' => array(
+					'eval\s*\(' => 'Eval function (code execution)',
+				),
+				'webshells'      => array(
+					'c99shell' => 'C99 shell signature',
+				),
+			),
+			'quick_indicators' => array( 'eval(', 'c99shell' ),
+			'severity_map'     => array(
+				'code_execution' => 'critical',
+				'webshells'      => 'critical',
+			),
+		);
+
+		Functions\when( 'wp_remote_request' )->justReturn(
+			array(
+				'response' => array( 'code' => 200 ),
+				'body'     => wp_json_encode(
+					array(
+						'success' => true,
+						'data'    => $signature_data,
+					)
+				),
+			)
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn(
+			wp_json_encode(
+				array(
+					'success' => true,
+					'data'    => $signature_data,
+				)
+			)
+		);
+		Functions\when( 'is_wp_error' )->justReturn( false );
+
+		$api    = $this->create_api_instance();
+		$result = $api->get_malware_signatures();
+
+		$this->assertIsArray( $result );
+		$this->assertArrayHasKey( 'version', $result );
+		$this->assertArrayHasKey( 'patterns', $result );
+		$this->assertArrayHasKey( 'quick_indicators', $result );
+		$this->assertArrayHasKey( 'severity_map', $result );
+	}
+
+	/**
+	 * Test get_malware_signatures uses cached data.
+	 */
+	public function test_get_malware_signatures_uses_cache() {
+		$cached_data = array(
+			'version'          => '1.0.0',
+			'patterns'         => array( 'code_execution' => array() ),
+			'quick_indicators' => array(),
+			'severity_map'     => array(),
+		);
+
+		$this->set_transient( 'atomicedge_malware_signatures', $cached_data );
+
+		$api    = $this->create_api_instance();
+		$result = $api->get_malware_signatures();
+
+		// Should return cached data without API call.
+		$this->assertEquals( $cached_data, $result );
+	}
+
+	/**
+	 * Test get_malware_signatures force refresh bypasses cache.
+	 */
+	public function test_get_malware_signatures_force_refresh_bypasses_cache() {
+		$this->setup_connected_api();
+
+		$cached_data = array(
+			'version'          => '0.9.0',
+			'patterns'         => array(),
+			'quick_indicators' => array(),
+			'severity_map'     => array(),
+		);
+		$this->set_transient( 'atomicedge_malware_signatures', $cached_data );
+
+		$fresh_data = array(
+			'version'          => '1.1.0',
+			'patterns'         => array( 'webshells' => array( 'c99shell' => 'C99' ) ),
+			'quick_indicators' => array( 'c99shell' ),
+			'severity_map'     => array( 'webshells' => 'critical' ),
+		);
+
+		Functions\when( 'wp_remote_request' )->justReturn(
+			array(
+				'response' => array( 'code' => 200 ),
+				'body'     => wp_json_encode(
+					array(
+						'success' => true,
+						'data'    => $fresh_data,
+					)
+				),
+			)
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn(
+			wp_json_encode(
+				array(
+					'success' => true,
+					'data'    => $fresh_data,
+				)
+			)
+		);
+		Functions\when( 'is_wp_error' )->justReturn( false );
+
+		$api    = $this->create_api_instance();
+		$result = $api->get_malware_signatures( true ); // Force refresh.
+
+		// Should return fresh data.
+		$this->assertEquals( '1.1.0', $result['version'] );
+	}
+
+	/**
+	 * Test get_malware_signatures falls back to stale cache on API failure.
+	 */
+	public function test_get_malware_signatures_uses_stale_cache_on_api_failure() {
+		$this->setup_connected_api();
+
+		$stale_data = array(
+			'version'          => '0.8.0',
+			'patterns'         => array( 'webshells' => array() ),
+			'quick_indicators' => array(),
+			'severity_map'     => array(),
+		);
+		$this->set_option( 'atomicedge_malware_signatures_backup', $stale_data );
+
+		// Simulate API failure.
+		Functions\when( 'wp_remote_request' )->justReturn(
+			array(
+				'response' => array( 'code' => 500 ),
+				'body'     => wp_json_encode( array( 'success' => false, 'error' => 'Server error' ) ),
+			)
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 500 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn(
+			wp_json_encode( array( 'success' => false, 'error' => 'Server error' ) )
+		);
+		Functions\when( 'is_wp_error' )->justReturn( false );
+
+		$api    = $this->create_api_instance();
+		$result = $api->get_malware_signatures( true ); // Force refresh to skip cache.
+
+		// Should fall back to stale backup.
+		$this->assertEquals( '0.8.0', $result['version'] );
+	}
+
+	/**
+	 * Test get_malware_signatures returns false when no cache and API fails.
+	 */
+	public function test_get_malware_signatures_returns_false_when_no_fallback() {
+		$this->setup_connected_api();
+
+		// No cached data, no backup.
+		Functions\when( 'wp_remote_request' )->justReturn(
+			array(
+				'response' => array( 'code' => 500 ),
+				'body'     => wp_json_encode( array( 'success' => false ) ),
+			)
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 500 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn(
+			wp_json_encode( array( 'success' => false ) )
+		);
+		Functions\when( 'is_wp_error' )->justReturn( false );
+
+		$api    = $this->create_api_instance();
+		$result = $api->get_malware_signatures( true );
+
+		$this->assertFalse( $result );
+	}
+
+	/**
+	 * Test clear_malware_signature_cache clears the transient.
+	 */
+	public function test_clear_malware_signature_cache_clears_transient() {
+		$this->set_transient(
+			'atomicedge_malware_signatures',
+			array(
+				'version'  => '1.0.0',
+				'patterns' => array(),
+			)
+		);
+
+		$api = $this->create_api_instance();
+		$api->clear_malware_signature_cache();
+
+		// Transient should be cleared.
+		$this->assertFalse( $this->get_transient( 'atomicedge_malware_signatures' ) );
+	}
+
+	// =========================================================================
 	// Helper Methods
 	// =========================================================================
 

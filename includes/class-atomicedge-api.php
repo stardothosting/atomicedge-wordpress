@@ -802,4 +802,62 @@ class AtomicEdge_API {
 
 		return (bool) filter_var( $ip, FILTER_VALIDATE_IP );
 	}
+
+	/**
+	 * Get malware detection signatures from the Atomic Edge API.
+	 *
+	 * Signatures are cached locally to avoid repeated API calls.
+	 * The cache is refreshed every 24 hours or when manually cleared.
+	 *
+	 * @param bool $force_refresh Force a refresh from the API.
+	 * @return array|false Signature data or false on error.
+	 */
+	public function get_malware_signatures( $force_refresh = false ) {
+		$cache_key = 'atomicedge_malware_signatures';
+
+		// Check for cached signatures unless force refresh.
+		if ( ! $force_refresh ) {
+			$cached = get_transient( $cache_key );
+			if ( false !== $cached && is_array( $cached ) && ! empty( $cached['patterns'] ) ) {
+				return $cached;
+			}
+		}
+
+		// Fetch from API.
+		$response = $this->request( 'GET', '/wp/malware-signatures' );
+
+		if ( ! $response['success'] || empty( $response['data'] ) ) {
+			// On API failure, try to use stale cache.
+			$stale = get_option( 'atomicedge_malware_signatures_backup' );
+			if ( ! empty( $stale ) && is_array( $stale ) ) {
+				AtomicEdge::log( 'Using stale malware signature cache due to API failure' );
+				return $stale;
+			}
+
+			AtomicEdge::log( 'Failed to fetch malware signatures', $response );
+			return false;
+		}
+
+		$signatures = $response['data'];
+
+		// Cache for 24 hours.
+		$cache_duration = apply_filters( 'atomicedge_malware_signatures_cache_duration', DAY_IN_SECONDS );
+		set_transient( $cache_key, $signatures, $cache_duration );
+
+		// Also save as backup for API failures.
+		update_option( 'atomicedge_malware_signatures_backup', $signatures, false );
+
+		AtomicEdge::log( 'Malware signatures updated', array( 'version' => $signatures['version'] ?? 'unknown' ) );
+
+		return $signatures;
+	}
+
+	/**
+	 * Clear malware signature cache.
+	 *
+	 * @return void
+	 */
+	public function clear_malware_signature_cache() {
+		delete_transient( 'atomicedge_malware_signatures' );
+	}
 }

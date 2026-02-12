@@ -7,7 +7,7 @@ Connect your WordPress site to Atomic Edge for enterprise-grade WAF protection, 
 | Requires at least | WordPress 5.8 |
 | Tested up to | WordPress 6.9 |
 | Requires PHP | 7.4 |
-| Stable tag | 2.2.1 |
+| Stable tag | 2.2.2 |
 | License | GPLv2 or later |
 | License URI | https://www.gnu.org/licenses/gpl-2.0.html |
 
@@ -111,6 +111,12 @@ The plugin automatically detects and uses the best available option.
 9. Adaptive Defense dashboard showing AI-powered threat detections and automatic IP blocking
 
 ## Changelog
+
+### 2.2.2
+
+- FIX: Malware scanner signatures moved to remote API to prevent hosting providers from flagging the plugin as malware
+- Signatures are now fetched from the Atomic Edge API and cached locally for 24 hours
+- This resolves false positives from security scanners detecting plaintext malware patterns in the plugin source code
 
 ### 2.2.1
 

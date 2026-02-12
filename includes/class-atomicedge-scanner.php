@@ -3,6 +3,8 @@
  * AtomicEdge Malware Scanner
  *
  * File integrity checking and malware scanning functionality.
+ * Malware signatures are fetched from the Atomic Edge API to prevent
+ * the plugin from being flagged by hosting provider security scanners.
  *
  * @package AtomicEdge
  */
@@ -39,6 +41,13 @@ class AtomicEdge_Scanner {
 	 * Relative path (from plugin dir) to the shipped integrity manifest.
 	 */
 	private const INTEGRITY_MANIFEST_REL_PATH = 'admin/assets/integrity/atomicedge-manifest.json';
+
+	/**
+	 * API instance for fetching signatures.
+	 *
+	 * @var AtomicEdge_API|null
+	 */
+	private $api = null;
 
 	/**
 	 * Whitelisted plugin slugs known to use suspicious-looking but legitimate code.
@@ -172,74 +181,19 @@ class AtomicEdge_Scanner {
 	private $combined_patterns_cache = null;
 
 	/**
-	 * Quick rejection indicators - if none present, skip expensive regex.
+	 * Quick rejection indicators fetched from API.
+	 * These are fast string checks to skip expensive regex matching.
 	 *
-	 * IMPORTANT: These must be UNCOMMON in legitimate code to be effective.
-	 * Avoid common PHP functions like include(), require(), file_get_contents().
-	 * Focus on:
-	 * - Obfuscation techniques (base64_decode+eval combos, hex encoding)
-	 * - Known shell signatures
-	 * - Malware-specific strings
-	 * - Dangerous function+superglobal combos
-	 *
-	 * @var array
+	 * @var array|null
 	 */
-	private $quick_rejection_indicators = array(
-		// Code execution with dynamic input (the dangerous combo).
-		'eval(',
-		'assert(',
-		'create_function(',
-		// Shell execution functions.
-		'shell_exec(',
-		'passthru(',
-		'proc_open(',
-		'popen(',
-		'pcntl_exec(',
-		// Obfuscation patterns.
-		'base64_decode(',
-		'gzinflate(',
-		'gzuncompress(',
-		'str_rot13(',
-		'convert_uudecode(',
-		'edoced_46esab',  // Reversed base64_decode.
-		// Hex-encoded strings (5+ consecutive \xNN patterns).
-		'\\x',
-		// Known webshell signatures.
-		'c99shell',
-		'r57shell',
-		'b374k',
-		'filesman',
-		'wso shell',
-		'weevely',
-		'phpspy',
-		// WordPress-specific malware.
-		'wp-vcd',
-		'tmpcontentx',
-		'wp_temp_setupx',
-		'derna.top',
-		'@noupdate',
-		'class.theme-modules',
-		'class.plugin-modules',
-		// Dangerous superglobal access patterns.
-		'$_get[',
-		'$_post[',
-		'$_request[',
-		'$_cookie[',
-		// Defacement/hack signatures.
-		'hacked by',
-		'owned by',
-		'backdoor',
-		'rootkit',
-		'webshell',
-		// System file access.
-		'/etc/passwd',
-		'/etc/shadow',
-		// Base64-encoded dangerous keywords.
-		'ZXZhbCg',      // eval(
-		'YXNzZXJ0',     // assert
-		'c3lzdGVt',     // system
-		'c2hlbGxfZXhlYw', // shell_exec
-	);
+	private $quick_rejection_indicators = null;
+
+	/**
+	 * Signature data fetched from API.
+	 *
+	 * @var array|null
+	 */
+	private $api_signatures = null;
 
 	/**
 	 * Diagnostics collected during the most recent scan.
@@ -257,9 +211,21 @@ class AtomicEdge_Scanner {
 
 	/**
 	 * Constructor.
+	 *
+	 * @param AtomicEdge_API|null $api Optional API instance for fetching signatures.
 	 */
-	public function __construct() {
-		// Scanner doesn't need hooks - it's called on demand.
+	public function __construct( $api = null ) {
+		$this->api = $api;
+	}
+
+	/**
+	 * Set the API instance.
+	 *
+	 * @param AtomicEdge_API $api API instance.
+	 * @return void
+	 */
+	public function set_api( $api ) {
+		$this->api = $api;
 	}
 
 	/**
@@ -2992,7 +2958,8 @@ class AtomicEdge_Scanner {
 		$quick_start = microtime( true );
 		$content_lower = strtolower( $content );
 		$has_indicator = false;
-		foreach ( $this->quick_rejection_indicators as $indicator ) {
+		$indicators = $this->get_quick_rejection_indicators();
+		foreach ( $indicators as $indicator ) {
 			if ( false !== strpos( $content_lower, $indicator ) ) {
 				$has_indicator = true;
 				break;
@@ -3237,8 +3204,8 @@ class AtomicEdge_Scanner {
 	/**
 	 * Get comprehensive malware detection patterns.
 	 *
-	 * Patterns are organized by category for better reporting.
-	 * Based on community research and known malware signatures.
+	 * Patterns are fetched from the Atomic Edge API to prevent the plugin
+	 * from being flagged as malware by hosting provider security scanners.
 	 *
 	 * @return array Associative array of pattern groups.
 	 */
@@ -3247,145 +3214,101 @@ class AtomicEdge_Scanner {
 			return $this->patterns_cache;
 		}
 
-		$this->patterns_cache = array(
-			// Critical: Direct code execution patterns.
-			'code_execution'       => array(
-				'eval\s*\('                                                          => __( 'Eval function (code execution)', 'atomic-edge-security' ),
-				'assert\s*\('                                                        => __( 'Assert function (potential code execution)', 'atomic-edge-security' ),
-				'create_function\s*\('                                               => __( 'Create function (dynamic code creation)', 'atomic-edge-security' ),
-				'call_user_func\s*\('                                                => __( 'Call user func (dynamic function call)', 'atomic-edge-security' ),
-				'call_user_func_array\s*\('                                          => __( 'Call user func array (dynamic function call)', 'atomic-edge-security' ),
-				'preg_replace\s*\([^,]+["\'].*\/e["\']'                               => __( 'Preg replace with eval modifier', 'atomic-edge-security' ),
-				'preg_replace_callback\s*\('                                         => __( 'Preg replace callback (potential code execution)', 'atomic-edge-security' ),
-			),
+		// Try to fetch from API.
+		$api_patterns = $this->get_api_signatures();
 
-			// Critical: Shell/system execution.
-			'shell_execution'      => array(
-				'\bsystem\s*\('                                                      => __( 'System command execution', 'atomic-edge-security' ),
-				'\bexec\s*\('                                                        => __( 'Exec command execution', 'atomic-edge-security' ),
-				'\bshell_exec\s*\('                                                  => __( 'Shell exec command', 'atomic-edge-security' ),
-				'\bpassthru\s*\('                                                    => __( 'Passthru command execution', 'atomic-edge-security' ),
-				'\bpopen\s*\('                                                       => __( 'Popen command execution', 'atomic-edge-security' ),
-				'\bproc_open\s*\('                                                   => __( 'Proc open command execution', 'atomic-edge-security' ),
-				'\bpcntl_exec\s*\('                                                  => __( 'PCNTL exec', 'atomic-edge-security' ),
-				'`[^`]+`'                                                            => __( 'Backtick command execution', 'atomic-edge-security' ),
-			),
+		if ( ! empty( $api_patterns['patterns'] ) ) {
+			$this->patterns_cache = $api_patterns['patterns'];
+			return $this->patterns_cache;
+		}
 
-			// Critical: Backdoor patterns.
-			'backdoor_patterns'    => array(
-				'@eval\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)'                        => __( 'Backdoor: eval with user input', 'atomic-edge-security' ),
-				'@eval\s*\(\s*base64_decode'                                         => __( 'Backdoor: eval with base64', 'atomic-edge-security' ),
-				'\$_(?:GET|POST|REQUEST|COOKIE)\s*\[[^\]]+\]\s*\('                   => __( 'Direct superglobal execution', 'atomic-edge-security' ),
-				'extract\s*\(\s*\$_(?:GET|POST|REQUEST)'                             => __( 'Dangerous extract from user input', 'atomic-edge-security' ),
-				'include\s*\(\s*\$_(?:GET|POST|REQUEST)'                             => __( 'Remote file inclusion via user input', 'atomic-edge-security' ),
-				'require\s*\(\s*\$_(?:GET|POST|REQUEST)'                             => __( 'Remote file inclusion via user input', 'atomic-edge-security' ),
-				'file_put_contents\s*\([^,]+,\s*\$_(?:GET|POST|REQUEST)'             => __( 'File write from user input', 'atomic-edge-security' ),
-				'fwrite\s*\([^,]+,\s*\$_(?:GET|POST|REQUEST)'                        => __( 'File write from user input', 'atomic-edge-security' ),
-			),
-
-			// High: Obfuscation techniques.
-			'obfuscation'          => array(
-				'base64_decode\s*\('                                                 => __( 'Base64 decoding (potential obfuscation)', 'atomic-edge-security' ),
-				'gzinflate\s*\('                                                     => __( 'Gzip inflate (potential obfuscation)', 'atomic-edge-security' ),
-				'gzuncompress\s*\('                                                  => __( 'Gzip uncompress (potential obfuscation)', 'atomic-edge-security' ),
-				'str_rot13\s*\('                                                     => __( 'ROT13 encoding (potential obfuscation)', 'atomic-edge-security' ),
-				'convert_uudecode\s*\('                                              => __( 'UUdecode (potential obfuscation)', 'atomic-edge-security' ),
-				'\\\\x[0-9a-fA-F]{2}(\\\\x[0-9a-fA-F]{2}){5,}'                        => __( 'Hex encoded strings', 'atomic-edge-security' ),
-				'chr\s*\(\s*\d+\s*\)\s*\.\s*chr\s*\(\s*\d+\s*\)(\s*\.\s*chr\s*\(\s*\d+\s*\)){3,}' => __( 'Chr() string building', 'atomic-edge-security' ),
-				'edoced_46esab'                                                      => __( 'Reversed base64_decode', 'atomic-edge-security' ),
-				'strrev\s*\(["\'][^"\']+["\']\)'                                      => __( 'String reversal (obfuscation)', 'atomic-edge-security' ),
-			),
-
-			// High: Known webshell signatures.
-			'webshells'            => array(
-				'c99shell'                                                           => __( 'C99 shell signature', 'atomic-edge-security' ),
-				'r57shell'                                                           => __( 'R57 shell signature', 'atomic-edge-security' ),
-				'b374k'                                                              => __( 'B374K shell signature', 'atomic-edge-security' ),
-				'FilesMan'                                                           => __( 'FilesMan shell signature', 'atomic-edge-security' ),
-				'WSO\s+[\d\.]+'                                                      => __( 'WSO shell signature', 'atomic-edge-security' ),
-				'Weevely'                                                            => __( 'Weevely shell signature', 'atomic-edge-security' ),
-				'php\s*spy'                                                          => __( 'PHPSpy shell signature', 'atomic-edge-security' ),
-				'PHANTOMJS'                                                          => __( 'PhantomJS shell signature', 'atomic-edge-security' ),
-				'Mister Spy'                                                         => __( 'Mister Spy shell signature', 'atomic-edge-security' ),
-				'Afghan Shell'                                                       => __( 'Afghan Shell signature', 'atomic-edge-security' ),
-				'Shell by'                                                           => __( 'Generic shell signature', 'atomic-edge-security' ),
-				'SHELL_PASSWORD'                                                     => __( 'Shell password variable', 'atomic-edge-security' ),
-				'0day'                                                               => __( '0day exploit reference', 'atomic-edge-security' ),
-			),
-
-			// High: WordPress-specific malware.
-			'wordpress_malware'    => array(
-				'wp-vcd'                                                             => __( 'WP-VCD malware', 'atomic-edge-security' ),
-				'class\.theme-modules\.php'                                          => __( 'WP-VCD theme modules', 'atomic-edge-security' ),
-				'class\.plugin-modules\.php'                                         => __( 'WP-VCD plugin modules', 'atomic-edge-security' ),
-				'wp-tmp\.php'                                                        => __( 'WP-VCD temp file', 'atomic-edge-security' ),
-				'tmpcontentx'                                                        => __( 'WP-VCD content injection', 'atomic-edge-security' ),
-				'wp_temp_setupx'                                                     => __( 'WP-VCD setup function', 'atomic-edge-security' ),
-				'derna\.top'                                                         => __( 'Known malware domain', 'atomic-edge-security' ),
-				'/\*\s*@noupdate\s*\*/'                                              => __( 'Plugin update suppression', 'atomic-edge-security' ),
-			),
-
-			// Medium: Suspicious file operations.
-			'file_operations'      => array(
-				'file_get_contents\s*\(["\']https?://'                               => __( 'Remote file fetch', 'atomic-edge-security' ),
-				'file_get_contents\s*\(["\']php://input'                             => __( 'Raw POST data read', 'atomic-edge-security' ),
-				'curl_exec\s*\('                                                     => __( 'cURL execution', 'atomic-edge-security' ),
-				'fsockopen\s*\('                                                     => __( 'Socket connection', 'atomic-edge-security' ),
-				'stream_socket_client\s*\('                                          => __( 'Stream socket client', 'atomic-edge-security' ),
-			),
-
-			// Medium: Base64 encoded suspicious keywords.
-			'base64_keywords'      => array(
-				'ZXZhbCg'                                                            => __( 'Base64: eval(', 'atomic-edge-security' ),
-				'YXNzZXJ0'                                                           => __( 'Base64: assert', 'atomic-edge-security' ),
-				'c3lzdGVt'                                                           => __( 'Base64: system', 'atomic-edge-security' ),
-				'ZXhlYyg'                                                            => __( 'Base64: exec(', 'atomic-edge-security' ),
-				'c2hlbGxfZXhlYw'                                                     => __( 'Base64: shell_exec', 'atomic-edge-security' ),
-				'cGFzc3RocnU'                                                        => __( 'Base64: passthru', 'atomic-edge-security' ),
-				'JF9HRV'                                                             => __( 'Base64: $_GET', 'atomic-edge-security' ),
-				'JF9QT1NU'                                                           => __( 'Base64: $_POST', 'atomic-edge-security' ),
-				'JF9SRVFVRVNU'                                                       => __( 'Base64: $_REQUEST', 'atomic-edge-security' ),
-				'JF9DT09LSUU'                                                        => __( 'Base64: $_COOKIE', 'atomic-edge-security' ),
-				'SFRUUF9VU0VSX0FHRU5U'                                               => __( 'Base64: HTTP_USER_AGENT', 'atomic-edge-security' ),
-				'R0xPQkFMU'                                                          => __( 'Base64: GLOBALS', 'atomic-edge-security' ),
-			),
-
-			// Medium: Suspicious strings and indicators.
-			'suspicious_strings'   => array(
-				'/etc/passwd'                                                            => __( 'Password file access', 'atomic-edge-security' ),
-				'/etc/shadow'                                                            => __( 'Shadow file access', 'atomic-edge-security' ),
-				'HACKED BY'                                                          => __( 'Defacement signature', 'atomic-edge-security' ),
-				'owned by'                                                           => __( 'Defacement signature', 'atomic-edge-security' ),
-				'backdoor'                                                           => __( 'Backdoor keyword', 'atomic-edge-security' ),
-				'rootkit'                                                            => __( 'Rootkit keyword', 'atomic-edge-security' ),
-				'c999sh'                                                             => __( 'Shell variant', 'atomic-edge-security' ),
-				'r57sh'                                                              => __( 'Shell variant', 'atomic-edge-security' ),
-				'webshell'                                                           => __( 'Webshell keyword', 'atomic-edge-security' ),
-				'cmd\.exe'                                                           => __( 'Windows command execution', 'atomic-edge-security' ),
-				'powershell\.exe'                                                    => __( 'PowerShell execution', 'atomic-edge-security' ),
-				'uname\s+-a'                                                         => __( 'System information gathering', 'atomic-edge-security' ),
-				'whoami'                                                             => __( 'User identification command', 'atomic-edge-security' ),
-			),
-
-			// Medium: Network indicators.
-			'network_indicators'   => array(
-'fsockopen\s*\(["\']udp://'                                              => __( 'UDP socket (potential DDoS)', 'atomic-edge-security' ),
-				'socket_create\s*\(\s*AF_INET'                                       => __( 'Raw socket creation', 'atomic-edge-security' ),
-				'curl_setopt[^;]+CURLOPT_FOLLOWLOCATION'                             => __( 'cURL with redirect following', 'atomic-edge-security' ),
-			),
-
-			// Low: Potentially dangerous functions (context-dependent).
-			'potentially_dangerous' => array(
-				'unserialize\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)'                  => __( 'Unserialize user input (object injection)', 'atomic-edge-security' ),
-				'serialize\s*\([^)]+\)\s*\.'                                         => __( 'Serialized data concatenation', 'atomic-edge-security' ),
-				'ini_set\s*\(["\'](?:allow_url_fopen|allow_url_include)'             => __( 'INI override for remote includes', 'atomic-edge-security' ),
-				'ini_set\s*\(["\']disable_functions'                                 => __( 'Attempt to modify disabled functions', 'atomic-edge-security' ),
-				'error_reporting\s*\(\s*0\s*\)'                                      => __( 'Error reporting disabled', 'atomic-edge-security' ),
-				'set_error_handler\s*\(\s*null'                                      => __( 'Error handler nullified', 'atomic-edge-security' ),
-			),
-		);
-
+		// Fallback: Return empty patterns if API unavailable.
+		// This ensures the scanner doesn't crash, but it will not detect malware.
+		AtomicEdge::log( 'Scanner running without malware signatures - API unavailable' );
+		$this->patterns_cache = array();
 		return $this->patterns_cache;
+	}
+
+	/**
+	 * Get quick rejection indicators.
+	 *
+	 * These are fast string checks to skip expensive regex matching.
+	 *
+	 * @return array List of quick rejection strings.
+	 */
+	private function get_quick_rejection_indicators() {
+		if ( is_array( $this->quick_rejection_indicators ) ) {
+			return $this->quick_rejection_indicators;
+		}
+
+		$api_signatures = $this->get_api_signatures();
+
+		if ( ! empty( $api_signatures['quick_indicators'] ) ) {
+			$this->quick_rejection_indicators = $api_signatures['quick_indicators'];
+			return $this->quick_rejection_indicators;
+		}
+
+		// Fallback: Empty array.
+		$this->quick_rejection_indicators = array();
+		return $this->quick_rejection_indicators;
+	}
+
+	/**
+	 * Get API signatures (cached).
+	 *
+	 * @return array Signature data from API.
+	 */
+	private function get_api_signatures() {
+		if ( is_array( $this->api_signatures ) ) {
+			return $this->api_signatures;
+		}
+
+		// Try to get API instance.
+		$api = $this->api;
+		if ( null === $api ) {
+			// Try to get global API instance.
+			if ( class_exists( 'AtomicEdge' ) && method_exists( 'AtomicEdge', 'get_instance' ) ) {
+				$instance = AtomicEdge::get_instance();
+				if ( method_exists( $instance, 'get_api' ) ) {
+					$api = $instance->get_api();
+				}
+			}
+		}
+
+		if ( null === $api || ! method_exists( $api, 'get_malware_signatures' ) ) {
+			$this->api_signatures = array();
+			return $this->api_signatures;
+		}
+
+		$signatures = $api->get_malware_signatures();
+
+		if ( false === $signatures || ! is_array( $signatures ) ) {
+			$this->api_signatures = array();
+			return $this->api_signatures;
+		}
+
+		$this->api_signatures = $signatures;
+		return $this->api_signatures;
+	}
+
+	/**
+	 * Check if the scanner has signatures loaded.
+	 *
+	 * @return bool True if signatures are available.
+	 */
+	public function has_signatures() {
+		$signatures = $this->get_api_signatures();
+		return ! empty( $signatures['patterns'] );
+	}
+
+	/**
+	 * Get signature version.
+	 *
+	 * @return string|null Version string or null if not available.
+	 */
+	public function get_signature_version() {
+		$signatures = $this->get_api_signatures();
+		return isset( $signatures['version'] ) ? $signatures['version'] : null;
 	}
 
 	/**
@@ -3395,21 +3318,15 @@ class AtomicEdge_Scanner {
 	 * @return string Severity level: 'critical', 'high', 'medium', or 'low'.
 	 */
 	private function get_pattern_severity( $category ) {
-		$severity_map = array(
-			'code_execution'        => 'critical',
-			'shell_execution'       => 'critical',
-			'backdoor_patterns'     => 'critical',
-			'webshells'             => 'critical',
-			'wordpress_malware'     => 'critical',
-			'obfuscation'           => 'high',
-			'file_operations'       => 'medium',
-			'base64_keywords'       => 'medium',
-			'suspicious_strings'    => 'medium',
-			'network_indicators'    => 'medium',
-			'potentially_dangerous' => 'low',
-		);
+		// Try to get from API signatures.
+		$signatures = $this->get_api_signatures();
 
-		return isset( $severity_map[ $category ] ) ? $severity_map[ $category ] : 'medium';
+		if ( ! empty( $signatures['severity_map'][ $category ] ) ) {
+			return $signatures['severity_map'][ $category ];
+		}
+
+		// Default fallback.
+		return 'medium';
 	}
 
 	/**

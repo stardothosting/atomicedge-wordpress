@@ -660,4 +660,127 @@ class ScannerTest extends TestCase {
 		$this->assertIsArray( $status );
 		$this->assertEquals( 'idle', $status['status'] );
 	}
+
+	// =========================================================================
+	// API Integration Tests - Malware Signatures
+	// =========================================================================
+
+	/**
+	 * Test scanner uses API instance when provided.
+	 */
+	public function test_scanner_accepts_api_in_constructor() {
+		$mock_api = $this->getMockBuilder( \AtomicEdge_API::class )
+			->disableOriginalConstructor()
+			->getMock();
+
+		$scanner = new \AtomicEdge_Scanner( $mock_api );
+
+		$this->assertInstanceOf( \AtomicEdge_Scanner::class, $scanner );
+	}
+
+	/**
+	 * Test scanner can set API instance after construction.
+	 */
+	public function test_scanner_set_api_method() {
+		$mock_api = $this->getMockBuilder( \AtomicEdge_API::class )
+			->disableOriginalConstructor()
+			->getMock();
+
+		$scanner = new \AtomicEdge_Scanner();
+		$scanner->set_api( $mock_api );
+
+		$this->assertInstanceOf( \AtomicEdge_Scanner::class, $scanner );
+	}
+
+	/**
+	 * Test has_signatures returns true when API provides signatures.
+	 */
+	public function test_has_signatures_returns_true_with_api_data() {
+		$mock_api = $this->getMockBuilder( \AtomicEdge_API::class )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'get_malware_signatures' ) )
+			->getMock();
+
+		$mock_api->method( 'get_malware_signatures' )->willReturn(
+			array(
+				'version'          => '1.0.0',
+				'patterns'         => array(
+					'code_execution' => array( 'eval\s*\(' => 'Eval function' ),
+				),
+				'quick_indicators' => array( 'eval(' ),
+				'severity_map'     => array( 'code_execution' => 'critical' ),
+			)
+		);
+
+		$scanner = new \AtomicEdge_Scanner( $mock_api );
+
+		$this->assertTrue( $scanner->has_signatures() );
+	}
+
+	/**
+	 * Test has_signatures returns false when API returns no data.
+	 */
+	public function test_has_signatures_returns_false_without_api_data() {
+		$mock_api = $this->getMockBuilder( \AtomicEdge_API::class )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'get_malware_signatures' ) )
+			->getMock();
+
+		$mock_api->method( 'get_malware_signatures' )->willReturn( false );
+
+		$scanner = new \AtomicEdge_Scanner( $mock_api );
+
+		$this->assertFalse( $scanner->has_signatures() );
+	}
+
+	/**
+	 * Test get_signature_version returns version from API.
+	 */
+	public function test_get_signature_version_returns_api_version() {
+		$mock_api = $this->getMockBuilder( \AtomicEdge_API::class )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'get_malware_signatures' ) )
+			->getMock();
+
+		$mock_api->method( 'get_malware_signatures' )->willReturn(
+			array(
+				'version'          => '2.5.1',
+				'patterns'         => array(),
+				'quick_indicators' => array(),
+				'severity_map'     => array(),
+			)
+		);
+
+		$scanner = new \AtomicEdge_Scanner( $mock_api );
+
+		$this->assertEquals( '2.5.1', $scanner->get_signature_version() );
+	}
+
+	/**
+	 * Test get_signature_version returns null when no signatures.
+	 */
+	public function test_get_signature_version_returns_null_without_signatures() {
+		$mock_api = $this->getMockBuilder( \AtomicEdge_API::class )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'get_malware_signatures' ) )
+			->getMock();
+
+		$mock_api->method( 'get_malware_signatures' )->willReturn( false );
+
+		$scanner = new \AtomicEdge_Scanner( $mock_api );
+
+		$this->assertNull( $scanner->get_signature_version() );
+	}
+
+	/**
+	 * Test scanner gracefully handles missing API.
+	 */
+	public function test_scanner_handles_missing_api_gracefully() {
+		// Scanner without API should not crash.
+		$scanner = new \AtomicEdge_Scanner();
+
+		// These should return empty/false gracefully.
+		$this->assertFalse( $scanner->has_signatures() );
+		$this->assertNull( $scanner->get_signature_version() );
+	}
 }

@@ -449,6 +449,30 @@ class CliTest extends TestCase {
 	public function test_test_file_detects_suspicious_patterns() {
 		$cli = new \AtomicEdge_CLI();
 
+		// Create a mock API that returns malware signatures.
+		$mock_api = $this->getMockBuilder( \AtomicEdge_API::class )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'get_malware_signatures' ) )
+			->getMock();
+
+		$mock_api->method( 'get_malware_signatures' )->willReturn(
+			array(
+				'version'          => '1.0.0',
+				'patterns'         => array(
+					'code_execution' => array(
+						'eval\s*\(' => 'Eval function call',
+						'base64_decode\s*\(' => 'Base64 decode usage',
+					),
+				),
+				'quick_indicators' => array( 'eval(', 'base64_decode(' ),
+				'severity_map'     => array( 'code_execution' => 'critical' ),
+			)
+		);
+
+		// Create a scanner with the mock API.
+		$scanner = new \AtomicEdge_Scanner( $mock_api );
+		$this->inject_scanner( $cli, $scanner );
+
 		// Create a temp file with suspicious content.
 		$temp_file = sys_get_temp_dir() . '/atomicedge_test_suspicious_' . uniqid() . '.php';
 		// Use eval/base64 which is a common malware pattern.

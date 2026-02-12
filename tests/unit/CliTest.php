@@ -428,6 +428,10 @@ class CliTest extends TestCase {
 	public function test_test_file_succeeds_on_clean_file() {
 		$cli = new \AtomicEdge_CLI();
 
+		// Inject scanner with mocked API to avoid real HTTP requests.
+		$scanner = $this->create_scanner_with_mocked_api();
+		$this->inject_scanner( $cli, $scanner );
+
 		// Create a temp file with clean content.
 		$temp_file = sys_get_temp_dir() . '/atomicedge_test_clean_' . uniqid() . '.php';
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents

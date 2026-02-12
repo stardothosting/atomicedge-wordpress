@@ -159,6 +159,41 @@ abstract class TestCase extends PolyfillTestCase {
 	}
 
 	/**
+	 * Create a Scanner instance with a mocked API that returns malware signatures.
+	 *
+	 * This is needed because the scanner now fetches signatures from the API,
+	 * and tests that use run_full_scan need signatures to be available.
+	 *
+	 * @return \AtomicEdge_Scanner
+	 */
+	protected function create_scanner_with_mocked_api(): \AtomicEdge_Scanner {
+		$mock_api = $this->getMockBuilder( \AtomicEdge_API::class )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'get_malware_signatures' ) )
+			->getMock();
+
+		$mock_api->method( 'get_malware_signatures' )->willReturn(
+			array(
+				'version'          => '1.0.0',
+				'updated_at'       => gmdate( 'c' ),
+				'patterns'         => array(
+					'code_execution'  => array( 'eval\s*\(' => 'Eval function' ),
+					'shell_execution' => array( 'system\s*\(' => 'System function' ),
+					'obfuscation'     => array( 'base64_decode\s*\(' => 'Base64 decode' ),
+				),
+				'quick_indicators' => array( 'eval(', 'system(', 'base64_decode(' ),
+				'severity_map'     => array(
+					'code_execution'  => 'critical',
+					'shell_execution' => 'critical',
+					'obfuscation'     => 'high',
+				),
+			)
+		);
+
+		return new \AtomicEdge_Scanner( $mock_api );
+	}
+
+	/**
 	 * Generate a valid test API key (64 hex characters).
 	 *
 	 * @return string

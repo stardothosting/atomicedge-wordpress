@@ -53,14 +53,36 @@ class AtomicEdge_API {
 	/**
 	 * Get the decrypted API key.
 	 *
+	 * Handles migration from unencrypted to encrypted storage:
+	 * - If decryption fails and the stored value looks like a raw 64-char hex key,
+	 *   it will be re-encrypted and stored properly.
+	 *
 	 * @return string|false API key or false if not set.
 	 */
 	public function get_api_key() {
-		$encrypted = get_option( 'atomicedge_api_key', '' );
-		if ( empty( $encrypted ) ) {
+		$stored = get_option( 'atomicedge_api_key', '' );
+		if ( empty( $stored ) ) {
 			return false;
 		}
-		return $this->decrypt_api_key( $encrypted );
+
+		// Try normal decryption first.
+		$decrypted = $this->decrypt_api_key( $stored );
+
+		if ( false !== $decrypted && ! empty( $decrypted ) ) {
+			return $decrypted;
+		}
+
+		// Decryption failed - check if this is a raw hex key that wasn't encrypted.
+		// Valid API keys are 64-character alphanumeric strings.
+		if ( preg_match( '/^[a-f0-9]{64}$/i', $stored ) ) {
+			// This is a raw key - re-encrypt it properly for future use.
+			AtomicEdge::log( 'Migrating unencrypted API key to encrypted storage' );
+			update_option( 'atomicedge_api_key', $this->encrypt_api_key( $stored ) );
+			return $stored;
+		}
+
+		// Neither valid encryption nor valid raw key format.
+		return false;
 	}
 
 	/**
@@ -745,6 +767,99 @@ class AtomicEdge_API {
 	}
 
 	/**
+	 * Make an unauthenticated request to a public API endpoint.
+	 *
+	 * This is used for endpoints that don't require an API key, such as
+	 * malware signatures, which should be available before site registration.
+	 *
+	 * @param string $method   HTTP method (GET, POST, etc.).
+	 * @param string $endpoint API endpoint (e.g., '/wp/public/malware-signatures').
+	 * @param array  $data     Request data.
+	 * @return array Response with success status and data/error.
+	 */
+	private function public_request( $method, $endpoint, $data = array() ) {
+		// Public endpoints use the base API URL (not under /v1 which requires auth).
+		$base_url = preg_replace( '#/api/v1/?$#', '/api/v1', $this->api_url );
+		$url      = $base_url . $endpoint;
+
+		// Add query params for GET requests.
+		if ( 'GET' === $method && ! empty( $data ) ) {
+			$url = add_query_arg( $data, $url );
+		}
+
+		$args = array(
+			'method'  => $method,
+			'timeout' => $this->timeout,
+			'headers' => array(
+				'Content-Type' => 'application/json',
+				'Accept'       => 'application/json',
+			),
+		);
+
+		// Add body for non-GET requests.
+		if ( 'GET' !== $method && ! empty( $data ) ) {
+			$args['body'] = wp_json_encode( $data );
+		}
+
+		AtomicEdge::log( "Public API Request: {$method} {$endpoint}" );
+
+		$response = wp_remote_request( $url, $args );
+
+		// Check for WP error.
+		if ( is_wp_error( $response ) ) {
+			AtomicEdge::log( 'Public API Error', $response->get_error_message() );
+			return array(
+				'success' => false,
+				'error'   => $response->get_error_message(),
+			);
+		}
+
+		$code = wp_remote_retrieve_response_code( $response );
+		$body = wp_remote_retrieve_body( $response );
+		$data = json_decode( $body, true );
+
+		// Handle HTTP errors.
+		if ( $code >= 400 ) {
+			$error_message = isset( $data['error'] ) ? $data['error'] : __( 'An error occurred.', 'atomic-edge-security' );
+			if ( isset( $data['message'] ) ) {
+				$error_message = $data['message'];
+			}
+			AtomicEdge::log( "Public API Error ({$code})", $error_message );
+			return array(
+				'success' => false,
+				'error'   => $error_message,
+				'code'    => $code,
+			);
+		}
+
+		// Extract nested data if API returns standard response format.
+		if ( isset( $data['success'] ) && true === $data['success'] && isset( $data['data'] ) ) {
+			return array(
+				'success' => true,
+				'data'    => $data['data'],
+			);
+		}
+
+		// Handle API-level errors.
+		if ( isset( $data['success'] ) && false === $data['success'] ) {
+			$error_message = isset( $data['message'] ) ? $data['message'] : __( 'An error occurred.', 'atomic-edge-security' );
+			if ( isset( $data['error'] ) ) {
+				$error_message = $data['error'];
+			}
+			return array(
+				'success' => false,
+				'error'   => $error_message,
+			);
+		}
+
+		// Fallback for non-standard responses.
+		return array(
+			'success' => true,
+			'data'    => $data,
+		);
+	}
+
+	/**
 	 * Get normalized site URL (without protocol and www).
 	 *
 	 * @return string Normalized URL.
@@ -809,6 +924,9 @@ class AtomicEdge_API {
 	 * Signatures are cached locally to avoid repeated API calls.
 	 * The cache is refreshed every 24 hours or when manually cleared.
 	 *
+	 * This endpoint is PUBLIC and does not require an API key, allowing
+	 * users to scan their site before registering with AtomicEdge.
+	 *
 	 * @param bool $force_refresh Force a refresh from the API.
 	 * @return array|false Signature data or false on error.
 	 */
@@ -823,8 +941,8 @@ class AtomicEdge_API {
 			}
 		}
 
-		// Fetch from API.
-		$response = $this->request( 'GET', '/wp/malware-signatures' );
+		// Fetch from public API endpoint (no authentication required).
+		$response = $this->public_request( 'GET', '/wp/public/malware-signatures' );
 
 		if ( ! $response['success'] || empty( $response['data'] ) ) {
 			// On API failure, try to use stale cache.

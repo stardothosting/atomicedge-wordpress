@@ -372,7 +372,9 @@ class ScannerTest extends TestCase {
 			wp_json_encode( array( 'checksums' => array() ) )
 		);
 
-		$result = $this->scanner->run_full_scan();
+		// Use scanner with mocked API to avoid wp_remote_request call for signatures.
+		$scanner = $this->create_scanner_with_mocked_api();
+		$result  = $scanner->run_full_scan();
 
 		// Verify structure.
 		$this->assertArrayHasKey( 'started_at', $result );
@@ -414,7 +416,9 @@ class ScannerTest extends TestCase {
 			wp_json_encode( array( 'checksums' => array() ) )
 		);
 
-		$this->scanner->run_full_scan();
+		// Use scanner with mocked API to avoid wp_remote_request call for signatures.
+		$scanner = $this->create_scanner_with_mocked_api();
+		$scanner->run_full_scan();
 
 		// Check that results were saved.
 		$saved_results = $this->get_option( 'atomicedge_scan_results' );
@@ -776,8 +780,16 @@ class ScannerTest extends TestCase {
 	 * Test scanner gracefully handles missing API.
 	 */
 	public function test_scanner_handles_missing_api_gracefully() {
-		// Scanner without API should not crash.
-		$scanner = new \AtomicEdge_Scanner();
+		// Create a mock API that returns false for signatures (simulates API failure).
+		$mock_api = $this->getMockBuilder( \AtomicEdge_API::class )
+			->disableOriginalConstructor()
+			->onlyMethods( array( 'get_malware_signatures' ) )
+			->getMock();
+
+		$mock_api->method( 'get_malware_signatures' )->willReturn( false );
+
+		// Scanner with failing API should not crash.
+		$scanner = new \AtomicEdge_Scanner( $mock_api );
 
 		// These should return empty/false gracefully.
 		$this->assertFalse( $scanner->has_signatures() );

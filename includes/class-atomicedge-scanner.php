@@ -325,9 +325,11 @@ class AtomicEdge_Scanner {
 				'root' => array( 'php_files_found' => 0, 'php_files_scanned' => 0 ),
 				'wp-admin' => array( 'php_files_found' => 0, 'php_files_scanned' => 0 ),
 				'wp-includes' => array( 'php_files_found' => 0, 'php_files_scanned' => 0 ),
+				'wp-content' => array( 'php_files_found' => 0, 'php_files_scanned' => 0 ),
 				'uploads' => array( 'php_files_found' => 0, 'php_files_scanned' => 0 ),
 				'themes' => array( 'php_files_found' => 0, 'php_files_scanned' => 0 ),
 				'plugins' => array( 'php_files_found' => 0, 'php_files_scanned' => 0 ),
+				'unknown' => array( 'php_files_found' => 0, 'php_files_scanned' => 0 ),
 			),
 			// Performance timing (milliseconds).
 			'timing' => array(
@@ -1551,12 +1553,153 @@ class AtomicEdge_Scanner {
 		$this->enqueue_queue_item( $run_id, 'dir', 'themes', $themes_dir, array() );
 		$this->enqueue_queue_item( $run_id, 'dir', 'plugins', $mu_plugins_dir, array() );
 
-		// Thorough scan: include core directories and uploads checks.
+		// Thorough scan: discover ALL directories under WordPress root.
+		// This catches malware hidden in arbitrary folders like /hidden-backdoor/ or /cache-evil/.
 		if ( 'all' === $scan_mode ) {
-			$this->enqueue_queue_item( $run_id, 'dir', 'wp-admin', $admin_dir, array() );
-			$this->enqueue_queue_item( $run_id, 'dir', 'wp-includes', $includes_dir, array() );
-			$this->enqueue_queue_item( $run_id, 'dir', 'uploads', $uploads_dir, array() );
+			$this->discover_all_directories( $run_id, $root_path, $plugins_dir, $themes_dir, $mu_plugins_dir );
 		}
+	}
+
+	/**
+	 * Discover and enqueue all directories under WordPress root for thorough scanning.
+	 *
+	 * This prevents malware from hiding in arbitrary folders that aren't part of
+	 * the standard WordPress directory structure. Every PHP file anywhere in the
+	 * WordPress installation will be scanned.
+	 *
+	 * @param string $run_id Run ID.
+	 * @param string $root_path WordPress root path.
+	 * @param string $plugins_dir Plugins directory (already scanned in quick mode).
+	 * @param string $themes_dir Themes directory (already scanned in quick mode).
+	 * @param string $mu_plugins_dir MU-plugins directory (already scanned in quick mode).
+	 * @return void
+	 */
+	private function discover_all_directories( $run_id, $root_path, $plugins_dir, $themes_dir, $mu_plugins_dir ) {
+		// Directories that were already enqueued in quick scan or should be skipped entirely.
+		$already_queued = array(
+			rtrim( $plugins_dir, '/' ),
+			rtrim( $themes_dir, '/' ),
+			rtrim( $mu_plugins_dir, '/' ),
+		);
+
+		// Directories to skip completely (non-PHP or handled separately).
+		$skip_dirs = array(
+			'.git',
+			'.svn',
+			'.hg',
+			'node_modules',
+			'vendor',
+		);
+
+		// Known WordPress directories that get specific area tags.
+		$known_areas = array(
+			'wp-admin'    => 'wp-admin',
+			'wp-includes' => 'wp-includes',
+			'wp-content'  => 'wp-content', // Generic wp-content subdirs.
+		);
+
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		$handle = @opendir( $root_path );
+		if ( ! $handle ) {
+			return;
+		}
+
+		while ( false !== ( $entry = readdir( $handle ) ) ) {
+			if ( '.' === $entry || '..' === $entry ) {
+				continue;
+			}
+
+			$full_path = rtrim( $root_path, '/' ) . '/' . $entry;
+
+			// Skip if not a directory or is a symlink.
+			if ( ! is_dir( $full_path ) || is_link( $full_path ) ) {
+				continue;
+			}
+
+			// Skip known-excluded directories.
+			if ( in_array( $entry, $skip_dirs, true ) ) {
+				continue;
+			}
+
+			// Skip if already queued (plugins, themes, mu-plugins).
+			if ( in_array( rtrim( $full_path, '/' ), $already_queued, true ) ) {
+				continue;
+			}
+
+			// Determine the area tag based on directory name.
+			$area = 'unknown';
+			if ( isset( $known_areas[ $entry ] ) ) {
+				$area = $known_areas[ $entry ];
+			}
+
+			// For wp-content, recursively discover subdirectories.
+			if ( 'wp-content' === $entry ) {
+				$this->discover_wp_content_directories( $run_id, $full_path, $already_queued );
+			} else {
+				// Enqueue this top-level directory for scanning.
+				$this->enqueue_queue_item( $run_id, 'dir', $area, $full_path, array() );
+			}
+		}
+
+		closedir( $handle );
+	}
+
+	/**
+	 * Discover and enqueue directories within wp-content that weren't already queued.
+	 *
+	 * This catches non-standard directories like:
+	 * - wp-content/cache-malware/
+	 * - wp-content/hidden-folder/
+	 * - wp-content/languages/ (if contains PHP, which is suspicious)
+	 *
+	 * @param string $run_id Run ID.
+	 * @param string $wp_content_path Path to wp-content.
+	 * @param array  $already_queued Directories already queued (plugins, themes, mu-plugins).
+	 * @return void
+	 */
+	private function discover_wp_content_directories( $run_id, $wp_content_path, $already_queued ) {
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		$handle = @opendir( $wp_content_path );
+		if ( ! $handle ) {
+			return;
+		}
+
+		// Known wp-content subdirectories and their area tags.
+		$known_wp_content_areas = array(
+			'plugins'    => 'plugins',    // Already handled, will be skipped.
+			'themes'     => 'themes',     // Already handled, will be skipped.
+			'mu-plugins' => 'plugins',    // Already handled, will be skipped.
+			'uploads'    => 'uploads',
+			'upgrade'    => 'wp-content',
+			'cache'      => 'wp-content', // Could contain PHP from caching plugins.
+			'languages'  => 'wp-content', // Normally only .mo/.po files, but PHP here is suspicious.
+		);
+
+		while ( false !== ( $entry = readdir( $handle ) ) ) {
+			if ( '.' === $entry || '..' === $entry ) {
+				continue;
+			}
+
+			$full_path = rtrim( $wp_content_path, '/' ) . '/' . $entry;
+
+			// Skip if not a directory or is a symlink.
+			if ( ! is_dir( $full_path ) || is_link( $full_path ) ) {
+				continue;
+			}
+
+			// Skip if already queued (plugins, themes, mu-plugins).
+			if ( in_array( rtrim( $full_path, '/' ), $already_queued, true ) ) {
+				continue;
+			}
+
+			// Determine the area tag.
+			$area = isset( $known_wp_content_areas[ $entry ] ) ? $known_wp_content_areas[ $entry ] : 'unknown';
+
+			// Enqueue for scanning.
+			$this->enqueue_queue_item( $run_id, 'dir', $area, $full_path, array() );
+		}
+
+		closedir( $handle );
 	}
 
 	/**
@@ -1968,12 +2111,14 @@ class AtomicEdge_Scanner {
 		$state['results']['scan_stats']['files_scanned']++;
 
 		$is_uploads = ( 'uploads' === $area );
+		$is_unknown_area = in_array( $area, array( 'unknown', 'wp-content' ), true );
 		$pattern_groups = $this->get_malware_patterns();
 		if ( in_array( $area, array( 'wp-admin', 'wp-includes' ), true ) ) {
 			$pattern_groups = $this->get_critical_patterns_only();
 		} elseif ( in_array( $area, array( 'plugins', 'themes' ), true ) && ! $is_uploads ) {
 			$pattern_groups = $this->get_refined_patterns_for_plugins();
 		}
+		// Unknown areas and wp-content subdirs get full pattern matching (highest suspicion).
 
 		$result = $this->scan_file_for_patterns( $filepath, $pattern_groups, $is_uploads );
 		if ( $result ) {
@@ -1983,6 +2128,11 @@ class AtomicEdge_Scanner {
 				$result['location_note'] = __( 'Suspicious pattern in wp-admin', 'atomic-edge-security' );
 			} elseif ( 'wp-includes' === $area ) {
 				$result['location_note'] = __( 'Suspicious pattern in wp-includes', 'atomic-edge-security' );
+			} elseif ( 'unknown' === $area ) {
+				$result['location_note'] = __( 'Suspicious file in non-standard directory (possible hidden malware)', 'atomic-edge-security' );
+				$result['severity'] = 'critical'; // Elevate severity for unknown directories.
+			} elseif ( 'wp-content' === $area ) {
+				$result['location_note'] = __( 'Suspicious pattern in non-standard wp-content subdirectory', 'atomic-edge-security' );
 			}
 			$state['results']['suspicious'][] = $result;
 		} elseif ( $is_uploads ) {
@@ -1992,6 +2142,15 @@ class AtomicEdge_Scanner {
 				'type'     => 'php_in_uploads',
 				'severity' => 'high',
 				'reason'   => __( 'PHP file found in uploads directory', 'atomic-edge-security' ),
+			);
+		} elseif ( $is_unknown_area ) {
+			// Any PHP file in an unknown directory is suspicious, even without pattern matches.
+			$state['results']['suspicious'][] = array(
+				'file'      => $relative_path,
+				'file_path' => $filepath,
+				'type'      => 'php_in_unknown_dir',
+				'severity'  => 'high',
+				'reason'    => __( 'PHP file found in non-standard directory (possible hidden malware)', 'atomic-edge-security' ),
 			);
 		}
 
@@ -2204,12 +2363,14 @@ class AtomicEdge_Scanner {
 		$state['results']['scan_stats']['files_scanned']++;
 
 		$is_uploads = ( 'uploads' === $area );
+		$is_unknown_area = in_array( $area, array( 'unknown', 'wp-content' ), true );
 		$pattern_groups = $this->get_malware_patterns();
 		if ( in_array( $area, array( 'wp-admin', 'wp-includes' ), true ) ) {
 			$pattern_groups = $this->get_critical_patterns_only();
 		} elseif ( in_array( $area, array( 'plugins', 'themes' ), true ) && ! $is_uploads ) {
 			$pattern_groups = $this->get_refined_patterns_for_plugins();
 		}
+		// Unknown areas and wp-content subdirs get full pattern matching (highest suspicion).
 
 		$result = $this->scan_file_for_patterns( $filepath, $pattern_groups, $is_uploads );
 		if ( $result ) {
@@ -2219,6 +2380,11 @@ class AtomicEdge_Scanner {
 				$result['location_note'] = __( 'Suspicious pattern in wp-admin', 'atomic-edge-security' );
 			} elseif ( 'wp-includes' === $area ) {
 				$result['location_note'] = __( 'Suspicious pattern in wp-includes', 'atomic-edge-security' );
+			} elseif ( 'unknown' === $area ) {
+				$result['location_note'] = __( 'Suspicious file in non-standard directory (possible hidden malware)', 'atomic-edge-security' );
+				$result['severity'] = 'critical'; // Elevate severity for unknown directories.
+			} elseif ( 'wp-content' === $area ) {
+				$result['location_note'] = __( 'Suspicious pattern in non-standard wp-content subdirectory', 'atomic-edge-security' );
 			}
 			$state['results']['suspicious'][] = $result;
 		} elseif ( $is_uploads ) {
@@ -2228,6 +2394,15 @@ class AtomicEdge_Scanner {
 				'type'     => 'php_in_uploads',
 				'severity' => 'high',
 				'reason'   => __( 'PHP file found in uploads directory', 'atomic-edge-security' ),
+			);
+		} elseif ( $is_unknown_area ) {
+			// Any PHP file in an unknown directory is suspicious, even without pattern matches.
+			$state['results']['suspicious'][] = array(
+				'file'      => $relative_path,
+				'file_path' => $filepath,
+				'type'      => 'php_in_unknown_dir',
+				'severity'  => 'high',
+				'reason'    => __( 'PHP file found in non-standard directory (possible hidden malware)', 'atomic-edge-security' ),
 			);
 		}
 

@@ -1022,6 +1022,177 @@ class ApiTest extends TestCase {
 	}
 
 	// =========================================================================
+	// API Key Migration Tests
+	// =========================================================================
+
+	/**
+	 * Test get_api_key migrates raw hex key to encrypted storage.
+	 *
+	 * This ensures backward compatibility for users who may have stored
+	 * a raw API key through debugging or manual database operations.
+	 */
+	public function test_get_api_key_migrates_raw_hex_key_to_encrypted() {
+		// Store a raw 64-char hex key (not encrypted).
+		$raw_key = str_repeat( 'a1b2c3d4', 8 ); // 64 chars.
+		$this->set_option( 'atomicedge_api_key', $raw_key );
+
+		$api = $this->create_api_instance();
+
+		// First call should detect raw key and migrate it.
+		$result = $api->get_api_key();
+
+		// Should return the original key.
+		$this->assertEquals( $raw_key, $result );
+
+		// Storage should now be encrypted (different from raw key).
+		$stored = $this->get_option( 'atomicedge_api_key' );
+		$this->assertNotEquals( $raw_key, $stored );
+
+		// Second call should still work with encrypted storage.
+		$api2    = $this->create_api_instance();
+		$result2 = $api2->get_api_key();
+		$this->assertEquals( $raw_key, $result2 );
+	}
+
+	/**
+	 * Test get_api_key returns false for invalid stored values.
+	 *
+	 * Non-encrypted, non-hex values should return false.
+	 */
+	public function test_get_api_key_returns_false_for_invalid_values() {
+		// Store a value that is neither encrypted nor a valid raw hex key.
+		$this->set_option( 'atomicedge_api_key', 'invalid-key-format' );
+
+		$api    = $this->create_api_instance();
+		$result = $api->get_api_key();
+
+		$this->assertFalse( $result );
+	}
+
+	/**
+	 * Test raw hex key pattern detection.
+	 *
+	 * Only 64-character hex strings should be treated as raw keys.
+	 */
+	public function test_raw_key_detection_only_matches_64_char_hex() {
+		$api = $this->create_api_instance();
+
+		// 63 chars - too short.
+		$this->set_option( 'atomicedge_api_key', str_repeat( 'a', 63 ) );
+		$this->assertFalse( $api->get_api_key() );
+
+		// 65 chars - too long.
+		$this->set_option( 'atomicedge_api_key', str_repeat( 'a', 65 ) );
+		$this->assertFalse( $api->get_api_key() );
+
+		// Contains non-hex characters.
+		$this->set_option( 'atomicedge_api_key', str_repeat( 'g', 64 ) );
+		$this->assertFalse( $api->get_api_key() );
+	}
+
+	// =========================================================================
+	// Public API Request Tests
+	// =========================================================================
+
+	/**
+	 * Test public_request method works without API key.
+	 *
+	 * The malware signatures endpoint should be accessible without authentication.
+	 */
+	public function test_malware_signatures_works_without_api_key() {
+		// Don't set up connected API - no API key.
+		$this->set_option( 'atomicedge_api_key', '' );
+		$this->set_option( 'atomicedge_connected', false );
+
+		$signature_data = array(
+			'version'          => '1.0.0',
+			'patterns'         => array( 'code_execution' => array() ),
+			'quick_indicators' => array( 'eval(' ),
+			'severity_map'     => array( 'code_execution' => 'critical' ),
+		);
+
+		Functions\when( 'wp_remote_request' )->justReturn(
+			array(
+				'response' => array( 'code' => 200 ),
+				'body'     => wp_json_encode(
+					array(
+						'success' => true,
+						'data'    => $signature_data,
+					)
+				),
+			)
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn(
+			wp_json_encode(
+				array(
+					'success' => true,
+					'data'    => $signature_data,
+				)
+			)
+		);
+		Functions\when( 'is_wp_error' )->justReturn( false );
+
+		$api    = $this->create_api_instance();
+		$result = $api->get_malware_signatures( true );
+
+		// Should succeed even without API key.
+		$this->assertIsArray( $result );
+		$this->assertArrayHasKey( 'version', $result );
+	}
+
+	/**
+	 * Test malware signatures endpoint uses correct public URL path.
+	 */
+	public function test_malware_signatures_uses_public_endpoint_path() {
+		$this->set_option( 'atomicedge_api_key', '' );
+		$this->set_option( 'atomicedge_connected', false );
+
+		$captured_url = null;
+
+		Functions\when( 'wp_remote_request' )->alias(
+			function ( $url ) use ( &$captured_url ) {
+				$captured_url = $url;
+				return array(
+					'response' => array( 'code' => 200 ),
+					'body'     => wp_json_encode(
+						array(
+							'success' => true,
+							'data'    => array(
+								'version'          => '1.0.0',
+								'patterns'         => array(),
+								'quick_indicators' => array(),
+								'severity_map'     => array(),
+							),
+						)
+					),
+				);
+			}
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn(
+			wp_json_encode(
+				array(
+					'success' => true,
+					'data'    => array(
+						'version'          => '1.0.0',
+						'patterns'         => array(),
+						'quick_indicators' => array(),
+						'severity_map'     => array(),
+					),
+				)
+			)
+		);
+		Functions\when( 'is_wp_error' )->justReturn( false );
+
+		$api = $this->create_api_instance();
+		$api->get_malware_signatures( true );
+
+		// Should use the public endpoint path.
+		$this->assertStringContainsString( '/wp/public/malware-signatures', $captured_url );
+	}
+
+	// =========================================================================
 	// Helper Methods
 	// =========================================================================
 

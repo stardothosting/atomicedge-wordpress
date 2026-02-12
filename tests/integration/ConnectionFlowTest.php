@@ -270,8 +270,8 @@ class ConnectionFlowTest extends TestCase {
 			)
 		);
 
-		// Run scan.
-		$scanner = new \AtomicEdge_Scanner();
+		// Run scan with mocked API to avoid real HTTP requests for signatures.
+		$scanner = $this->create_scanner_with_mocked_api();
 		$results = $scanner->run_full_scan();
 
 		// Verify results were saved.

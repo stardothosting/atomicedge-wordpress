@@ -351,8 +351,9 @@ class AtomicEdge_CDN_Rewrite {
 	 */
 	private function get_minified_url( $url, $extension ) {
 		// Check if minification is enabled for this type.
+		// Must check for 'on' explicitly - 'off' and empty string are both disabled.
 		$minify_option = 'css' === $extension ? 'cdn_minify_css' : 'cdn_minify_js';
-		if ( empty( $this->options[ $minify_option ] ) ) {
+		if ( 'on' !== ( $this->options[ $minify_option ] ?? '' ) ) {
 			return $url;
 		}
 

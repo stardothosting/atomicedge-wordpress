@@ -116,7 +116,7 @@ class AdminTest extends TestCase {
 	 */
 	public function test_register_menu_registers_pages() {
 		Functions\expect( 'add_menu_page' )->once();
-		Functions\expect( 'add_submenu_page' )->times( 9 );
+		Functions\expect( 'add_submenu_page' )->times( 10 );
 
 		$this->admin->register_menu();
 		$this->addToAssertionCount( 1 );

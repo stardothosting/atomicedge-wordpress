@@ -66,4 +66,79 @@ class CronTest extends TestCase {
 
 		$this->assertTrue( $called );
 	}
+
+	/**
+	 * Test CDN cache cleanup removes old files.
+	 */
+	public function test_cleanup_cdn_cache_removes_old_files() {
+		// Ensure the constant is defined.
+		if ( ! defined( 'ATOMICEDGE_CDN_CACHE_DIR' ) ) {
+			define( 'ATOMICEDGE_CDN_CACHE_DIR', 'atomicedge-cdn-cache' );
+		}
+
+		// Create a temporary cache directory structure.
+		$temp_dir  = sys_get_temp_dir() . '/atomicedge-cron-test-' . uniqid();
+		$cache_dir = $temp_dir . '/' . ATOMICEDGE_CDN_CACHE_DIR;
+		$css_dir   = $cache_dir . '/css';
+		$js_dir    = $cache_dir . '/js';
+
+		mkdir( $css_dir, 0755, true );
+		mkdir( $js_dir, 0755, true );
+
+		// Create test files.
+		$old_file = $css_dir . '/old-file.css';
+		$new_file = $css_dir . '/new-file.css';
+		file_put_contents( $old_file, 'body{}' );
+		file_put_contents( $new_file, 'div{}' );
+
+		// Make the old file appear 8 days old.
+		touch( $old_file, time() - ( 8 * DAY_IN_SECONDS ) );
+		// New file is current.
+		touch( $new_file, time() );
+
+		// Mock wp_upload_dir to our temp directory.
+		Functions\when( 'wp_upload_dir' )->justReturn( array(
+			'basedir' => $temp_dir,
+		) );
+
+		$api     = $this->createMock( \AtomicEdge_API::class );
+		$scanner = $this->createMock( \AtomicEdge_Scanner::class );
+		$cron    = new \AtomicEdge_Cron( $api, $scanner );
+
+		$cron->cleanup_cdn_cache();
+
+		// Old file should be deleted, new file should remain.
+		$this->assertFileDoesNotExist( $old_file );
+		$this->assertFileExists( $new_file );
+
+		// Cleanup.
+		@unlink( $new_file );
+		@rmdir( $css_dir );
+		@rmdir( $js_dir );
+		@rmdir( $cache_dir );
+		@rmdir( $temp_dir );
+	}
+
+	/**
+	 * Test CDN cache cleanup does nothing when no cache directory exists.
+	 */
+	public function test_cleanup_cdn_cache_handles_missing_directory() {
+		// Ensure the constant is defined.
+		if ( ! defined( 'ATOMICEDGE_CDN_CACHE_DIR' ) ) {
+			define( 'ATOMICEDGE_CDN_CACHE_DIR', 'atomicedge-cdn-cache' );
+		}
+
+		// Mock wp_upload_dir to non-existent path.
+		Functions\when( 'wp_upload_dir' )->justReturn( array(
+			'basedir' => sys_get_temp_dir() . '/non-existent-' . uniqid(),
+		) );
+
+		$api     = $this->createMock( \AtomicEdge_API::class );
+		$scanner = $this->createMock( \AtomicEdge_Scanner::class );
+		$cron    = new \AtomicEdge_Cron( $api, $scanner );
+
+		// Should not throw any errors.
+		$cron->cleanup_cdn_cache();
+		$this->addToAssertionCount( 1 );
+	}
 }

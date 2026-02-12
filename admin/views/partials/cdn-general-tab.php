@@ -31,10 +31,13 @@ $cdn_hostname = AtomicEdge_CDN::get_cdn_hostname();
 // Check if using dev constant.
 $using_dev_constant = defined( 'ATOMICEDGE_CDN_DEV_URL' ) && ATOMICEDGE_CDN_DEV_URL;
 
-// Test URL.
+// Test URL - use relative path from site root to plugin's test icon.
+// This works for any site since the plugin slug is 'atomic-edge-security' on WordPress.org.
 $test_url = '';
 if ( ! empty( $cdn_hostname ) ) {
-	$test_url = 'https://' . $cdn_hostname . '/wp-content/plugins/atomicedge/admin/images/logo.svg';
+	// Use plugin_basename to get the correct path regardless of installation folder name.
+	$plugin_dir = dirname( plugin_basename( ATOMICEDGE_PLUGIN_FILE ) );
+	$test_url   = 'https://' . $cdn_hostname . '/wp-content/plugins/' . $plugin_dir . '/admin/images/icon-cdn-test.png';
 }
 ?>
 

@@ -57,6 +57,9 @@ class AtomicEdge_Cron {
 		// Settings sync (hourly).
 		add_action( 'atomicedge_sync_settings', array( $this, 'sync_settings' ) );
 
+		// CDN cache cleanup (weekly).
+		add_action( 'atomicedge_cdn_cache_cleanup', array( $this, 'cleanup_cdn_cache' ) );
+
 		// Add custom cron schedule.
 		add_filter( 'cron_schedules', array( $this, 'add_cron_schedules' ) );
 	}
@@ -148,5 +151,71 @@ class AtomicEdge_Cron {
 	public static function unschedule_all() {
 		wp_clear_scheduled_hook( 'atomicedge_daily_scan' );
 		wp_clear_scheduled_hook( 'atomicedge_sync_settings' );
+		wp_clear_scheduled_hook( 'atomicedge_cdn_cache_cleanup' );
+	}
+
+	/**
+	 * Cleanup old CDN cache files.
+	 *
+	 * Removes minified cache files older than 7 days to prevent
+	 * unlimited cache growth. Called weekly via cron.
+	 *
+	 * @return void
+	 */
+	public function cleanup_cdn_cache() {
+		if ( ! class_exists( 'AtomicEdge_CDN' ) ) {
+			return;
+		}
+
+		$cache_dir = AtomicEdge_CDN::get_cache_dir();
+		if ( ! is_dir( $cache_dir ) ) {
+			return;
+		}
+
+		$deleted     = 0;
+		$max_age     = 7 * DAY_IN_SECONDS;
+		$directories = array( 'css', 'js' );
+
+		foreach ( $directories as $dir ) {
+			$path = $cache_dir . '/' . $dir;
+			if ( ! is_dir( $path ) ) {
+				continue;
+			}
+
+			$files = glob( $path . '/*' );
+			if ( ! $files ) {
+				continue;
+			}
+
+			foreach ( $files as $file ) {
+				if ( ! is_file( $file ) ) {
+					continue;
+				}
+
+				// Check file age.
+				$file_age = time() - filemtime( $file );
+				if ( $file_age > $max_age ) {
+					// phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+					if ( unlink( $file ) ) {
+						++$deleted;
+					}
+				}
+			}
+		}
+
+		if ( $deleted > 0 ) {
+			AtomicEdge::log( 'CDN cache cleanup completed', array( 'deleted' => $deleted ) );
+		}
+	}
+
+	/**
+	 * Schedule the CDN cache cleanup.
+	 *
+	 * @return void
+	 */
+	public static function schedule_cdn_cleanup() {
+		if ( ! wp_next_scheduled( 'atomicedge_cdn_cache_cleanup' ) ) {
+			wp_schedule_event( time(), 'atomicedge_weekly', 'atomicedge_cdn_cache_cleanup' );
+		}
 	}
 }

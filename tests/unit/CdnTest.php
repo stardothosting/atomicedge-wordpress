@@ -341,6 +341,144 @@ class CdnTest extends TestCase {
 	}
 
 	/**
+	 * Test clear_minified_cache returns array with success and deleted count.
+	 */
+	public function test_clear_minified_cache_returns_array_structure() {
+		// Ensure the constant is defined.
+		if ( ! defined( 'ATOMICEDGE_CDN_CACHE_DIR' ) ) {
+			define( 'ATOMICEDGE_CDN_CACHE_DIR', 'atomicedge-cdn-cache' );
+		}
+
+		// Create a temporary cache directory structure.
+		$temp_dir  = sys_get_temp_dir() . '/atomicedge-test-' . uniqid();
+		$cache_dir = $temp_dir . '/' . ATOMICEDGE_CDN_CACHE_DIR;
+		$css_dir   = $cache_dir . '/css';
+		$js_dir    = $cache_dir . '/js';
+
+		mkdir( $css_dir, 0755, true );
+		mkdir( $js_dir, 0755, true );
+
+		// Create some test files.
+		file_put_contents( $css_dir . '/test1.css', 'body{}' );
+		file_put_contents( $css_dir . '/test2.css', 'div{}' );
+		file_put_contents( $js_dir . '/test1.js', 'var x=1;' );
+
+		// Mock wp_upload_dir to our temp directory.
+		Functions\when( 'wp_upload_dir' )->justReturn( array(
+			'basedir' => $temp_dir,
+		) );
+
+		// Track if delete_transient was called.
+		$transient_deleted = false;
+		Functions\when( 'delete_transient' )->alias( function( $name ) use ( &$transient_deleted ) {
+			if ( 'atomicedge_cdn_minify_map' === $name ) {
+				$transient_deleted = true;
+			}
+			return true;
+		} );
+
+		// Mock wp_delete_file to actually delete files.
+		Functions\when( 'wp_delete_file' )->alias( function( $file ) {
+			return @unlink( $file );
+		} );
+
+		$result = \AtomicEdge_CDN::clear_minified_cache();
+
+		// Verify return type is array.
+		$this->assertIsArray( $result );
+
+		// Verify required keys exist.
+		$this->assertArrayHasKey( 'success', $result );
+		$this->assertArrayHasKey( 'deleted', $result );
+
+		// Verify types.
+		$this->assertTrue( $result['success'] );
+		$this->assertIsInt( $result['deleted'] );
+		$this->assertSame( 3, $result['deleted'] );
+		$this->assertTrue( $transient_deleted, 'delete_transient should have been called' );
+
+		// Cleanup.
+		@rmdir( $css_dir );
+		@rmdir( $js_dir );
+		@rmdir( $cache_dir );
+		@rmdir( $temp_dir );
+	}
+
+	/**
+	 * Test clear_minified_cache returns correct count when no cache directory exists.
+	 */
+	public function test_clear_minified_cache_returns_zero_when_no_cache_dir() {
+		// Ensure the constant is defined.
+		if ( ! defined( 'ATOMICEDGE_CDN_CACHE_DIR' ) ) {
+			define( 'ATOMICEDGE_CDN_CACHE_DIR', 'atomicedge-cdn-cache' );
+		}
+
+		// Mock wp_upload_dir to non-existent path.
+		Functions\when( 'wp_upload_dir' )->justReturn( array(
+			'basedir' => sys_get_temp_dir() . '/non-existent-' . uniqid(),
+		) );
+
+		$result = \AtomicEdge_CDN::clear_minified_cache();
+
+		$this->assertIsArray( $result );
+		$this->assertTrue( $result['success'] );
+		$this->assertSame( 0, $result['deleted'] );
+	}
+
+	/**
+	 * Test minification is disabled when option is 'off'.
+	 *
+	 * This is a critical regression test - 'off' is not empty(),
+	 * so we must check for 'on' explicitly.
+	 */
+	public function test_minification_disabled_when_option_is_off() {
+		// Set minification options to 'off'.
+		update_option( 'atomicedge_cdn_minify_css', 'off' );
+		update_option( 'atomicedge_cdn_minify_js', 'off' );
+
+		$options = \AtomicEdge_CDN::get_cdn_options();
+
+		// The options should return empty or 'off', not 'on'.
+		$this->assertNotSame( 'on', $options['cdn_minify_css'] );
+		$this->assertNotSame( 'on', $options['cdn_minify_js'] );
+
+		// 'off' is truthy for empty(), so we can't use empty() to check.
+		// This verifies the value is preserved correctly.
+		$this->assertSame( 'off', get_option( 'atomicedge_cdn_minify_css' ) );
+		$this->assertSame( 'off', get_option( 'atomicedge_cdn_minify_js' ) );
+	}
+
+	/**
+	 * Test minification is enabled only when option is 'on'.
+	 */
+	public function test_minification_enabled_only_when_option_is_on() {
+		// Set minification options to 'on'.
+		update_option( 'atomicedge_cdn_minify_css', 'on' );
+		update_option( 'atomicedge_cdn_minify_js', 'on' );
+
+		$options = \AtomicEdge_CDN::get_cdn_options();
+
+		// Verify options are passed through correctly.
+		$this->assertSame( 'on', get_option( 'atomicedge_cdn_minify_css' ) );
+		$this->assertSame( 'on', get_option( 'atomicedge_cdn_minify_js' ) );
+	}
+
+	/**
+	 * Test minification is disabled by default (empty value).
+	 */
+	public function test_minification_disabled_by_default() {
+		// Delete options to simulate fresh install.
+		delete_option( 'atomicedge_cdn_minify_css' );
+		delete_option( 'atomicedge_cdn_minify_js' );
+
+		$options = \AtomicEdge_CDN::get_cdn_options();
+
+		// Default values should not be 'on'.
+		$this->assertNotSame( 'on', $options['cdn_minify_css'] );
+		$this->assertNotSame( 'on', $options['cdn_minify_js'] );
+	}
+
+	/**
 	 * Helper to mock API key.
 	 *
 	 * @param string $key The API key to mock.

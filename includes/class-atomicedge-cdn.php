@@ -377,13 +377,17 @@ class AtomicEdge_CDN {
 	/**
 	 * Clear minified file cache.
 	 *
-	 * @return bool True on success.
+	 * @return array{success: bool, deleted: int, error?: string} Result array.
 	 */
 	public static function clear_minified_cache() {
 		$cache_dir = self::get_cache_dir();
+		$deleted   = 0;
 
 		if ( ! is_dir( $cache_dir ) ) {
-			return true;
+			return array(
+				'success' => true,
+				'deleted' => 0,
+			);
 		}
 
 		// Clear CSS files.
@@ -393,7 +397,9 @@ class AtomicEdge_CDN {
 			if ( $css_files ) {
 				foreach ( $css_files as $file ) {
 					if ( is_file( $file ) ) {
-						wp_delete_file( $file );
+						if ( wp_delete_file( $file ) !== false ) {
+							++$deleted;
+						}
 					}
 				}
 			}
@@ -406,7 +412,9 @@ class AtomicEdge_CDN {
 			if ( $js_files ) {
 				foreach ( $js_files as $file ) {
 					if ( is_file( $file ) ) {
-						wp_delete_file( $file );
+						if ( wp_delete_file( $file ) !== false ) {
+							++$deleted;
+						}
 					}
 				}
 			}
@@ -415,7 +423,10 @@ class AtomicEdge_CDN {
 		// Clear minify map transient.
 		delete_transient( 'atomicedge_cdn_minify_map' );
 
-		return true;
+		return array(
+			'success' => true,
+			'deleted' => $deleted,
+		);
 	}
 
 	/**

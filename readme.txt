@@ -4,7 +4,7 @@ Tags: security, firewall, waf, malware, protection
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 2.2.0
+Stable tag: 2.2.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -109,6 +109,13 @@ The plugin automatically detects and uses the best available option.
 9. Adaptive Defense dashboard showing AI-powered threat detections and automatic IP blocking
 
 == Changelog ==
+
+= 2.2.1 =
+* FIX: Minification was running even when disabled (setting value 'off' is not empty)
+* FIX: Clear minification cache button now returns proper response structure
+* FIX: Test CDN button now uses correct dynamic path for any installation
+* NEW: Weekly scheduled cleanup for minification cache (removes files older than 7 days)
+* IMPROVED: Added 5 new tests for minification and cache cleanup
 
 = 2.2.0 =
 * NEW: Adaptive Defense - AI-powered threat detection and automatic IP blocking

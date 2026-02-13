@@ -34,41 +34,41 @@ $stats = AtomicEdge_2FA_Audit::get_statistics( 30 );
 
 // Event types for filter dropdown.
 $event_types = array(
-	''                         => __( 'All Events', 'atomicedge' ),
-	'enrollment_started'       => __( 'Enrollment Started', 'atomicedge' ),
-	'enrollment_completed'     => __( 'Enrollment Completed', 'atomicedge' ),
-	'enrollment_cancelled'     => __( 'Enrollment Cancelled', 'atomicedge' ),
-	'2fa_disabled'             => __( '2FA Disabled', 'atomicedge' ),
-	'backup_codes_regenerated' => __( 'Backup Codes Regenerated', 'atomicedge' ),
-	'backup_code_used'         => __( 'Backup Code Used', 'atomicedge' ),
-	'login_success'            => __( 'Login Success', 'atomicedge' ),
-	'login_failed'             => __( 'Login Failed', 'atomicedge' ),
-	'rate_limited'             => __( 'Rate Limited', 'atomicedge' ),
-	'admin_reset'              => __( 'Admin Reset', 'atomicedge' ),
+	''                         => __( 'All Events', 'atomic-edge-security' ),
+	'enrollment_started'       => __( 'Enrollment Started', 'atomic-edge-security' ),
+	'enrollment_completed'     => __( 'Enrollment Completed', 'atomic-edge-security' ),
+	'enrollment_cancelled'     => __( 'Enrollment Cancelled', 'atomic-edge-security' ),
+	'2fa_disabled'             => __( '2FA Disabled', 'atomic-edge-security' ),
+	'backup_codes_regenerated' => __( 'Backup Codes Regenerated', 'atomic-edge-security' ),
+	'backup_code_used'         => __( 'Backup Code Used', 'atomic-edge-security' ),
+	'login_success'            => __( 'Login Success', 'atomic-edge-security' ),
+	'login_failed'             => __( 'Login Failed', 'atomic-edge-security' ),
+	'rate_limited'             => __( 'Rate Limited', 'atomic-edge-security' ),
+	'admin_reset'              => __( 'Admin Reset', 'atomic-edge-security' ),
 );
 ?>
 
 <p class="description" style="margin: 0 0 15px;">
-	<?php echo esc_html__( 'Security audit log showing all 2FA-related events. Logs are retained for 90 days.', 'atomicedge' ); ?>
+	<?php echo esc_html__( 'Security audit log showing all 2FA-related events. Logs are retained for 90 days.', 'atomic-edge-security' ); ?>
 </p>
 
 <!-- Statistics Cards -->
 <div class="atomicedge-stats-grid">
 	<div class="atomicedge-stat-card" style="border-left-color: #0073aa;">
 		<div class="stat-value"><?php echo esc_html( number_format( $stats['total_events'] ) ); ?></div>
-		<div class="stat-label"><?php echo esc_html__( 'Events (30 days)', 'atomicedge' ); ?></div>
+		<div class="stat-label"><?php echo esc_html__( 'Events (30 days)', 'atomic-edge-security' ); ?></div>
 	</div>
 	<div class="atomicedge-stat-card" style="border-left-color: #46b450;">
 		<div class="stat-value" style="color: #46b450;"><?php echo esc_html( number_format( $stats['login_success'] ) ); ?></div>
-		<div class="stat-label"><?php echo esc_html__( 'Successful Logins', 'atomicedge' ); ?></div>
+		<div class="stat-label"><?php echo esc_html__( 'Successful Logins', 'atomic-edge-security' ); ?></div>
 	</div>
 	<div class="atomicedge-stat-card" style="border-left-color: #dc3232;">
 		<div class="stat-value" style="color: #dc3232;"><?php echo esc_html( number_format( $stats['login_failed'] ) ); ?></div>
-		<div class="stat-label"><?php echo esc_html__( 'Failed Attempts', 'atomicedge' ); ?></div>
+		<div class="stat-label"><?php echo esc_html__( 'Failed Attempts', 'atomic-edge-security' ); ?></div>
 	</div>
 	<div class="atomicedge-stat-card" style="border-left-color: #f0ad4e;">
 		<div class="stat-value" style="color: #f0ad4e;"><?php echo esc_html( number_format( $stats['backup_code_used'] ) ); ?></div>
-		<div class="stat-label"><?php echo esc_html__( 'Backup Codes Used', 'atomicedge' ); ?></div>
+		<div class="stat-label"><?php echo esc_html__( 'Backup Codes Used', 'atomic-edge-security' ); ?></div>
 	</div>
 </div>
 
@@ -86,13 +86,13 @@ $event_types = array(
 	</select>
 	
 	<input type="number" name="user_id" value="<?php echo $user_filter ? esc_attr( $user_filter ) : ''; ?>" 
-		placeholder="<?php echo esc_attr__( 'Filter by User ID', 'atomicedge' ); ?>" style="width: 150px;" />
+		placeholder="<?php echo esc_attr__( 'Filter by User ID', 'atomic-edge-security' ); ?>" style="width: 150px;" />
 	
-	<button type="submit" class="button"><?php echo esc_html__( 'Filter', 'atomicedge' ); ?></button>
+	<button type="submit" class="button"><?php echo esc_html__( 'Filter', 'atomic-edge-security' ); ?></button>
 	
 	<?php if ( $user_filter || $event_filter ) : ?>
 		<a href="<?php echo esc_url( admin_url( 'admin.php?page=atomicedge-2fa&tab=audit' ) ); ?>" class="button">
-			<?php echo esc_html__( 'Clear Filters', 'atomicedge' ); ?>
+			<?php echo esc_html__( 'Clear Filters', 'atomic-edge-security' ); ?>
 		</a>
 	<?php endif; ?>
 	
@@ -100,7 +100,7 @@ $event_types = array(
 	<a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin.php?page=atomicedge-2fa&tab=audit&action=export' ), 'atomicedge_export_audit' ) ); ?>" 
 		class="button" style="float: right;">
 		<span class="dashicons dashicons-download" style="vertical-align: middle; margin-top: 3px;"></span>
-		<?php echo esc_html__( 'Export CSV', 'atomicedge' ); ?>
+		<?php echo esc_html__( 'Export CSV', 'atomic-edge-security' ); ?>
 	</a>
 </form>
 
@@ -108,18 +108,18 @@ $event_types = array(
 <table class="wp-list-table widefat fixed striped">
 	<thead>
 		<tr>
-			<th scope="col" style="width: 150px;"><?php echo esc_html__( 'Date/Time', 'atomicedge' ); ?></th>
-			<th scope="col" style="width: 130px;"><?php echo esc_html__( 'User', 'atomicedge' ); ?></th>
-			<th scope="col"><?php echo esc_html__( 'Event', 'atomicedge' ); ?></th>
-			<th scope="col" style="width: 120px;"><?php echo esc_html__( 'IP Address', 'atomicedge' ); ?></th>
-			<th scope="col" style="width: 100px;"><?php echo esc_html__( 'Admin', 'atomicedge' ); ?></th>
+			<th scope="col" style="width: 150px;"><?php echo esc_html__( 'Date/Time', 'atomic-edge-security' ); ?></th>
+			<th scope="col" style="width: 130px;"><?php echo esc_html__( 'User', 'atomic-edge-security' ); ?></th>
+			<th scope="col"><?php echo esc_html__( 'Event', 'atomic-edge-security' ); ?></th>
+			<th scope="col" style="width: 120px;"><?php echo esc_html__( 'IP Address', 'atomic-edge-security' ); ?></th>
+			<th scope="col" style="width: 100px;"><?php echo esc_html__( 'Admin', 'atomic-edge-security' ); ?></th>
 		</tr>
 	</thead>
 	<tbody>
 		<?php if ( empty( $entries ) ) : ?>
 			<tr>
 				<td colspan="5" style="text-align: center; padding: 20px;">
-					<?php echo esc_html__( 'No audit log entries found.', 'atomicedge' ); ?>
+					<?php echo esc_html__( 'No audit log entries found.', 'atomic-edge-security' ); ?>
 				</td>
 			</tr>
 		<?php else : ?>
@@ -181,7 +181,7 @@ $event_types = array(
 				<?php
 				printf(
 					/* translators: %s: number of items */
-					esc_html( _n( '%s item', '%s items', $total, 'atomicedge' ) ),
+					esc_html( _n( '%s item', '%s items', $total, 'atomic-edge-security' ) ),
 					esc_html( number_format_i18n( $total ) )
 				);
 				?>
@@ -242,16 +242,16 @@ $event_types = array(
 $security_events = AtomicEdge_2FA_Audit::get_security_events( 10 );
 if ( ! empty( $security_events ) ) :
 ?>
-	<h3 style="margin-top: 30px;"><?php echo esc_html__( 'Recent Security Events', 'atomicedge' ); ?></h3>
-	<p class="description"><?php echo esc_html__( 'Failed logins, rate limits, and admin actions.', 'atomicedge' ); ?></p>
+	<h3 style="margin-top: 30px;"><?php echo esc_html__( 'Recent Security Events', 'atomic-edge-security' ); ?></h3>
+	<p class="description"><?php echo esc_html__( 'Failed logins, rate limits, and admin actions.', 'atomic-edge-security' ); ?></p>
 	
 	<table class="wp-list-table widefat fixed striped" style="margin-top: 10px;">
 		<thead>
 			<tr>
-				<th scope="col" style="width: 150px;"><?php echo esc_html__( 'Date/Time', 'atomicedge' ); ?></th>
-				<th scope="col" style="width: 130px;"><?php echo esc_html__( 'User', 'atomicedge' ); ?></th>
-				<th scope="col"><?php echo esc_html__( 'Event', 'atomicedge' ); ?></th>
-				<th scope="col" style="width: 120px;"><?php echo esc_html__( 'IP Address', 'atomicedge' ); ?></th>
+				<th scope="col" style="width: 150px;"><?php echo esc_html__( 'Date/Time', 'atomic-edge-security' ); ?></th>
+				<th scope="col" style="width: 130px;"><?php echo esc_html__( 'User', 'atomic-edge-security' ); ?></th>
+				<th scope="col"><?php echo esc_html__( 'Event', 'atomic-edge-security' ); ?></th>
+				<th scope="col" style="width: 120px;"><?php echo esc_html__( 'IP Address', 'atomic-edge-security' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>

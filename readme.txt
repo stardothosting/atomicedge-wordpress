@@ -4,7 +4,7 @@ Tags: security, firewall, waf, malware, protection
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 2.3.0
+Stable tag: 2.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -109,6 +109,12 @@ The plugin automatically detects and uses the best available option.
 9. Adaptive Defense dashboard showing AI-powered threat detections and automatic IP blocking
 
 == Changelog ==
+
+= 2.4.0 =
+* COMPLIANCE: Added External Services section to readme documenting API usage, data transmission, and links to Terms of Service and Privacy Policy
+* COMPLIANCE: Text domain updated from 'atomicedge' to 'atomic-edge-security' to match WordPress.org plugin slug
+* COMPLIANCE: All register_setting() calls now include sanitize_callback for proper input sanitization
+* COMPLIANCE: Excluded WordPress.org directory assets from plugin zip file (assets/ folder now only syncs to SVN assets directory)
 
 = 2.3.0 =
 * NEW: Malware scanner signatures now fetched from public API (no API key required)
@@ -283,3 +289,64 @@ Scanner UI improvements and settings cleanup.
 
 = 1.0.0 =
 Initial release of Atomic Edge Security plugin.
+
+== External Services ==
+
+This plugin connects to external services provided by Atomic Edge to deliver WAF, CDN, and security features. Below is a detailed explanation of each service, what data is transmitted, and when.
+
+= Atomic Edge API =
+
+The primary external service this plugin connects to is the Atomic Edge API at `https://dashboard.atomicedge.io/api/v1`.
+
+**What it does:**
+* Manages your site's Web Application Firewall (WAF) settings
+* Retrieves real-time analytics and traffic data
+* Fetches WAF security logs showing blocked threats
+* Manages IP whitelist/blacklist and geographic access controls
+* Retrieves CDN configuration and status
+* Provides vulnerability scanning data for WordPress core, plugins, and themes
+* Powers the Adaptive Defense AI-powered threat detection system
+
+**What data is sent:**
+* Your site's API key (for authentication)
+* IP addresses you add to whitelist/blacklist
+* Country codes for geographic blocking rules
+* CDN optimization settings (asset types, minification preferences)
+* Site URL and domain information
+* Adaptive Defense settings and blocked IP information
+
+**When data is sent:**
+* When you save settings in the plugin admin pages
+* When you view analytics or WAF logs (to fetch data)
+* When you run a vulnerability scan
+* When you manage IP access control rules
+* When Adaptive Defense checks or updates threat status
+* Background sync of CDN settings (when CDN is enabled)
+
+**Service links:**
+* Service website: [https://atomicedge.io](https://atomicedge.io)
+* Terms of Service: [https://atomicedge.io/terms-of-service](https://atomicedge.io/terms-of-service)
+* Privacy Policy: [https://atomicedge.io/privacy-policy](https://atomicedge.io/privacy-policy)
+
+= Malware Signature API =
+
+The malware scanner fetches signature patterns from a public API endpoint.
+
+**What it does:**
+* Provides up-to-date malware detection signatures
+* Allows scanning without requiring an API key
+
+**What data is sent:**
+* No personal or site-specific data is sent
+* Only a GET request to retrieve signature patterns
+
+**When data is sent:**
+* When you initiate a malware scan (if cached signatures have expired)
+* Signatures are cached locally for 24 hours
+
+**Service links:**
+* This service is provided by Atomic Edge (same terms and privacy policy as above)
+
+= Data Storage =
+
+All API responses are cached locally using WordPress transients to minimize external requests. Malware signature data is cached for 24 hours. Analytics data is fetched fresh on each page load but displayed quickly via JavaScript pagination.

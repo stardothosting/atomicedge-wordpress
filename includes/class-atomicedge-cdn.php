@@ -94,34 +94,115 @@ class AtomicEdge_CDN {
 	 */
 	public function register_settings() {
 		// Master CDN enable switch.
-		register_setting( 'atomicedge-cdn-settings', 'atomicedge_cdn_local_enabled' );
+		register_setting(
+			'atomicedge-cdn-settings',
+			'atomicedge_cdn_local_enabled',
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => 'sanitize_text_field',
+			)
+		);
 
 		// Note: Site URL (atomicedge_cdn_url) removed - always use WordPress's site_url().
 
 		// Dev mode - allows testing without dashboard connection.
-		register_setting( 'atomicedge-cdn-settings', 'atomicedge_cdn_dev_mode' );
+		register_setting(
+			'atomicedge-cdn-settings',
+			'atomicedge_cdn_dev_mode',
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => 'sanitize_text_field',
+			)
+		);
 		register_setting(
 			'atomicedge-cdn-settings',
 			'atomicedge_cdn_dev_url',
 			array(
+				'type'              => 'string',
 				'sanitize_callback' => array( __CLASS__, 'sanitize_cdn_url' ),
 			)
 		);
 
 		// File type toggles.
-		register_setting( 'atomicedge-cdn-settings', 'atomicedge_cdn_css', array( 'default' => 'on' ) );
-		register_setting( 'atomicedge-cdn-settings', 'atomicedge_cdn_js', array( 'default' => 'on' ) );
-		register_setting( 'atomicedge-cdn-settings', 'atomicedge_cdn_media', array( 'default' => 'on' ) );
+		register_setting(
+			'atomicedge-cdn-settings',
+			'atomicedge_cdn_css',
+			array(
+				'type'              => 'string',
+				'default'           => 'on',
+				'sanitize_callback' => 'sanitize_text_field',
+			)
+		);
+		register_setting(
+			'atomicedge-cdn-settings',
+			'atomicedge_cdn_js',
+			array(
+				'type'              => 'string',
+				'default'           => 'on',
+				'sanitize_callback' => 'sanitize_text_field',
+			)
+		);
+		register_setting(
+			'atomicedge-cdn-settings',
+			'atomicedge_cdn_media',
+			array(
+				'type'              => 'string',
+				'default'           => 'on',
+				'sanitize_callback' => 'sanitize_text_field',
+			)
+		);
 
 		// Minification toggles.
-		register_setting( 'atomicedge-cdn-settings', 'atomicedge_cdn_minify_css' );
-		register_setting( 'atomicedge-cdn-settings', 'atomicedge_cdn_minify_js' );
-		register_setting( 'atomicedge-cdn-settings', 'atomicedge_cdn_minify_html' );
-		register_setting( 'atomicedge-cdn-settings', 'atomicedge_cdn_minify_html_skip_logged_in' );
-		register_setting( 'atomicedge-cdn-settings', 'atomicedge_cdn_minify_html_preserve_comments' );
+		register_setting(
+			'atomicedge-cdn-settings',
+			'atomicedge_cdn_minify_css',
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => 'sanitize_text_field',
+			)
+		);
+		register_setting(
+			'atomicedge-cdn-settings',
+			'atomicedge_cdn_minify_js',
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => 'sanitize_text_field',
+			)
+		);
+		register_setting(
+			'atomicedge-cdn-settings',
+			'atomicedge_cdn_minify_html',
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => 'sanitize_text_field',
+			)
+		);
+		register_setting(
+			'atomicedge-cdn-settings',
+			'atomicedge_cdn_minify_html_skip_logged_in',
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => 'sanitize_text_field',
+			)
+		);
+		register_setting(
+			'atomicedge-cdn-settings',
+			'atomicedge_cdn_minify_html_preserve_comments',
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => 'sanitize_text_field',
+			)
+		);
 
 		// Advanced - URL exclusions.
-		register_setting( 'atomicedge-cdn-settings', 'atomicedge_cdn_reject_files', 'atomicedge_cdn_sanitize_reject_field' );
+		register_setting(
+			'atomicedge-cdn-settings',
+			'atomicedge_cdn_reject_files',
+			array(
+				'type'              => 'string',
+				'sanitize_callback' => 'atomicedge_cdn_sanitize_reject_field',
+			)
+		);
 	}
 
 	/**

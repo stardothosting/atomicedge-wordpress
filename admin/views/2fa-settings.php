@@ -23,15 +23,15 @@ if ( ! in_array( $current_tab, $valid_tabs, true ) ) {
 // Tab definitions.
 $tabs = array(
 	'policy' => array(
-		'label' => __( 'Policy', 'atomicedge' ),
+		'label' => __( 'Policy', 'atomic-edge-security' ),
 		'icon'  => 'dashicons-shield',
 	),
 	'users'  => array(
-		'label' => __( 'Users', 'atomicedge' ),
+		'label' => __( 'Users', 'atomic-edge-security' ),
 		'icon'  => 'dashicons-groups',
 	),
 	'audit'  => array(
-		'label' => __( 'Audit Log', 'atomicedge' ),
+		'label' => __( 'Audit Log', 'atomic-edge-security' ),
 		'icon'  => 'dashicons-list-view',
 	),
 );
@@ -42,10 +42,10 @@ $tabs = array(
 	<div class="atomicedge-2fa">
 		<h2>
 			<span class="dashicons dashicons-lock" style="font-size: 24px; width: 24px; height: 24px; margin-right: 8px; vertical-align: middle;"></span>
-			<?php echo esc_html__( 'Two-Factor Authentication', 'atomicedge' ); ?>
+			<?php echo esc_html__( 'Two-Factor Authentication', 'atomic-edge-security' ); ?>
 		</h2>
 		<p class="atomicedge-page-description">
-			<?php echo esc_html__( 'Manage two-factor authentication settings, user status, and security audit logs.', 'atomicedge' ); ?>
+			<?php echo esc_html__( 'Manage two-factor authentication settings, user status, and security audit logs.', 'atomic-edge-security' ); ?>
 		</p>
 
 		<!-- Tab Navigation -->

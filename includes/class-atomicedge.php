@@ -146,7 +146,7 @@ class AtomicEdge {
 		// Only load on our plugin pages.
 		// WordPress hook format uses sanitize_title($menu_title) which yields 'atomic-edge'.
 		// Submenus use slugs like 'atomicedge-scanner', so check for both patterns.
-		$is_plugin_page = ( strpos( $hook, 'atomic-edge' ) !== false ) || ( strpos( $hook, 'atomicedge' ) !== false );
+		$is_plugin_page = ( strpos( $hook, 'atomic-edge' ) !== false ) || ( strpos( $hook, 'atomic-edge-security' ) !== false );
 		if ( ! $is_plugin_page ) {
 			return;
 		}

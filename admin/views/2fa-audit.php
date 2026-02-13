@@ -34,43 +34,43 @@ $stats = AtomicEdge_2FA_Audit::get_statistics( 30 );
 
 // Event types for filter dropdown.
 $event_types = array(
-	''                         => __( 'All Events', 'atomicedge' ),
-	'enrollment_started'       => __( 'Enrollment Started', 'atomicedge' ),
-	'enrollment_completed'     => __( 'Enrollment Completed', 'atomicedge' ),
-	'enrollment_cancelled'     => __( 'Enrollment Cancelled', 'atomicedge' ),
-	'2fa_disabled'             => __( '2FA Disabled', 'atomicedge' ),
-	'backup_codes_regenerated' => __( 'Backup Codes Regenerated', 'atomicedge' ),
-	'backup_code_used'         => __( 'Backup Code Used', 'atomicedge' ),
-	'login_success'            => __( 'Login Success', 'atomicedge' ),
-	'login_failed'             => __( 'Login Failed', 'atomicedge' ),
-	'rate_limited'             => __( 'Rate Limited', 'atomicedge' ),
-	'admin_reset'              => __( 'Admin Reset', 'atomicedge' ),
+	''                         => __( 'All Events', 'atomic-edge-security' ),
+	'enrollment_started'       => __( 'Enrollment Started', 'atomic-edge-security' ),
+	'enrollment_completed'     => __( 'Enrollment Completed', 'atomic-edge-security' ),
+	'enrollment_cancelled'     => __( 'Enrollment Cancelled', 'atomic-edge-security' ),
+	'2fa_disabled'             => __( '2FA Disabled', 'atomic-edge-security' ),
+	'backup_codes_regenerated' => __( 'Backup Codes Regenerated', 'atomic-edge-security' ),
+	'backup_code_used'         => __( 'Backup Code Used', 'atomic-edge-security' ),
+	'login_success'            => __( 'Login Success', 'atomic-edge-security' ),
+	'login_failed'             => __( 'Login Failed', 'atomic-edge-security' ),
+	'rate_limited'             => __( 'Rate Limited', 'atomic-edge-security' ),
+	'admin_reset'              => __( 'Admin Reset', 'atomic-edge-security' ),
 );
 ?>
 <div class="wrap">
-	<h1><?php echo esc_html__( '2FA Audit Log', 'atomicedge' ); ?></h1>
+	<h1><?php echo esc_html__( '2FA Audit Log', 'atomic-edge-security' ); ?></h1>
 	
 	<p class="description">
-		<?php echo esc_html__( 'Security audit log showing all 2FA-related events. Logs are retained for 90 days.', 'atomicedge' ); ?>
+		<?php echo esc_html__( 'Security audit log showing all 2FA-related events. Logs are retained for 90 days.', 'atomic-edge-security' ); ?>
 	</p>
 
 	<!-- Statistics Cards -->
 	<div class="atomicedge-stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px 0;">
 		<div class="atomicedge-stat-card" style="background: #fff; padding: 20px; border-left: 4px solid #0073aa; box-shadow: 0 1px 1px rgba(0,0,0,.04);">
 			<div class="stat-value" style="font-size: 28px; font-weight: 600; color: #23282d;"><?php echo esc_html( number_format( $stats['total_events'] ) ); ?></div>
-			<div class="stat-label" style="color: #666; font-size: 13px;"><?php echo esc_html__( 'Events (30 days)', 'atomicedge' ); ?></div>
+			<div class="stat-label" style="color: #666; font-size: 13px;"><?php echo esc_html__( 'Events (30 days)', 'atomic-edge-security' ); ?></div>
 		</div>
 		<div class="atomicedge-stat-card" style="background: #fff; padding: 20px; border-left: 4px solid #46b450; box-shadow: 0 1px 1px rgba(0,0,0,.04);">
 			<div class="stat-value" style="font-size: 28px; font-weight: 600; color: #46b450;"><?php echo esc_html( number_format( $stats['login_success'] ) ); ?></div>
-			<div class="stat-label" style="color: #666; font-size: 13px;"><?php echo esc_html__( 'Successful Logins', 'atomicedge' ); ?></div>
+			<div class="stat-label" style="color: #666; font-size: 13px;"><?php echo esc_html__( 'Successful Logins', 'atomic-edge-security' ); ?></div>
 		</div>
 		<div class="atomicedge-stat-card" style="background: #fff; padding: 20px; border-left: 4px solid #dc3232; box-shadow: 0 1px 1px rgba(0,0,0,.04);">
 			<div class="stat-value" style="font-size: 28px; font-weight: 600; color: #dc3232;"><?php echo esc_html( number_format( $stats['login_failed'] ) ); ?></div>
-			<div class="stat-label" style="color: #666; font-size: 13px;"><?php echo esc_html__( 'Failed Attempts', 'atomicedge' ); ?></div>
+			<div class="stat-label" style="color: #666; font-size: 13px;"><?php echo esc_html__( 'Failed Attempts', 'atomic-edge-security' ); ?></div>
 		</div>
 		<div class="atomicedge-stat-card" style="background: #fff; padding: 20px; border-left: 4px solid #f0ad4e; box-shadow: 0 1px 1px rgba(0,0,0,.04);">
 			<div class="stat-value" style="font-size: 28px; font-weight: 600; color: #f0ad4e;"><?php echo esc_html( number_format( $stats['backup_code_used'] ) ); ?></div>
-			<div class="stat-label" style="color: #666; font-size: 13px;"><?php echo esc_html__( 'Backup Codes Used', 'atomicedge' ); ?></div>
+			<div class="stat-label" style="color: #666; font-size: 13px;"><?php echo esc_html__( 'Backup Codes Used', 'atomic-edge-security' ); ?></div>
 		</div>
 	</div>
 
@@ -87,13 +87,13 @@ $event_types = array(
 		</select>
 		
 		<input type="number" name="user_id" value="<?php echo $user_filter ? esc_attr( $user_filter ) : ''; ?>" 
-			placeholder="<?php echo esc_attr__( 'Filter by User ID', 'atomicedge' ); ?>" style="width: 150px;" />
+			placeholder="<?php echo esc_attr__( 'Filter by User ID', 'atomic-edge-security' ); ?>" style="width: 150px;" />
 		
-		<button type="submit" class="button"><?php echo esc_html__( 'Filter', 'atomicedge' ); ?></button>
+		<button type="submit" class="button"><?php echo esc_html__( 'Filter', 'atomic-edge-security' ); ?></button>
 		
 		<?php if ( $user_filter || $event_filter ) : ?>
 			<a href="<?php echo esc_url( admin_url( 'admin.php?page=atomicedge-2fa-audit' ) ); ?>" class="button">
-				<?php echo esc_html__( 'Clear Filters', 'atomicedge' ); ?>
+				<?php echo esc_html__( 'Clear Filters', 'atomic-edge-security' ); ?>
 			</a>
 		<?php endif; ?>
 		
@@ -101,7 +101,7 @@ $event_types = array(
 		<a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin.php?page=atomicedge-2fa-audit&action=export' ), 'atomicedge_export_audit' ) ); ?>" 
 			class="button" style="float: right;">
 			<span class="dashicons dashicons-download" style="vertical-align: middle; margin-top: 3px;"></span>
-			<?php echo esc_html__( 'Export CSV', 'atomicedge' ); ?>
+			<?php echo esc_html__( 'Export CSV', 'atomic-edge-security' ); ?>
 		</a>
 	</form>
 
@@ -109,18 +109,18 @@ $event_types = array(
 	<table class="wp-list-table widefat fixed striped">
 		<thead>
 			<tr>
-				<th scope="col" style="width: 160px;"><?php echo esc_html__( 'Date/Time', 'atomicedge' ); ?></th>
-				<th scope="col" style="width: 150px;"><?php echo esc_html__( 'User', 'atomicedge' ); ?></th>
-				<th scope="col"><?php echo esc_html__( 'Event', 'atomicedge' ); ?></th>
-				<th scope="col" style="width: 130px;"><?php echo esc_html__( 'IP Address', 'atomicedge' ); ?></th>
-				<th scope="col" style="width: 130px;"><?php echo esc_html__( 'Admin', 'atomicedge' ); ?></th>
+				<th scope="col" style="width: 160px;"><?php echo esc_html__( 'Date/Time', 'atomic-edge-security' ); ?></th>
+				<th scope="col" style="width: 150px;"><?php echo esc_html__( 'User', 'atomic-edge-security' ); ?></th>
+				<th scope="col"><?php echo esc_html__( 'Event', 'atomic-edge-security' ); ?></th>
+				<th scope="col" style="width: 130px;"><?php echo esc_html__( 'IP Address', 'atomic-edge-security' ); ?></th>
+				<th scope="col" style="width: 130px;"><?php echo esc_html__( 'Admin', 'atomic-edge-security' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>
 			<?php if ( empty( $entries ) ) : ?>
 				<tr>
 					<td colspan="5" style="text-align: center; padding: 20px;">
-						<?php echo esc_html__( 'No audit log entries found.', 'atomicedge' ); ?>
+						<?php echo esc_html__( 'No audit log entries found.', 'atomic-edge-security' ); ?>
 					</td>
 				</tr>
 			<?php else : ?>
@@ -163,7 +163,7 @@ $event_types = array(
 						</td>
 						<td>
 							<?php if ( ! empty( $entry['admin_login'] ) ) : ?>
-								<span title="<?php echo esc_attr( sprintf( __( 'Action performed by %s', 'atomicedge' ), $entry['admin_login'] ) ); ?>">
+								<span title="<?php echo esc_attr( sprintf( __( 'Action performed by %s', 'atomic-edge-security' ), $entry['admin_login'] ) ); ?>">
 									<?php echo esc_html( $entry['admin_login'] ); ?>
 								</span>
 							<?php else : ?>
@@ -184,7 +184,7 @@ $event_types = array(
 					<?php
 					printf(
 						/* translators: %s: number of items */
-						esc_html( _n( '%s item', '%s items', $total, 'atomicedge' ) ),
+						esc_html( _n( '%s item', '%s items', $total, 'atomic-edge-security' ) ),
 						esc_html( number_format_i18n( $total ) )
 					);
 					?>
@@ -205,12 +205,12 @@ $event_types = array(
 						printf(
 							'<a class="first-page button" href="%s"><span class="screen-reader-text">%s</span><span aria-hidden="true">&laquo;</span></a>',
 							esc_url( add_query_arg( 'paged', 1, $base_url ) ),
-							esc_html__( 'First page', 'atomicedge' )
+							esc_html__( 'First page', 'atomic-edge-security' )
 						);
 						printf(
 							'<a class="prev-page button" href="%s"><span class="screen-reader-text">%s</span><span aria-hidden="true">&lsaquo;</span></a>',
 							esc_url( add_query_arg( 'paged', $current_page - 1, $base_url ) ),
-							esc_html__( 'Previous page', 'atomicedge' )
+							esc_html__( 'Previous page', 'atomic-edge-security' )
 						);
 					} else {
 						echo '<span class="tablenav-pages-navspan button disabled" aria-hidden="true">&laquo;</span>';
@@ -221,7 +221,7 @@ $event_types = array(
 					<span class="paging-input">
 						<span class="tablenav-paging-text">
 							<?php echo esc_html( $current_page ); ?>
-							<?php echo esc_html__( 'of', 'atomicedge' ); ?>
+							<?php echo esc_html__( 'of', 'atomic-edge-security' ); ?>
 							<span class="total-pages"><?php echo esc_html( $total_pages ); ?></span>
 						</span>
 					</span>
@@ -232,12 +232,12 @@ $event_types = array(
 						printf(
 							'<a class="next-page button" href="%s"><span class="screen-reader-text">%s</span><span aria-hidden="true">&rsaquo;</span></a>',
 							esc_url( add_query_arg( 'paged', $current_page + 1, $base_url ) ),
-							esc_html__( 'Next page', 'atomicedge' )
+							esc_html__( 'Next page', 'atomic-edge-security' )
 						);
 						printf(
 							'<a class="last-page button" href="%s"><span class="screen-reader-text">%s</span><span aria-hidden="true">&raquo;</span></a>',
 							esc_url( add_query_arg( 'paged', $total_pages, $base_url ) ),
-							esc_html__( 'Last page', 'atomicedge' )
+							esc_html__( 'Last page', 'atomic-edge-security' )
 						);
 					} else {
 						echo '<span class="tablenav-pages-navspan button disabled" aria-hidden="true">&rsaquo;</span>';
@@ -254,16 +254,16 @@ $event_types = array(
 	$security_events = AtomicEdge_2FA_Audit::get_security_events( 10 );
 	if ( ! empty( $security_events ) ) :
 	?>
-		<h2 style="margin-top: 30px;"><?php echo esc_html__( 'Recent Security Events', 'atomicedge' ); ?></h2>
-		<p class="description"><?php echo esc_html__( 'Failed logins, rate limits, and admin actions.', 'atomicedge' ); ?></p>
+		<h2 style="margin-top: 30px;"><?php echo esc_html__( 'Recent Security Events', 'atomic-edge-security' ); ?></h2>
+		<p class="description"><?php echo esc_html__( 'Failed logins, rate limits, and admin actions.', 'atomic-edge-security' ); ?></p>
 		
 		<table class="wp-list-table widefat fixed striped" style="margin-top: 10px;">
 			<thead>
 				<tr>
-					<th scope="col" style="width: 160px;"><?php echo esc_html__( 'Date/Time', 'atomicedge' ); ?></th>
-					<th scope="col" style="width: 150px;"><?php echo esc_html__( 'User', 'atomicedge' ); ?></th>
-					<th scope="col"><?php echo esc_html__( 'Event', 'atomicedge' ); ?></th>
-					<th scope="col" style="width: 130px;"><?php echo esc_html__( 'IP Address', 'atomicedge' ); ?></th>
+					<th scope="col" style="width: 160px;"><?php echo esc_html__( 'Date/Time', 'atomic-edge-security' ); ?></th>
+					<th scope="col" style="width: 150px;"><?php echo esc_html__( 'User', 'atomic-edge-security' ); ?></th>
+					<th scope="col"><?php echo esc_html__( 'Event', 'atomic-edge-security' ); ?></th>
+					<th scope="col" style="width: 130px;"><?php echo esc_html__( 'IP Address', 'atomic-edge-security' ); ?></th>
 				</tr>
 			</thead>
 			<tbody>

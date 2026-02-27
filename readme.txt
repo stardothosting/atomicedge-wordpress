@@ -4,7 +4,7 @@ Tags: security, firewall, waf, malware, protection
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 2.4.4
+Stable tag: 2.4.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -13,6 +13,8 @@ Connect your WordPress site to Atomic Edge for enterprise-grade WAF protection, 
 == Description ==
 
 Atomic Edge Security connects your WordPress site to the Atomic Edge WAF/CDN service, providing enterprise-grade security protection without the complexity.
+
+[youtube https://www.youtube.com/watch?v=HP_EiWLtuZE]
 
 = Features =
 
@@ -109,6 +111,11 @@ The plugin automatically detects and uses the best available option.
 9. Adaptive Defense dashboard showing AI-powered threat detections and automatic IP blocking
 
 == Changelog ==
+
+= 2.4.5 =
+* NEW: Added internationalization (i18n) support with load_plugin_textdomain() and .pot translation template
+* Plugin is now translatable via WordPress.org GlotPress (translate.wordpress.org)
+* Supports English (Canada) and all other WordPress locales
 
 = 2.4.4 =
 * FIX: Fixed fatal error "Class AtomicEdge_Cron not found" on plugin activation by ensuring Cron class is loaded before use in activation hook

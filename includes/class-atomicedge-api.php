@@ -218,6 +218,30 @@ class AtomicEdge_API {
 	}
 
 	/**
+	 * Get the current WAF log cache generation.
+	 *
+	 * The generation counter is included in the WAF log cache key so that
+	 * all cached WAF log queries are invalidated when the IP blacklist or
+	 * whitelist changes (since is_blocked status depends on the blacklist).
+	 *
+	 * @return int Current generation counter.
+	 */
+	private function get_waf_cache_generation() {
+		return (int) get_option( 'atomicedge_waf_cache_gen', 0 );
+	}
+
+	/**
+	 * Invalidate all WAF log caches by incrementing the generation counter.
+	 *
+	 * Old transient keys become orphaned and will expire naturally.
+	 *
+	 * @return void
+	 */
+	private function invalidate_waf_log_cache() {
+		update_option( 'atomicedge_waf_cache_gen', time(), false );
+	}
+
+	/**
 	 * Get WAF logs.
 	 *
 	 * @param array $args Query arguments (page, per_page, search, etc.).
@@ -235,7 +259,8 @@ class AtomicEdge_API {
 			unset( $args['search'] );
 		}
 
-		$cache_key = 'atomicedge_waf_logs_' . hash( 'sha256', (string) wp_json_encode( $args ) );
+		$gen       = $this->get_waf_cache_generation();
+		$cache_key = 'atomicedge_waf_logs_' . $gen . '_' . hash( 'sha256', (string) wp_json_encode( $args ) );
 		$cached    = get_transient( $cache_key );
 
 		if ( false !== $cached ) {
@@ -292,6 +317,7 @@ class AtomicEdge_API {
 
 		if ( $response['success'] ) {
 			delete_transient( 'atomicedge_ip_rules' );
+			$this->invalidate_waf_log_cache();
 			do_action( 'atomicedge_ip_added', $ip, 'whitelist' );
 		}
 
@@ -315,6 +341,7 @@ class AtomicEdge_API {
 
 		if ( $response['success'] ) {
 			delete_transient( 'atomicedge_ip_rules' );
+			$this->invalidate_waf_log_cache();
 			do_action( 'atomicedge_ip_added', $ip, 'blacklist' );
 		}
 
@@ -329,11 +356,18 @@ class AtomicEdge_API {
 	 * @return array Result.
 	 */
 	public function remove_ip( $ip, $type ) {
-		$endpoint = '/access/ip/' . sanitize_key( $type ) . '/' . rawurlencode( $ip );
-		$response = $this->request( 'DELETE', $endpoint );
+		$response = $this->request(
+			'DELETE',
+			'/ip-rules',
+			array(
+				'ip'   => $ip,
+				'type' => $type,
+			)
+		);
 
 		if ( $response['success'] ) {
 			delete_transient( 'atomicedge_ip_rules' );
+			$this->invalidate_waf_log_cache();
 			do_action( 'atomicedge_ip_removed', $ip, $type );
 		}
 
@@ -578,12 +612,16 @@ class AtomicEdge_API {
 	 * @param bool   $permanent      Whether the block is permanent.
 	 * @return array Result.
 	 */
-	public function block_ip( $ip, $duration_hours = 24, $permanent = false ) {
+	public function block_ip( $ip, $duration_hours = 24, $permanent = false, $reason = '' ) {
 		$data = array(
 			'ip'             => $ip,
 			'duration_hours' => $duration_hours,
 			'permanent'      => $permanent,
 		);
+
+		if ( ! empty( $reason ) ) {
+			$data['reason'] = $reason;
+		}
 
 		$response = $this->request( 'POST', '/adaptive-defense/block', $data );
 

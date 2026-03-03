@@ -78,7 +78,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 </div>
 
 <!-- Detection Detail Panel (inline expandable row approach per WordPress patterns) -->
-<div id="atomicedge-ad-detection-detail-template" style="display: none;">
+<!-- Uses <template> so the browser doesn't strip <tr>/<td> during HTML parsing -->
+<template id="atomicedge-ad-detection-detail-template">
 	<tr class="atomicedge-ad-detail-row">
 		<td colspan="7">
 			<div class="atomicedge-ad-detail-panel">
@@ -169,7 +170,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 			</div>
 		</td>
 	</tr>
-</div>
+</template>
 
 <style>
 .atomicedge-ad-loading {

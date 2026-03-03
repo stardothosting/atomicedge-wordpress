@@ -985,12 +985,3 @@ class AjaxTest extends TestCase {
 		}
 	}
 }
-
-// Custom exception for simulating AJAX exit.
-namespace AtomicEdge\Tests;
-
-/**
- * Exception to simulate wp_send_json exit behavior.
- */
-class AjaxExitException extends \Exception {
-}

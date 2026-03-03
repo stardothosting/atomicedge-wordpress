@@ -874,6 +874,11 @@ class AtomicEdge_Ajax {
 	public function ajax_get_adaptive_defense() {
 		$this->get_verified_post_fields( array() );
 
+		// Dev mode: return simulated data.
+		if ( AtomicEdge_Dev_Mode::is_enabled() ) {
+			wp_send_json_success( AtomicEdge_Dev_Mode::get_simulated_adaptive_defense() );
+		}
+
 		$response = $this->api->get_adaptive_defense();
 
 		if ( $response['success'] ) {
@@ -901,6 +906,11 @@ class AtomicEdge_Ajax {
 			$args['search'] = $post['search'];
 		}
 
+		// Dev mode: return simulated data.
+		if ( AtomicEdge_Dev_Mode::is_enabled() ) {
+			wp_send_json_success( AtomicEdge_Dev_Mode::get_simulated_actor_profiles( $args ) );
+		}
+
 		$response = $this->api->get_actor_profiles( $args );
 
 		if ( $response['success'] ) {
@@ -924,6 +934,11 @@ class AtomicEdge_Ajax {
 			'status'   => isset( $post['status'] ) ? $post['status'] : 'all',
 		);
 
+		// Dev mode: return simulated data.
+		if ( AtomicEdge_Dev_Mode::is_enabled() ) {
+			wp_send_json_success( AtomicEdge_Dev_Mode::get_simulated_threat_detections( $args ) );
+		}
+
 		$response = $this->api->get_threat_detections( $args );
 
 		if ( $response['success'] ) {
@@ -945,6 +960,15 @@ class AtomicEdge_Ajax {
 			wp_send_json_error( array( 'message' => __( 'Detection ID is required.', 'atomic-edge-security' ) ) );
 		}
 
+		// Dev mode: return simulated detail data.
+		if ( AtomicEdge_Dev_Mode::is_enabled() ) {
+			$detail = AtomicEdge_Dev_Mode::get_simulated_threat_detection_detail( absint( $post['detection_id'] ) );
+			if ( $detail ) {
+				wp_send_json_success( $detail );
+			}
+			wp_send_json_error( array( 'message' => __( 'Detection not found.', 'atomic-edge-security' ) ) );
+		}
+
 		$response = $this->api->get_threat_detection_detail( absint( $post['detection_id'] ) );
 
 		if ( $response['success'] ) {
@@ -960,7 +984,7 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_block_ip() {
-		$post = $this->get_verified_post_fields( array( 'ip', 'duration_hours', 'permanent' ) );
+		$post = $this->get_verified_post_fields( array( 'ip', 'duration_hours', 'permanent', 'reason' ) );
 
 		if ( empty( $post['ip'] ) ) {
 			wp_send_json_error( array( 'message' => __( 'IP address is required.', 'atomic-edge-security' ) ) );
@@ -969,8 +993,21 @@ class AtomicEdge_Ajax {
 		$ip             = $post['ip'];
 		$duration_hours = isset( $post['duration_hours'] ) ? absint( $post['duration_hours'] ) : 24;
 		$permanent      = isset( $post['permanent'] ) && 'true' === $post['permanent'];
+		$reason         = isset( $post['reason'] ) ? sanitize_text_field( $post['reason'] ) : '';
 
-		$response = $this->api->block_ip( $ip, $duration_hours, $permanent );
+		// Dev mode: return simulated success.
+		if ( AtomicEdge_Dev_Mode::is_enabled() ) {
+			wp_send_json_success( array(
+				'message' => sprintf(
+					/* translators: %s: IP address */
+					__( '[Dev Mode] IP address %s has been blocked.', 'atomic-edge-security' ),
+					esc_html( $ip )
+				),
+				'data'    => AtomicEdge_Dev_Mode::simulate_block_ip( $ip ),
+			) );
+		}
+
+		$response = $this->api->block_ip( $ip, $duration_hours, $permanent, $reason );
 
 		if ( $response['success'] ) {
 			wp_send_json_success( array(
@@ -996,6 +1033,17 @@ class AtomicEdge_Ajax {
 
 		if ( empty( $post['ip'] ) ) {
 			wp_send_json_error( array( 'message' => __( 'IP address is required.', 'atomic-edge-security' ) ) );
+		}
+
+		// Dev mode: return simulated success.
+		if ( AtomicEdge_Dev_Mode::is_enabled() ) {
+			wp_send_json_success( array(
+				'message' => sprintf(
+					/* translators: %s: IP address */
+					__( '[Dev Mode] IP address %s has been unblocked.', 'atomic-edge-security' ),
+					esc_html( $post['ip'] )
+				),
+			) );
 		}
 
 		$response = $this->api->unblock_ip( $post['ip'] );
@@ -1025,6 +1073,13 @@ class AtomicEdge_Ajax {
 			wp_send_json_error( array( 'message' => __( 'Actor ID is required.', 'atomic-edge-security' ) ) );
 		}
 
+		// Dev mode: return simulated success.
+		if ( AtomicEdge_Dev_Mode::is_enabled() ) {
+			wp_send_json_success( array(
+				'message' => __( '[Dev Mode] Actor profile has been deleted.', 'atomic-edge-security' ),
+			) );
+		}
+
 		$response = $this->api->delete_actor_profile( absint( $post['actor_id'] ) );
 
 		if ( $response['success'] ) {
@@ -1046,6 +1101,13 @@ class AtomicEdge_Ajax {
 
 		if ( empty( $post['detection_id'] ) ) {
 			wp_send_json_error( array( 'message' => __( 'Detection ID is required.', 'atomic-edge-security' ) ) );
+		}
+
+		// Dev mode: return simulated success.
+		if ( AtomicEdge_Dev_Mode::is_enabled() ) {
+			wp_send_json_success( array(
+				'message' => __( '[Dev Mode] Threat detection has been dismissed.', 'atomic-edge-security' ),
+			) );
 		}
 
 		$response = $this->api->dismiss_threat_detection( absint( $post['detection_id'] ) );

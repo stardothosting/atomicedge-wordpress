@@ -319,4 +319,519 @@ class AtomicEdge_Dev_Mode {
 			'total' => count( $logs ),
 		);
 	}
+
+	// =========================================================================
+	// Adaptive Defense Simulated Data
+	// =========================================================================
+
+	/**
+	 * Get simulated Adaptive Defense overview data.
+	 *
+	 * @return array
+	 */
+	public static function get_simulated_adaptive_defense() {
+		return array(
+			'settings'         => array(
+				'enabled'     => true,
+				'mode'        => 'auto_enforce',
+				'sensitivity' => 'balanced',
+			),
+			'threat_level'     => 'medium',
+			'stats'            => array(
+				'total_actors'       => 25,
+				'blocked_ips'        => 3,
+				'pending_detections' => 5,
+				'high_threat_count'  => 2,
+				'ai_budget_used'     => 35,
+				'ai_budget_total'    => 200,
+			),
+			'high_risk_actors' => self::get_simulated_high_risk_actors(),
+		);
+	}
+
+	/**
+	 * Get simulated high-risk actors for the status tab.
+	 *
+	 * @return array
+	 */
+	private static function get_simulated_high_risk_actors() {
+		return array(
+			array(
+				'id'              => 1001,
+				'ip'              => '45.33.32.156',
+				'ip_address'      => '45.33.32.156',
+				'country_code'    => 'US',
+				'total_requests'  => 1523,
+				'total_waf_hits'  => 89,
+				'total_waf_events' => 89,
+				'threat_score'    => 92,
+				'is_blocked'      => true,
+				'first_seen'      => gmdate( 'c', time() - 86400 * 3 ),
+				'first_seen_at'   => gmdate( 'c', time() - 86400 * 3 ),
+				'last_seen'       => gmdate( 'c', time() - 3600 ),
+				'last_seen_at'    => gmdate( 'c', time() - 3600 ),
+			),
+			array(
+				'id'              => 1002,
+				'ip'              => '103.235.46.39',
+				'ip_address'      => '103.235.46.39',
+				'country_code'    => 'CN',
+				'total_requests'  => 856,
+				'total_waf_hits'  => 45,
+				'total_waf_events' => 45,
+				'threat_score'    => 78,
+				'is_blocked'      => false,
+				'first_seen'      => gmdate( 'c', time() - 86400 * 5 ),
+				'first_seen_at'   => gmdate( 'c', time() - 86400 * 5 ),
+				'last_seen'       => gmdate( 'c', time() - 7200 ),
+				'last_seen_at'    => gmdate( 'c', time() - 7200 ),
+			),
+		);
+	}
+
+	/**
+	 * Get simulated actor profiles (paginated).
+	 *
+	 * @param array $args Query arguments (page, per_page, filter, search).
+	 * @return array
+	 */
+	public static function get_simulated_actor_profiles( $args = array() ) {
+		$actors = array(
+			array(
+				'id'               => 1001,
+				'ip'               => '45.33.32.156',
+				'ip_address'       => '45.33.32.156',
+				'country_code'     => 'US',
+				'total_requests'   => 1523,
+				'total_waf_hits'   => 89,
+				'total_waf_events' => 89,
+				'total_4xx_errors' => 34,
+				'total_5xx_errors' => 2,
+				'error_4xx'        => 34,
+				'error_5xx'        => 2,
+				'threat_score'     => 92,
+				'is_blocked'       => true,
+				'blocked_at'       => gmdate( 'c', time() - 7200 ),
+				'block_expires_at' => gmdate( 'c', time() + 86400 ),
+				'first_seen'       => gmdate( 'c', time() - 86400 * 3 ),
+				'first_seen_at'    => gmdate( 'c', time() - 86400 * 3 ),
+				'last_seen'        => gmdate( 'c', time() - 3600 ),
+				'last_seen_at'     => gmdate( 'c', time() - 3600 ),
+				'updated_at'       => gmdate( 'c', time() - 3600 ),
+				'user_agents'      => array( 'python-requests/2.28.1', 'curl/7.88.1' ),
+			),
+			array(
+				'id'               => 1002,
+				'ip'               => '103.235.46.39',
+				'ip_address'       => '103.235.46.39',
+				'country_code'     => 'CN',
+				'total_requests'   => 856,
+				'total_waf_hits'   => 45,
+				'total_waf_events' => 45,
+				'total_4xx_errors' => 12,
+				'total_5xx_errors' => 0,
+				'error_4xx'        => 12,
+				'error_5xx'        => 0,
+				'threat_score'     => 78,
+				'is_blocked'       => false,
+				'first_seen'       => gmdate( 'c', time() - 86400 * 5 ),
+				'first_seen_at'    => gmdate( 'c', time() - 86400 * 5 ),
+				'last_seen'        => gmdate( 'c', time() - 7200 ),
+				'last_seen_at'     => gmdate( 'c', time() - 7200 ),
+				'updated_at'       => gmdate( 'c', time() - 7200 ),
+				'user_agents'      => array( 'Mozilla/5.0 (compatible; Googlebot/2.1)' ),
+			),
+			array(
+				'id'               => 1003,
+				'ip'               => '198.51.100.42',
+				'ip_address'       => '198.51.100.42',
+				'country_code'     => 'DE',
+				'total_requests'   => 324,
+				'total_waf_hits'   => 8,
+				'total_waf_events' => 8,
+				'total_4xx_errors' => 3,
+				'total_5xx_errors' => 0,
+				'error_4xx'        => 3,
+				'error_5xx'        => 0,
+				'threat_score'     => 35,
+				'is_blocked'       => false,
+				'first_seen'       => gmdate( 'c', time() - 86400 * 7 ),
+				'first_seen_at'    => gmdate( 'c', time() - 86400 * 7 ),
+				'last_seen'        => gmdate( 'c', time() - 14400 ),
+				'last_seen_at'     => gmdate( 'c', time() - 14400 ),
+				'updated_at'       => gmdate( 'c', time() - 14400 ),
+				'user_agents'      => array( 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' ),
+			),
+			array(
+				'id'               => 1004,
+				'ip'               => '203.0.113.88',
+				'ip_address'       => '203.0.113.88',
+				'country_code'     => 'RU',
+				'total_requests'   => 2100,
+				'total_waf_hits'   => 156,
+				'total_waf_events' => 156,
+				'total_4xx_errors' => 78,
+				'total_5xx_errors' => 5,
+				'error_4xx'        => 78,
+				'error_5xx'        => 5,
+				'threat_score'     => 95,
+				'is_blocked'       => true,
+				'blocked_at'       => gmdate( 'c', time() - 3600 ),
+				'block_expires_at' => null,
+				'first_seen'       => gmdate( 'c', time() - 86400 * 2 ),
+				'first_seen_at'    => gmdate( 'c', time() - 86400 * 2 ),
+				'last_seen'        => gmdate( 'c', time() - 1800 ),
+				'last_seen_at'     => gmdate( 'c', time() - 1800 ),
+				'updated_at'       => gmdate( 'c', time() - 1800 ),
+				'user_agents'      => array( 'sqlmap/1.7', 'nikto/2.1.6' ),
+			),
+			array(
+				'id'               => 1005,
+				'ip'               => '192.0.2.200',
+				'ip_address'       => '192.0.2.200',
+				'country_code'     => 'BR',
+				'total_requests'   => 98,
+				'total_waf_hits'   => 3,
+				'total_waf_events' => 3,
+				'total_4xx_errors' => 1,
+				'total_5xx_errors' => 0,
+				'error_4xx'        => 1,
+				'error_5xx'        => 0,
+				'threat_score'     => 15,
+				'is_blocked'       => false,
+				'first_seen'       => gmdate( 'c', time() - 86400 * 10 ),
+				'first_seen_at'    => gmdate( 'c', time() - 86400 * 10 ),
+				'last_seen'        => gmdate( 'c', time() - 43200 ),
+				'last_seen_at'     => gmdate( 'c', time() - 43200 ),
+				'updated_at'       => gmdate( 'c', time() - 43200 ),
+				'user_agents'      => array( 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)' ),
+			),
+		);
+
+		// Apply filter.
+		$filter = isset( $args['filter'] ) ? $args['filter'] : 'all';
+		if ( 'blocked' === $filter ) {
+			$actors = array_values( array_filter( $actors, function ( $a ) {
+				return ! empty( $a['is_blocked'] );
+			} ) );
+		} elseif ( 'high_risk' === $filter ) {
+			$actors = array_values( array_filter( $actors, function ( $a ) {
+				return ( $a['threat_score'] ?? 0 ) >= 70;
+			} ) );
+		}
+
+		// Apply search.
+		if ( ! empty( $args['search'] ) ) {
+			$search = $args['search'];
+			$actors = array_values( array_filter( $actors, function ( $a ) use ( $search ) {
+				return stripos( $a['ip'], $search ) !== false;
+			} ) );
+		}
+
+		$total = count( $actors );
+		$page  = isset( $args['page'] ) ? max( 1, (int) $args['page'] ) : 1;
+		$per   = isset( $args['per_page'] ) ? max( 1, (int) $args['per_page'] ) : 25;
+		$slice = array_slice( $actors, ( $page - 1 ) * $per, $per );
+
+		return array(
+			'actors'     => $slice,
+			'pagination' => array(
+				'current_page' => $page,
+				'per_page'     => $per,
+				'total'        => $total,
+				'total_pages'  => max( 1, (int) ceil( $total / $per ) ),
+			),
+		);
+	}
+
+	/**
+	 * Get simulated threat detections (paginated).
+	 *
+	 * @param array $args Query arguments (page, per_page, status).
+	 * @return array
+	 */
+	public static function get_simulated_threat_detections( $args = array() ) {
+		$detections = array(
+			array(
+				'id'              => 2001,
+				'score'           => 92,
+				'confidence'      => 87,
+				'threat_level'    => 'critical',
+				'status'          => 'auto_blocked',
+				'ip_address'      => '45.33.32.156',
+				'created_at'      => gmdate( 'c', time() - 7200 ),
+				'detected_at'     => gmdate( 'c', time() - 7200 ),
+				'reasons'         => array( 'SQL injection patterns', 'High WAF hit rate', 'Known malicious user agent' ),
+				'key_indicators'  => array( 'SQL injection patterns', 'High WAF hit rate', 'Known malicious user agent' ),
+				'reasons_summary' => array( 'SQL injection patterns', 'High WAF hit rate' ),
+				'actor'           => array(
+					'id'               => 1001,
+					'ip'               => '45.33.32.156',
+					'ip_address'       => '45.33.32.156',
+					'country_code'     => 'US',
+					'total_requests'   => 1523,
+					'total_waf_hits'   => 89,
+					'waf_hits'         => 89,
+					'total_4xx_errors' => 34,
+					'total_5xx_errors' => 2,
+					'error_4xx'        => 34,
+					'error_5xx'        => 2,
+					'first_seen'       => gmdate( 'c', time() - 86400 * 3 ),
+					'first_seen_at'    => gmdate( 'c', time() - 86400 * 3 ),
+					'last_seen'        => gmdate( 'c', time() - 3600 ),
+					'last_seen_at'     => gmdate( 'c', time() - 3600 ),
+					'updated_at'       => gmdate( 'c', time() - 3600 ),
+				),
+			),
+			array(
+				'id'              => 2002,
+				'score'           => 78,
+				'confidence'      => 72,
+				'threat_level'    => 'high',
+				'status'          => 'pending_review',
+				'ip_address'      => '103.235.46.39',
+				'created_at'      => gmdate( 'c', time() - 14400 ),
+				'detected_at'     => gmdate( 'c', time() - 14400 ),
+				'reasons'         => array( 'Directory traversal attempts', 'Suspicious user agent rotation' ),
+				'key_indicators'  => array( 'Directory traversal attempts', 'Suspicious user agent rotation' ),
+				'reasons_summary' => array( 'Directory traversal attempts' ),
+				'actor'           => array(
+					'id'               => 1002,
+					'ip'               => '103.235.46.39',
+					'ip_address'       => '103.235.46.39',
+					'country_code'     => 'CN',
+					'total_requests'   => 856,
+					'total_waf_hits'   => 45,
+					'waf_hits'         => 45,
+					'total_4xx_errors' => 12,
+					'total_5xx_errors' => 0,
+					'error_4xx'        => 12,
+					'error_5xx'        => 0,
+					'first_seen'       => gmdate( 'c', time() - 86400 * 5 ),
+					'first_seen_at'    => gmdate( 'c', time() - 86400 * 5 ),
+					'last_seen'        => gmdate( 'c', time() - 7200 ),
+					'last_seen_at'     => gmdate( 'c', time() - 7200 ),
+					'updated_at'       => gmdate( 'c', time() - 7200 ),
+				),
+			),
+			array(
+				'id'              => 2003,
+				'score'           => 95,
+				'confidence'      => 91,
+				'threat_level'    => 'critical',
+				'status'          => 'user_blocked',
+				'ip_address'      => '203.0.113.88',
+				'created_at'      => gmdate( 'c', time() - 3600 ),
+				'detected_at'     => gmdate( 'c', time() - 3600 ),
+				'reasons'         => array( 'Automated SQL injection tool', 'Nikto scan detected', 'Extremely high WAF events' ),
+				'key_indicators'  => array( 'Automated SQL injection tool', 'Nikto scan detected', 'Extremely high WAF events' ),
+				'reasons_summary' => array( 'Automated SQL injection tool', 'Nikto scan detected' ),
+				'ai_analysis'     => 'This IP exhibits classic automated attack tool behavior. The sqlmap user agent combined with high-frequency WAF triggers indicates an active SQL injection campaign. Immediate blocking recommended.',
+				'actor'           => array(
+					'id'               => 1004,
+					'ip'               => '203.0.113.88',
+					'ip_address'       => '203.0.113.88',
+					'country_code'     => 'RU',
+					'total_requests'   => 2100,
+					'total_waf_hits'   => 156,
+					'waf_hits'         => 156,
+					'total_4xx_errors' => 78,
+					'total_5xx_errors' => 5,
+					'error_4xx'        => 78,
+					'error_5xx'        => 5,
+					'first_seen'       => gmdate( 'c', time() - 86400 * 2 ),
+					'first_seen_at'    => gmdate( 'c', time() - 86400 * 2 ),
+					'last_seen'        => gmdate( 'c', time() - 1800 ),
+					'last_seen_at'     => gmdate( 'c', time() - 1800 ),
+					'updated_at'       => gmdate( 'c', time() - 1800 ),
+				),
+			),
+			array(
+				'id'              => 2004,
+				'score'           => 55,
+				'confidence'      => 60,
+				'threat_level'    => 'medium',
+				'status'          => 'pending_review',
+				'ip_address'      => '198.51.100.42',
+				'created_at'      => gmdate( 'c', time() - 28800 ),
+				'detected_at'     => gmdate( 'c', time() - 28800 ),
+				'reasons'         => array( 'Elevated error rate', 'Minor WAF triggers' ),
+				'key_indicators'  => array( 'Elevated error rate', 'Minor WAF triggers' ),
+				'reasons_summary' => array( 'Elevated error rate' ),
+				'actor'           => array(
+					'id'               => 1003,
+					'ip'               => '198.51.100.42',
+					'ip_address'       => '198.51.100.42',
+					'country_code'     => 'DE',
+					'total_requests'   => 324,
+					'total_waf_hits'   => 8,
+					'waf_hits'         => 8,
+					'total_4xx_errors' => 3,
+					'total_5xx_errors' => 0,
+					'error_4xx'        => 3,
+					'error_5xx'        => 0,
+					'first_seen'       => gmdate( 'c', time() - 86400 * 7 ),
+					'first_seen_at'    => gmdate( 'c', time() - 86400 * 7 ),
+					'last_seen'        => gmdate( 'c', time() - 14400 ),
+					'last_seen_at'     => gmdate( 'c', time() - 14400 ),
+					'updated_at'       => gmdate( 'c', time() - 14400 ),
+				),
+			),
+			array(
+				'id'              => 2005,
+				'score'           => 40,
+				'confidence'      => 45,
+				'threat_level'    => 'low',
+				'status'          => 'dismissed',
+				'ip_address'      => '192.0.2.200',
+				'created_at'      => gmdate( 'c', time() - 86400 ),
+				'detected_at'     => gmdate( 'c', time() - 86400 ),
+				'reasons'         => array( 'Unusual request patterns' ),
+				'key_indicators'  => array( 'Unusual request patterns' ),
+				'reasons_summary' => array( 'Unusual request patterns' ),
+				'actor'           => array(
+					'id'               => 1005,
+					'ip'               => '192.0.2.200',
+					'ip_address'       => '192.0.2.200',
+					'country_code'     => 'BR',
+					'total_requests'   => 98,
+					'total_waf_hits'   => 3,
+					'waf_hits'         => 3,
+					'total_4xx_errors' => 1,
+					'total_5xx_errors' => 0,
+					'error_4xx'        => 1,
+					'error_5xx'        => 0,
+					'first_seen'       => gmdate( 'c', time() - 86400 * 10 ),
+					'first_seen_at'    => gmdate( 'c', time() - 86400 * 10 ),
+					'last_seen'        => gmdate( 'c', time() - 43200 ),
+					'last_seen_at'     => gmdate( 'c', time() - 43200 ),
+					'updated_at'       => gmdate( 'c', time() - 43200 ),
+				),
+			),
+		);
+
+		// Apply status filter.
+		$status = isset( $args['status'] ) ? $args['status'] : 'all';
+		if ( 'all' !== $status && ! empty( $status ) ) {
+			$detections = array_values( array_filter( $detections, function ( $d ) use ( $status ) {
+				return $d['status'] === $status;
+			} ) );
+		}
+
+		$total = count( $detections );
+		$page  = isset( $args['page'] ) ? max( 1, (int) $args['page'] ) : 1;
+		$per   = isset( $args['per_page'] ) ? max( 1, (int) $args['per_page'] ) : 25;
+		$slice = array_slice( $detections, ( $page - 1 ) * $per, $per );
+
+		return array(
+			'detections' => $slice,
+			'pagination' => array(
+				'current_page' => $page,
+				'per_page'     => $per,
+				'total'        => $total,
+				'total_pages'  => max( 1, (int) ceil( $total / $per ) ),
+			),
+		);
+	}
+
+	/**
+	 * Get simulated threat detection detail.
+	 *
+	 * @param int $detection_id The detection ID.
+	 * @return array|null Detection detail or null if not found.
+	 */
+	public static function get_simulated_threat_detection_detail( $detection_id ) {
+		$all = self::get_simulated_threat_detections();
+		foreach ( $all['detections'] as $detection ) {
+			if ( (int) $detection['id'] === (int) $detection_id ) {
+				return array(
+					'detection' => $detection,
+					'actor'     => $detection['actor'],
+				);
+			}
+		}
+
+		// Return the first detection as fallback for any unknown ID.
+		if ( ! empty( $all['detections'] ) ) {
+			$first = $all['detections'][0];
+			return array(
+				'detection' => $first,
+				'actor'     => $first['actor'],
+			);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Simulate a successful block IP response.
+	 *
+	 * @param string $ip IP address.
+	 * @return array
+	 */
+	public static function simulate_block_ip( $ip ) {
+		return array(
+			'message'          => sprintf(
+				/* translators: %s: IP address */
+				__( '[Dev Mode] IP %s has been blocked.', 'atomic-edge-security' ),
+				$ip
+			),
+			'ip'               => $ip,
+			'is_blocked'       => true,
+			'blocked_at'       => gmdate( 'c' ),
+			'block_expires_at' => gmdate( 'c', time() + 86400 ),
+		);
+	}
+
+	/**
+	 * Simulate a successful unblock IP response.
+	 *
+	 * @param string $ip IP address.
+	 * @return array
+	 */
+	public static function simulate_unblock_ip( $ip ) {
+		return array(
+			'message' => sprintf(
+				/* translators: %s: IP address */
+				__( '[Dev Mode] IP %s has been unblocked.', 'atomic-edge-security' ),
+				$ip
+			),
+			'ip'      => $ip,
+		);
+	}
+
+	/**
+	 * Simulate a successful dismiss detection response.
+	 *
+	 * @param int $detection_id Detection ID.
+	 * @return array
+	 */
+	public static function simulate_dismiss_detection( $detection_id ) {
+		return array(
+			'message' => sprintf(
+				/* translators: %d: Detection ID */
+				__( '[Dev Mode] Detection #%d has been dismissed.', 'atomic-edge-security' ),
+				$detection_id
+			),
+			'id'      => $detection_id,
+			'status'  => 'dismissed',
+		);
+	}
+
+	/**
+	 * Simulate a successful delete actor response.
+	 *
+	 * @param int $actor_id Actor profile ID.
+	 * @return array
+	 */
+	public static function simulate_delete_actor( $actor_id ) {
+		return array(
+			'message' => sprintf(
+				/* translators: %d: Actor profile ID */
+				__( '[Dev Mode] Actor profile #%d has been deleted.', 'atomic-edge-security' ),
+				$actor_id
+			),
+			'id'      => $actor_id,
+		);
+	}
 }

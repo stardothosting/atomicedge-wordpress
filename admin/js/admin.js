@@ -66,6 +66,19 @@
                 $('.atomicedge-tab-content').removeClass('atomicedge-tab-active');
                 $('#' + tab).addClass('atomicedge-tab-active');
             });
+
+            // Support ?tab= query param to pre-select a tab on page load.
+            var params = new URLSearchParams(window.location.search);
+            var requestedTab = params.get('tab');
+            if (requestedTab) {
+                var $target = $('.atomicedge-tabs .nav-tab[data-tab="ip-' + requestedTab + '"]');
+                if ($target.length === 0) {
+                    $target = $('.atomicedge-tabs .nav-tab[data-tab="' + requestedTab + '"]');
+                }
+                if ($target.length) {
+                    $target.trigger('click');
+                }
+            }
         },
 
         /**
@@ -379,22 +392,30 @@
 
             var self = this;
             logs.forEach(function(log) {
+                var actionCell;
+                if (log.is_blocked) {
+                    actionCell = '<span class="atomicedge-blocked-badge" title="This IP is in your blacklist" style="color:#b32d2e;font-weight:600;">' +
+                        '<span class="dashicons dashicons-lock" style="font-size:14px;width:14px;height:14px;margin-top:3px;"></span> Blocked</span>';
+                } else {
+                    actionCell = '<button type="button" class="button button-small atomicedge-block-ip" data-ip="' + self.escapeHtml(log.client_ip || '') + '">Block IP</button>';
+                }
                 var row = '<tr>' +
                     '<td>' + self.escapeHtml(log.event_timestamp || '') + '</td>' +
                     '<td><code>' + self.escapeHtml(log.client_ip || '') + '</code></td>' +
                     '<td>' + self.escapeHtml(log.uri || '').substring(0, 50) + '</td>' +
                     '<td><code>' + self.escapeHtml(log.waf_rule_id || '') + '</code></td>' +
                     '<td>' + self.escapeHtml(log.group || '') + '</td>' +
-                    '<td><button type="button" class="button button-small atomicedge-block-ip" data-ip="' + self.escapeHtml(log.client_ip || '') + '">Block IP</button></td>' +
+                    '<td>' + actionCell + '</td>' +
                     '</tr>';
                 $tbody.append(row);
             });
 
             // Bind block IP buttons
             $tbody.find('.atomicedge-block-ip').on('click', function() {
-                var ip = $(this).data('ip');
+                var $btn = $(this);
+                var ip = $btn.data('ip');
                 if (confirm(atomicedgeAdmin.strings.confirm)) {
-                    self.addIpBlacklist(ip, 'Blocked from WAF logs');
+                    self.addIpBlacklist(ip, 'Blocked from WAF logs on ' + self.formatTimestamp(), $btn);
                 }
             });
 
@@ -424,7 +445,7 @@
                 var desc = $('#whitelist-description').val();
 
                 if (!self.validateIp(ip)) {
-                    alert(atomicedgeAdmin.strings.invalidIp);
+                    self.showNotice(atomicedgeAdmin.strings.invalidIp, 'error');
                     return;
                 }
 
@@ -438,7 +459,7 @@
                 var desc = $('#blacklist-description').val();
 
                 if (!self.validateIp(ip)) {
-                    alert(atomicedgeAdmin.strings.invalidIp);
+                    self.showNotice(atomicedgeAdmin.strings.invalidIp, 'error');
                     return;
                 }
 
@@ -473,21 +494,52 @@
         },
 
         /**
+         * Parse source label from a blacklist description.
+         *
+         * @param  {string} description e.g. "Blocked from WAF logs on 2026-02-27 14:35 UTC"
+         * @return {string} e.g. "WAF Logs" or "Manual"
+         */
+        parseBlockSource: function(description) {
+            if (!description) {
+                return 'Manual';
+            }
+            var lower = description.toLowerCase();
+            if (lower.indexOf('waf log') !== -1)              return 'WAF Logs';
+            if (lower.indexOf('actor profile') !== -1)        return 'Actor Profiles';
+            if (lower.indexOf('threat detection') !== -1)     return 'Threat Detections';
+            if (lower.indexOf('adaptive defense') !== -1)     return 'Adaptive Defense';
+            return 'Manual';
+        },
+
+        /**
          * Render IP list
          */
         renderIpList: function(type, ips) {
             var $tbody = $('#atomicedge-' + type + '-body');
+            var isBlacklist = (type === 'blacklist');
+            var cols = isBlacklist ? 4 : 3;
             $tbody.empty();
 
             if (ips.length === 0) {
-                $tbody.html('<tr><td colspan="3">No IPs in ' + type + '</td></tr>');
+                $tbody.html('<tr><td colspan="' + cols + '">No IPs in ' + type + '</td></tr>');
                 return;
             }
 
             var self = this;
             ips.forEach(function(item) {
+                var sourceCell = '';
+                if (isBlacklist) {
+                    var sourceLabel = self.parseBlockSource(item.description);
+                    var badgeClass = 'atomicedge-source-manual';
+                    if (sourceLabel === 'WAF Logs')           badgeClass = 'atomicedge-source-waf';
+                    if (sourceLabel === 'Actor Profiles')     badgeClass = 'atomicedge-source-actor';
+                    if (sourceLabel === 'Threat Detections')  badgeClass = 'atomicedge-source-detection';
+                    if (sourceLabel === 'Adaptive Defense')   badgeClass = 'atomicedge-source-ad';
+                    sourceCell = '<td><span class="atomicedge-source-badge ' + badgeClass + '">' + self.escapeHtml(sourceLabel) + '</span></td>';
+                }
                 var row = '<tr>' +
                     '<td><code>' + self.escapeHtml(item.ip) + '</code></td>' +
+                    sourceCell +
                     '<td>' + self.escapeHtml(item.description || '') + '</td>' +
                     '<td><button type="button" class="button button-small atomicedge-remove-ip" data-ip="' + self.escapeHtml(item.ip) + '" data-type="' + type + '">Remove</button></td>' +
                     '</tr>';
@@ -518,14 +570,65 @@
 
         /**
          * Add IP to blacklist
+         *
+         * @param {string}  ip          IP address or CIDR.
+         * @param {string}  description Optional description.
+         * @param {jQuery}  $button     Optional button element to update on success.
          */
-        addIpBlacklist: function(ip, description) {
+        addIpBlacklist: function(ip, description, $button) {
             var self = this;
+
+            if ($button) {
+                $button.prop('disabled', true).text(atomicedgeAdmin.strings.loading);
+            }
+
             this.ajax('atomicedge_add_ip_blacklist', { ip: ip, description: description }, function() {
+                // Clear form fields if on access control page.
                 $('#blacklist-ip').val('');
                 $('#blacklist-description').val('');
                 self.loadIpRules();
+
+                // If on WAF logs page, reload the table so is_blocked badges
+                // reflect the authoritative server state (cache was invalidated
+                // server-side by the add_ip_blacklist API call).
+                if ($('#atomicedge-waf-table').length) {
+                    self.loadWafLogs();
+                }
+
+                // Update button to show blocked state (immediate feedback before
+                // the WAF logs reload finishes).
+                if ($button) {
+                    $button.prop('disabled', true)
+                        .removeClass('button-small')
+                        .addClass('atomicedge-blocked-btn')
+                        .html('<span class="dashicons dashicons-yes-alt" style="margin-top:3px;color:#00a32a;"></span> Blocked');
+                }
+
+                var noticeMsg = ip + ' has been added to the block list.';
+                // If blocked from outside Access Control, direct user there.
+                if ($button) {
+                    noticeMsg += ' Manage blocks in Access Control.';
+                }
+                self.showNotice(noticeMsg, 'success');
+            }, function(errData) {
+                if ($button) {
+                    $button.prop('disabled', false).text('Block IP');
+                }
+                var message = (errData && errData.message) ? errData.message : atomicedgeAdmin.strings.error;
+                self.showNotice(message, 'error');
             });
+        },
+
+        /**
+         * Format current date/time as a human-readable timestamp.
+         *
+         * @return {string} e.g. "2026-02-27 14:35 UTC"
+         */
+        formatTimestamp: function() {
+            var d = new Date();
+            var pad = function(n) { return n < 10 ? '0' + n : n; };
+            return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()) +
+                ' ' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ' UTC';
         },
 
         /**
@@ -535,6 +638,7 @@
             var self = this;
             this.ajax('atomicedge_remove_ip', { ip: ip, type: type }, function() {
                 self.loadIpRules();
+                self.showNotice(self.escapeHtml(ip) + ' has been removed from the ' + self.escapeHtml(type) + '.', 'success');
             });
         },
 
@@ -1207,6 +1311,7 @@
          * AJAX helper
          */
         ajax: function(action, data, success, error) {
+            var self = this;
             data = data || {};
             data.action = action;
             data.nonce = atomicedgeAdmin.nonce;
@@ -1224,7 +1329,8 @@
                         if (typeof error === 'function') {
                             error(response.data);
                         } else {
-                            alert(response.data.message || atomicedgeAdmin.strings.error);
+                            var message = (response.data && response.data.message) ? response.data.message : atomicedgeAdmin.strings.error;
+                            self.showNotice(message, 'error');
                         }
                     }
                 },
@@ -1232,7 +1338,7 @@
                     if (typeof error === 'function') {
                         error();
                     } else {
-                        alert(atomicedgeAdmin.strings.error);
+                        self.showNotice(atomicedgeAdmin.strings.error, 'error');
                     }
                 }
             });
@@ -1255,6 +1361,35 @@
          */
         formatNumber: function(num) {
             return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        },
+
+        /**
+         * Show a temporary admin notice.
+         *
+         * @param {string} message Notice message.
+         * @param {string} type    Notice type (success, error, warning, info).
+         */
+        showNotice: function(message, type) {
+            type = type || 'info';
+            var $notice = $(
+                '<div class="notice notice-' + type + ' is-dismissible atomicedge-notice">' +
+                '<p>' + this.escapeHtml(message) + '</p>' +
+                '<button type="button" class="notice-dismiss"><span class="screen-reader-text">Dismiss this notice.</span></button>' +
+                '</div>'
+            );
+
+            // Insert at top of page content.
+            $('.wrap h1').first().after($notice);
+
+            // Bind dismiss handler.
+            $notice.find('.notice-dismiss').on('click', function() {
+                $notice.fadeOut(200, function() { $(this).remove(); });
+            });
+
+            // Auto dismiss after 5 seconds.
+            setTimeout(function() {
+                $notice.fadeOut(200, function() { $(this).remove(); });
+            }, 5000);
         },
 
         /**

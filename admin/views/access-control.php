@@ -107,13 +107,14 @@ $atomicedge_dev_mode = AtomicEdge_Dev_Mode::is_enabled();
 				<thead>
 					<tr>
 						<th class="column-ip"><?php esc_html_e( 'IP/CIDR', 'atomic-edge-security' ); ?></th>
+						<th class="column-source"><?php esc_html_e( 'Source', 'atomic-edge-security' ); ?></th>
 						<th class="column-description"><?php esc_html_e( 'Description', 'atomic-edge-security' ); ?></th>
 						<th class="column-actions"><?php esc_html_e( 'Actions', 'atomic-edge-security' ); ?></th>
 					</tr>
 				</thead>
 				<tbody id="atomicedge-blacklist-body">
 					<tr class="atomicedge-loading-row">
-						<td colspan="3">
+						<td colspan="4">
 							<span class="spinner is-active"></span>
 							<?php esc_html_e( 'Loading...', 'atomic-edge-security' ); ?>
 						</td>

@@ -22,7 +22,7 @@ $atomicedge_is_connected = $atomicedge_dev_mode ? true : $this->api->is_connecte
 
 // Tab navigation.
 $current_tab = isset( $_GET['tab'] ) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'status';
-$valid_tabs  = array( 'status', 'blocked', 'actors', 'detections' );
+$valid_tabs  = array( 'status', 'actors', 'detections' );
 if ( ! in_array( $current_tab, $valid_tabs, true ) ) {
 	$current_tab = 'status';
 }
@@ -32,10 +32,6 @@ $tabs = array(
 	'status'     => array(
 		'label' => __( 'Status', 'atomic-edge-security' ),
 		'icon'  => 'dashicons-shield-alt',
-	),
-	'blocked'    => array(
-		'label' => __( 'Blocked IPs', 'atomic-edge-security' ),
-		'icon'  => 'dashicons-dismiss',
 	),
 	'actors'     => array(
 		'label' => __( 'Actor Profiles', 'atomic-edge-security' ),
@@ -97,9 +93,7 @@ $tabs = array(
 			<div class="atomicedge-ad-tab-content">
 				<?php
 				switch ( $current_tab ) {
-					case 'blocked':
-						include ATOMICEDGE_PLUGIN_DIR . 'admin/views/partials/adaptive-defense-blocked-tab.php';
-						break;
+
 					case 'actors':
 						include ATOMICEDGE_PLUGIN_DIR . 'admin/views/partials/adaptive-defense-actors-tab.php';
 						break;

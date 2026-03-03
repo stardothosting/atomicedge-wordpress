@@ -7,7 +7,7 @@ Connect your WordPress site to Atomic Edge for enterprise-grade WAF protection, 
 | Requires at least | WordPress 5.8 |
 | Tested up to | WordPress 6.9 |
 | Requires PHP | 7.4 |
-| Stable tag | 2.4.5 |
+| Stable tag | 2.4.6 |
 | License | GPLv2 or later |
 | License URI | https://www.gnu.org/licenses/gpl-2.0.html |
 
@@ -115,6 +115,13 @@ The plugin automatically detects and uses the best available option.
 9. Adaptive Defense dashboard showing AI-powered threat detections and automatic IP blocking
 
 ## Changelog
+
+### 2.4.6
+
+- FIX: Adaptive Defense dev mode now provides simulated data for all 8 AJAX endpoints (overview, actor profiles, threat detections, detection detail, block/unblock IP, dismiss detection, delete actor)
+- FIX: Fixed duplicate detail rows appending on repeated "View Details" clicks in Threat Detections tab by replacing invalid `<div>`-wrapped `<tr>` template with HTML5 `<template>` element
+- FIX: Added JS field name fallback chains for API response compatibility across versions
+- NEW: Added 36 new tests for Adaptive Defense dev mode simulation and AJAX interception
 
 ### 2.4.5
 

@@ -188,10 +188,11 @@ class AtomicEdge {
 			'atomicedge-admin',
 			'atomicedgeAdmin',
 			array(
-				'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
-				'nonce'     => wp_create_nonce( 'atomicedge_ajax' ),
-				'connected' => $this->api->is_connected(),
-				'strings'   => array(
+				'ajaxUrl'          => admin_url( 'admin-ajax.php' ),
+				'nonce'            => wp_create_nonce( 'atomicedge_ajax' ),
+				'connected'        => $this->api->is_connected(),
+				'accessControlUrl' => admin_url( 'admin.php?page=atomicedge-access-control&tab=blacklist' ),
+				'strings'          => array(
 					'loading'      => esc_html__( 'Loading...', 'atomic-edge-security' ),
 					'error'        => esc_html__( 'An error occurred. Please try again.', 'atomic-edge-security' ),
 					'success'      => esc_html__( 'Success!', 'atomic-edge-security' ),
@@ -219,8 +220,9 @@ class AtomicEdge {
 				'atomicedge-adaptive-defense',
 				'atomicedge_admin',
 				array(
-					'ajax_url' => admin_url( 'admin-ajax.php' ),
-					'nonce'    => wp_create_nonce( 'atomicedge_ajax' ),
+					'ajax_url'           => admin_url( 'admin-ajax.php' ),
+					'nonce'              => wp_create_nonce( 'atomicedge_ajax' ),
+					'access_control_url' => admin_url( 'admin.php?page=atomicedge-access-control&tab=blacklist' ),
 				)
 			);
 		}

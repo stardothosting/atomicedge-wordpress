@@ -1,0 +1,2982 @@
+# Translation of Atomic Edge Security in English (Canada)
+# This file is distributed under the GPL v2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Atomic Edge Security 2.4.5\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/atomic-edge-security\n"
+"Last-Translator: Atomic Edge <support@atomicedge.io>\n"
+"Language-Team: English (Canada)\n"
+"Language: en_CA\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-02-26T20:19:17+00:00\n"
+"PO-Revision-Date: 2026-02-26T20:19:17+00:00\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Copilot i18n helper\n"
+"X-Domain: atomic-edge-security\n"
+
+#. Plugin Name of the plugin
+#: atomicedge.php
+#: includes/class-atomicedge-admin.php:59
+msgid "Atomic Edge Security"
+msgstr "Atomic Edge Security"
+
+#. Plugin URI of the plugin
+#: atomicedge.php
+msgid "https://atomicedge.io/wordpress"
+msgstr "https://atomicedge.io/wordpress"
+
+#. Description of the plugin
+#: atomicedge.php
+msgid "Connect your WordPress site to Atomic Edge WAF/CDN for advanced security protection, analytics, and access control management."
+msgstr "Connect your WordPress site to Atomic Edge WAF/CDN for advanced security protection, analytics, and access control management."
+
+#. Author of the plugin
+#: atomicedge.php
+#: admin/views/2fa-settings.php:40
+#: admin/views/access-control.php:17
+#: admin/views/adaptive-defense.php:51
+#: admin/views/analytics.php:17
+#: admin/views/cdn.php:66
+#: admin/views/dashboard.php:19
+#: admin/views/scanner.php:18
+#: admin/views/settings.php:19
+#: admin/views/vulnerability-scanner.php:19
+#: admin/views/waf-logs.php:17
+#: includes/class-atomicedge-admin.php:60
+#: includes/class-atomicedge-admin.php:608
+msgid "Atomic Edge"
+msgstr "Atomic Edge"
+
+#. Author URI of the plugin
+#: atomicedge.php
+msgid "https://atomicedge.io"
+msgstr "https://atomicedge.io"
+
+#: admin/views/2fa-audit.php:37
+#: admin/views/partials/2fa-audit-tab.php:37
+msgid "All Events"
+msgstr "All Events"
+
+#: admin/views/2fa-audit.php:38
+#: admin/views/partials/2fa-audit-tab.php:38
+msgid "Enrollment Started"
+msgstr "Enrollment Started"
+
+#: admin/views/2fa-audit.php:39
+#: admin/views/partials/2fa-audit-tab.php:39
+msgid "Enrollment Completed"
+msgstr "Enrollment Completed"
+
+#: admin/views/2fa-audit.php:40
+#: admin/views/partials/2fa-audit-tab.php:40
+msgid "Enrollment Cancelled"
+msgstr "Enrollment Cancelled"
+
+#: admin/views/2fa-audit.php:41
+#: admin/views/2fa-users.php:141
+#: admin/views/partials/2fa-audit-tab.php:41
+#: admin/views/partials/2fa-users-tab.php:128
+msgid "2FA Disabled"
+msgstr "2FA Disabled"
+
+#: admin/views/2fa-audit.php:42
+#: admin/views/partials/2fa-audit-tab.php:42
+msgid "Backup Codes Regenerated"
+msgstr "Backup Codes Regenerated"
+
+#: admin/views/2fa-audit.php:43
+#: admin/views/partials/2fa-audit-tab.php:43
+msgid "Backup Code Used"
+msgstr "Backup Code Used"
+
+#: admin/views/2fa-audit.php:44
+#: admin/views/partials/2fa-audit-tab.php:44
+msgid "Login Success"
+msgstr "Login Success"
+
+#: admin/views/2fa-audit.php:45
+#: admin/views/partials/2fa-audit-tab.php:45
+msgid "Login Failed"
+msgstr "Login Failed"
+
+#: admin/views/2fa-audit.php:46
+#: admin/views/partials/2fa-audit-tab.php:46
+msgid "Rate Limited"
+msgstr "Rate Limited"
+
+#: admin/views/2fa-audit.php:47
+#: admin/views/partials/2fa-audit-tab.php:47
+msgid "Admin Reset"
+msgstr "Admin Reset"
+
+#: admin/views/2fa-audit.php:51
+msgid "2FA Audit Log"
+msgstr "2FA Audit Log"
+
+#: admin/views/2fa-audit.php:54
+#: admin/views/partials/2fa-audit-tab.php:52
+msgid "Security audit log showing all 2FA-related events. Logs are retained for 90 days."
+msgstr "Security audit log showing all 2FA-related events. Logs are retained for 90 days."
+
+#: admin/views/2fa-audit.php:61
+#: admin/views/partials/2fa-audit-tab.php:59
+msgid "Events (30 days)"
+msgstr "Events (30 days)"
+
+#: admin/views/2fa-audit.php:65
+#: admin/views/partials/2fa-audit-tab.php:63
+msgid "Successful Logins"
+msgstr "Successful Logins"
+
+#: admin/views/2fa-audit.php:69
+#: admin/views/partials/2fa-audit-tab.php:67
+msgid "Failed Attempts"
+msgstr "Failed Attempts"
+
+#: admin/views/2fa-audit.php:73
+#: admin/views/partials/2fa-audit-tab.php:71
+msgid "Backup Codes Used"
+msgstr "Backup Codes Used"
+
+#: admin/views/2fa-audit.php:90
+#: admin/views/partials/2fa-audit-tab.php:89
+msgid "Filter by User ID"
+msgstr "Filter by User ID"
+
+#: admin/views/2fa-audit.php:92
+#: admin/views/partials/2fa-audit-tab.php:91
+#: admin/views/partials/adaptive-defense-actors-tab.php:27
+msgid "Filter"
+msgstr "Filter"
+
+#: admin/views/2fa-audit.php:96
+#: admin/views/partials/2fa-audit-tab.php:95
+msgid "Clear Filters"
+msgstr "Clear Filters"
+
+#: admin/views/2fa-audit.php:104
+#: admin/views/partials/2fa-audit-tab.php:103
+msgid "Export CSV"
+msgstr "Export CSV"
+
+#: admin/views/2fa-audit.php:112
+#: admin/views/2fa-audit.php:263
+#: admin/views/partials/2fa-audit-tab.php:111
+#: admin/views/partials/2fa-audit-tab.php:251
+msgid "Date/Time"
+msgstr "Date/Time"
+
+#: admin/views/2fa-audit.php:113
+#: admin/views/2fa-audit.php:264
+#: admin/views/2fa-policy.php:205
+#: admin/views/partials/2fa-audit-tab.php:112
+#: admin/views/partials/2fa-audit-tab.php:252
+#: admin/views/partials/2fa-policy-tab.php:191
+msgid "User"
+msgstr "User"
+
+#: admin/views/2fa-audit.php:114
+#: admin/views/2fa-audit.php:265
+#: admin/views/partials/2fa-audit-tab.php:113
+#: admin/views/partials/2fa-audit-tab.php:253
+msgid "Event"
+msgstr "Event"
+
+#: admin/views/2fa-audit.php:115
+#: admin/views/2fa-audit.php:266
+#: admin/views/partials/2fa-audit-tab.php:114
+#: admin/views/partials/2fa-audit-tab.php:254
+#: admin/views/partials/adaptive-defense-actors-tab.php:58
+#: admin/views/partials/adaptive-defense-blocked-tab.php:29
+#: admin/views/partials/adaptive-defense-blocked-tab.php:61
+#: admin/views/partials/adaptive-defense-detections-tab.php:53
+#: admin/views/partials/adaptive-defense-detections-tab.php:119
+#: admin/views/partials/adaptive-defense-status-tab.php:92
+#: admin/views/waf-logs.php:54
+msgid "IP Address"
+msgstr "IP Address"
+
+#: admin/views/2fa-audit.php:116
+#: admin/views/partials/2fa-audit-tab.php:115
+msgid "Admin"
+msgstr "Admin"
+
+#: admin/views/2fa-audit.php:123
+#: admin/views/partials/2fa-audit-tab.php:122
+msgid "No audit log entries found."
+msgstr "No audit log entries found."
+
+#: admin/views/2fa-audit.php:166
+msgid "Action performed by %s"
+msgstr "Action performed by %s"
+
+#. translators: %s: number of items
+#: admin/views/2fa-audit.php:187
+#: admin/views/partials/2fa-audit-tab.php:184
+msgid "%s item"
+msgid_plural "%s items"
+msgstr[0] "%s item"
+msgstr[1] "%s items"
+
+#: admin/views/2fa-audit.php:208
+msgid "First page"
+msgstr "First page"
+
+#: admin/views/2fa-audit.php:213
+msgid "Previous page"
+msgstr "Previous page"
+
+#: admin/views/2fa-audit.php:224
+msgid "of"
+msgstr "of"
+
+#: admin/views/2fa-audit.php:235
+msgid "Next page"
+msgstr "Next page"
+
+#: admin/views/2fa-audit.php:240
+msgid "Last page"
+msgstr "Last page"
+
+#: admin/views/2fa-audit.php:257
+#: admin/views/partials/2fa-audit-tab.php:245
+msgid "Recent Security Events"
+msgstr "Recent Security Events"
+
+#: admin/views/2fa-audit.php:258
+#: admin/views/partials/2fa-audit-tab.php:246
+msgid "Failed logins, rate limits, and admin actions."
+msgstr "Failed logins, rate limits, and admin actions."
+
+#: admin/views/2fa-policy.php:18
+#: includes/class-atomicedge-admin.php:387
+#: includes/class-atomicedge-admin.php:400
+#: includes/class-atomicedge-admin.php:418
+#: includes/class-atomicedge-admin.php:436
+#: includes/class-atomicedge-admin.php:454
+#: includes/class-atomicedge-admin.php:467
+#: includes/class-atomicedge-admin.php:482
+#: includes/class-atomicedge-admin.php:514
+#: includes/class-atomicedge-admin.php:529
+#: includes/class-atomicedge-admin.php:547
+msgid "You do not have permission to access this page."
+msgstr "You do not have permission to access this page."
+
+#: admin/views/2fa-policy.php:25
+#: admin/views/2fa-users.php:20
+#: admin/views/partials/2fa-policy-tab.php:18
+#: admin/views/partials/2fa-users-tab.php:18
+#: includes/class-atomicedge-admin.php:499
+#: includes/class-atomicedge-admin.php:554
+#: includes/class-atomicedge-ajax.php:119
+#: includes/class-atomicedge-ajax.php:780
+#: includes/class-atomicedge-ajax.php:1277
+msgid "Security check failed."
+msgstr "Security check failed."
+
+#: admin/views/2fa-policy.php:46
+#: admin/views/partials/2fa-policy-tab.php:39
+msgid "2FA policy settings saved successfully."
+msgstr "2FA policy settings saved successfully."
+
+#: admin/views/2fa-policy.php:59
+msgid "Two-Factor Authentication Policy"
+msgstr "Two-Factor Authentication Policy"
+
+#: admin/views/2fa-policy.php:71
+#: admin/views/partials/2fa-policy-tab.php:57
+msgid "Warning:"
+msgstr "Warning:"
+
+#: admin/views/2fa-policy.php:72
+#: admin/views/partials/2fa-policy-tab.php:58
+msgid "Two-factor authentication encryption is not available. Please ensure OpenSSL is installed and WordPress security keys are configured."
+msgstr "Two-factor authentication encryption is not available. Please ensure OpenSSL is installed and WordPress security keys are configured."
+
+#: admin/views/2fa-policy.php:85
+#: admin/views/partials/2fa-policy-tab.php:71
+msgid "Policy Status"
+msgstr "Policy Status"
+
+#: admin/views/2fa-policy.php:87
+#: admin/views/partials/2fa-policy-tab.php:73
+msgid "Enable role-based 2FA enforcement to require specific user roles to set up two-factor authentication."
+msgstr "Enable role-based 2FA enforcement to require specific user roles to set up two-factor authentication."
+
+#: admin/views/2fa-policy.php:93
+#: admin/views/partials/2fa-policy-tab.php:79
+msgid "Enable 2FA enforcement policy"
+msgstr "Enable 2FA enforcement policy"
+
+#: admin/views/2fa-policy.php:100
+#: admin/views/partials/2fa-policy-tab.php:86
+msgid "Required Roles"
+msgstr "Required Roles"
+
+#: admin/views/2fa-policy.php:102
+#: admin/views/partials/2fa-policy-tab.php:88
+msgid "Select which user roles must have 2FA enabled. Users with these roles who don't have 2FA will be prompted to set it up."
+msgstr "Select which user roles must have 2FA enabled. Users with these roles who don't have 2FA will be prompted to set it up."
+
+#: admin/views/2fa-policy.php:114
+#: admin/views/partials/2fa-policy-tab.php:100
+msgid "Recommended"
+msgstr "Recommended"
+
+#: admin/views/2fa-policy.php:123
+#: admin/views/2fa-policy.php:206
+#: admin/views/partials/2fa-policy-tab.php:109
+#: admin/views/partials/2fa-policy-tab.php:192
+msgid "Grace Period"
+msgstr "Grace Period"
+
+#: admin/views/2fa-policy.php:125
+#: admin/views/partials/2fa-policy-tab.php:111
+msgid "Give users time to set up 2FA before enforcement. During the grace period, users can log in without 2FA but will see reminders."
+msgstr "Give users time to set up 2FA before enforcement. During the grace period, users can log in without 2FA but will see reminders."
+
+#: admin/views/2fa-policy.php:134
+#: admin/views/partials/2fa-policy-tab.php:120
+msgid "days"
+msgstr "days"
+
+#: admin/views/2fa-policy.php:137
+#: admin/views/partials/2fa-policy-tab.php:123
+msgid "Set to 0 for immediate enforcement (users must set up 2FA on their first login)."
+msgstr "Set to 0 for immediate enforcement (users must set up 2FA on their first login)."
+
+#: admin/views/2fa-policy.php:147
+#: admin/views/partials/2fa-policy-tab.php:133
+msgid "Allow login during grace period (users can log in without 2FA until grace period expires)"
+msgstr "Allow login during grace period (users can log in without 2FA until grace period expires)"
+
+#: admin/views/2fa-policy.php:156
+#: admin/views/partials/2fa-policy-tab.php:142
+msgid "Show setup reminders (display admin notices prompting users to set up 2FA)"
+msgstr "Show setup reminders (display admin notices prompting users to set up 2FA)"
+
+#: admin/views/2fa-policy.php:165
+#: admin/views/partials/2fa-policy-tab.php:151
+msgid "Save Policy Settings"
+msgstr "Save Policy Settings"
+
+#: admin/views/2fa-policy.php:174
+#: admin/views/partials/2fa-policy-tab.php:160
+msgid "Compliance Status"
+msgstr "Compliance Status"
+
+#: admin/views/2fa-policy.php:179
+#: admin/views/partials/2fa-policy-tab.php:165
+msgid "All users in enforced roles have 2FA enabled!"
+msgstr "All users in enforced roles have 2FA enabled!"
+
+#: admin/views/2fa-policy.php:189
+#: admin/views/partials/2fa-policy-tab.php:175
+msgid "%d user needs to set up 2FA"
+msgid_plural "%d users need to set up 2FA"
+msgstr[0] "%d user needs to set up 2FA"
+msgstr[1] "%d users need to set up 2FA"
+
+#. translators: %d: Days remaining
+#: admin/views/2fa-policy.php:222
+#: admin/views/partials/2fa-policy-tab.php:208
+msgid "%d days left"
+msgstr "%d days left"
+
+#: admin/views/2fa-policy.php:229
+#: admin/views/partials/2fa-policy-tab.php:215
+msgid "Expired"
+msgstr "Expired"
+
+#. translators: %d: Number of additional users
+#: admin/views/2fa-policy.php:241
+#: admin/views/partials/2fa-policy-tab.php:227
+msgid "+ %d more users..."
+msgstr "+ %d more users..."
+
+#: admin/views/2fa-settings.php:26
+msgid "Policy"
+msgstr "Policy"
+
+#: admin/views/2fa-settings.php:30
+msgid "Users"
+msgstr "Users"
+
+#: admin/views/2fa-settings.php:34
+msgid "Audit Log"
+msgstr "Audit Log"
+
+#: admin/views/2fa-settings.php:45
+#: admin/views/two-factor.php:26
+#: includes/class-atomicedge-2fa-login.php:174
+msgid "Two-Factor Authentication"
+msgstr "Two-Factor Authentication"
+
+#: admin/views/2fa-settings.php:48
+msgid "Manage two-factor authentication settings, user status, and security audit logs."
+msgstr "Manage two-factor authentication settings, user status, and security audit logs."
+
+#: admin/views/2fa-users.php:25
+#: admin/views/partials/2fa-users-tab.php:23
+#: includes/class-atomicedge-ajax.php:123
+msgid "You do not have permission to perform this action."
+msgstr "You do not have permission to perform this action."
+
+#. translators: %s: username
+#: admin/views/2fa-users.php:46
+#: admin/views/partials/2fa-users-tab.php:44
+msgid "2FA has been disabled for user \"%s\". They will need to set up 2FA again."
+msgstr "2FA has been disabled for user \"%s\". They will need to set up 2FA again."
+
+#: admin/views/2fa-users.php:97
+msgid "2FA User Management"
+msgstr "2FA User Management"
+
+#: admin/views/2fa-users.php:100
+msgid "View and manage Two-Factor Authentication status for all users."
+msgstr "View and manage Two-Factor Authentication status for all users."
+
+#: admin/views/2fa-users.php:115
+#: admin/views/partials/2fa-users-tab.php:105
+msgid "Total Users"
+msgstr "Total Users"
+
+#: admin/views/2fa-users.php:121
+#: admin/views/2fa-users.php:140
+#: admin/views/partials/2fa-users-tab.php:109
+#: admin/views/partials/2fa-users-tab.php:127
+msgid "2FA Enabled"
+msgstr "2FA Enabled"
+
+#: admin/views/2fa-users.php:127
+#: admin/views/partials/2fa-users-tab.php:113
+msgid "No 2FA"
+msgstr "No 2FA"
+
+#: admin/views/2fa-users.php:136
+#: admin/views/partials/2fa-users-tab.php:123
+msgid "Search users..."
+msgstr "Search users..."
+
+#: admin/views/2fa-users.php:139
+#: admin/views/partials/2fa-users-tab.php:126
+msgid "All Users"
+msgstr "All Users"
+
+#: admin/views/2fa-users.php:144
+#: admin/views/partials/2fa-users-tab.php:131
+msgid "Search"
+msgstr "Search"
+
+#: admin/views/2fa-users.php:148
+#: admin/views/partials/2fa-users-tab.php:135
+msgid "Clear"
+msgstr "Clear"
+
+#: admin/views/2fa-users.php:158
+#: admin/views/2fa-users.php:189
+#: admin/views/partials/2fa-users-tab.php:145
+msgid "Username"
+msgstr "Username"
+
+#: admin/views/2fa-users.php:160
+#: admin/views/2fa-users.php:196
+#: admin/views/partials/2fa-users-tab.php:147
+msgid "Name"
+msgstr "Name"
+
+#: admin/views/2fa-users.php:161
+#: admin/views/2fa-users.php:199
+#: admin/views/partials/2fa-users-tab.php:148
+msgid "Email"
+msgstr "Email"
+
+#: admin/views/2fa-users.php:162
+#: admin/views/2fa-users.php:204
+#: admin/views/partials/2fa-users-tab.php:149
+msgid "Role"
+msgstr "Role"
+
+#: admin/views/2fa-users.php:163
+#: admin/views/2fa-users.php:213
+#: admin/views/partials/2fa-users-tab.php:150
+msgid "2FA Status"
+msgstr "2FA Status"
+
+#: admin/views/2fa-users.php:164
+#: admin/views/2fa-users.php:253
+#: admin/views/access-control.php:68
+#: admin/views/access-control.php:111
+#: admin/views/partials/2fa-users-tab.php:151
+#: admin/views/partials/adaptive-defense-actors-tab.php:65
+#: admin/views/partials/adaptive-defense-blocked-tab.php:65
+#: admin/views/partials/adaptive-defense-detections-tab.php:59
+#: admin/views/partials/adaptive-defense-status-tab.php:96
+#: admin/views/waf-logs.php:58
+msgid "Actions"
+msgstr "Actions"
+
+#: admin/views/2fa-users.php:171
+#: admin/views/partials/2fa-users-tab.php:158
+msgid "No users found."
+msgstr "No users found."
+
+#: admin/views/2fa-users.php:217
+#: admin/views/partials/2fa-users-tab.php:205
+#: admin/views/partials/cdn-advanced-tab.php:115
+#: admin/views/two-factor.php:48
+msgid "Enabled"
+msgstr "Enabled"
+
+#. translators: %d: number of backup codes
+#: admin/views/2fa-users.php:225
+#: admin/views/partials/2fa-users-tab.php:213
+msgid "%d backup code"
+msgid_plural "%d backup codes"
+msgstr[0] "%d backup code"
+msgstr[1] "%d backup codes"
+
+#: admin/views/2fa-users.php:233
+#: admin/views/partials/2fa-users-tab.php:221
+#: admin/views/partials/cdn-advanced-tab.php:120
+msgid "Disabled"
+msgstr "Disabled"
+
+#. translators: %d: number of days remaining
+#: admin/views/2fa-users.php:242
+msgid "%d day to set up"
+msgid_plural "%d days to set up"
+msgstr[0] "%d day to set up"
+msgstr[1] "%d days to set up"
+
+#: admin/views/2fa-users.php:246
+msgid "Required by policy"
+msgstr "Required by policy"
+
+#: admin/views/2fa-users.php:258
+#: admin/views/partials/2fa-users-tab.php:246
+msgid "Reset"
+msgstr "Reset"
+
+#: admin/views/2fa-users.php:273
+#: admin/views/partials/2fa-users-tab.php:261
+msgid "Reset 2FA?"
+msgstr "Reset 2FA?"
+
+#: admin/views/2fa-users.php:275
+#: admin/views/partials/2fa-users-tab.php:263
+msgid "Are you sure you want to reset Two-Factor Authentication for"
+msgstr "Are you sure you want to reset Two-Factor Authentication for"
+
+#: admin/views/2fa-users.php:279
+#: admin/views/partials/2fa-users-tab.php:267
+msgid "This will disable their 2FA and they will need to set it up again. Use this only if the user is locked out."
+msgstr "This will disable their 2FA and they will need to set it up again. Use this only if the user is locked out."
+
+#: admin/views/2fa-users.php:287
+#: admin/views/partials/2fa-users-tab.php:275
+msgid "Yes, Reset 2FA"
+msgstr "Yes, Reset 2FA"
+
+#: admin/views/2fa-users.php:290
+#: admin/views/partials/2fa-users-tab.php:278
+#: admin/views/two-factor.php:119
+#: admin/views/two-factor.php:163
+msgid "Cancel"
+msgstr "Cancel"
+
+#: admin/views/access-control.php:29
+#: admin/views/access-control.php:42
+msgid "IP Whitelist"
+msgstr "IP Whitelist"
+
+#: admin/views/access-control.php:32
+#: admin/views/access-control.php:85
+msgid "IP Blacklist"
+msgstr "IP Blacklist"
+
+#: admin/views/access-control.php:35
+msgid "Geographic Access"
+msgstr "Geographic Access"
+
+#: admin/views/access-control.php:43
+msgid "Whitelisted IPs bypass WAF, bot blocking, and geographic restrictions."
+msgstr "Whitelisted IPs bypass WAF, bot blocking, and geographic restrictions."
+
+#: admin/views/access-control.php:51
+#: admin/views/access-control.php:94
+msgid "IP address or CIDR (e.g., 192.168.1.1 or 10.0.0.0/24)"
+msgstr "IP address or CIDR (e.g., 192.168.1.1 or 10.0.0.0/24)"
+
+#: admin/views/access-control.php:56
+#: admin/views/access-control.php:99
+msgid "Description (optional)"
+msgstr "Description (optional)"
+
+#: admin/views/access-control.php:58
+msgid "Add to Whitelist"
+msgstr "Add to Whitelist"
+
+#: admin/views/access-control.php:66
+#: admin/views/access-control.php:109
+msgid "IP/CIDR"
+msgstr "IP/CIDR"
+
+#: admin/views/access-control.php:67
+#: admin/views/access-control.php:110
+msgid "Description"
+msgstr "Description"
+
+#: admin/views/access-control.php:75
+#: admin/views/access-control.php:118
+#: admin/views/dashboard.php:127
+#: admin/views/partials/adaptive-defense-status-tab.php:28
+#: includes/class-atomicedge.php:195
+msgid "Loading..."
+msgstr "Loading..."
+
+#: admin/views/access-control.php:86
+msgid "Blacklisted IPs are blocked from accessing your site entirely."
+msgstr "Blacklisted IPs are blocked from accessing your site entirely."
+
+#: admin/views/access-control.php:101
+msgid "Add to Blacklist"
+msgstr "Add to Blacklist"
+
+#: admin/views/access-control.php:128
+msgid "Geographic Access Control"
+msgstr "Geographic Access Control"
+
+#: admin/views/access-control.php:129
+msgid "Block or allow access based on visitor country."
+msgstr "Block or allow access based on visitor country."
+
+#: admin/views/access-control.php:136
+msgid "Enable Geographic Access Control"
+msgstr "Enable Geographic Access Control"
+
+#: admin/views/access-control.php:141
+msgid "Mode:"
+msgstr "Mode:"
+
+#: admin/views/access-control.php:143
+msgid "Blacklist (block selected countries)"
+msgstr "Blacklist (block selected countries)"
+
+#: admin/views/access-control.php:144
+msgid "Whitelist (only allow selected countries)"
+msgstr "Whitelist (only allow selected countries)"
+
+#: admin/views/access-control.php:148
+msgid "Countries:"
+msgstr "Countries:"
+
+#: admin/views/access-control.php:153
+msgid "Hold Ctrl (Cmd on Mac) to select multiple countries."
+msgstr "Hold Ctrl (Cmd on Mac) to select multiple countries."
+
+#: admin/views/access-control.php:158
+msgid "Save Geographic Rules"
+msgstr "Save Geographic Rules"
+
+#: admin/views/adaptive-defense.php:33
+#: admin/views/partials/adaptive-defense-actors-tab.php:63
+#: admin/views/partials/adaptive-defense-detections-tab.php:28
+#: admin/views/partials/adaptive-defense-detections-tab.php:57
+#: admin/views/partials/adaptive-defense-detections-tab.php:104
+#: admin/views/partials/cdn-general-tab.php:97
+msgid "Status"
+msgstr "Status"
+
+#: admin/views/adaptive-defense.php:37
+#: admin/views/partials/adaptive-defense-status-tab.php:45
+msgid "Blocked IPs"
+msgstr "Blocked IPs"
+
+#: admin/views/adaptive-defense.php:41
+#: admin/views/partials/adaptive-defense-actors-tab.php:20
+#: admin/views/partials/adaptive-defense-status-tab.php:41
+msgid "Actor Profiles"
+msgstr "Actor Profiles"
+
+#: admin/views/adaptive-defense.php:45
+#: admin/views/partials/adaptive-defense-detections-tab.php:21
+msgid "Threat Detections"
+msgstr "Threat Detections"
+
+#: admin/views/adaptive-defense.php:56
+#: includes/class-atomicedge-admin.php:91
+#: includes/class-atomicedge-admin.php:92
+msgid "Adaptive Defense"
+msgstr "Adaptive Defense"
+
+#: admin/views/adaptive-defense.php:59
+msgid "AI-powered threat detection that automatically identifies and blocks malicious actors based on behavioral analysis."
+msgstr "AI-powered threat detection that automatically identifies and blocks malicious actors based on behavioural analysis."
+
+#: admin/views/adaptive-defense.php:74
+#: admin/views/cdn.php:89
+msgid "Not Connected to Atomic Edge"
+msgstr "Not Connected to Atomic Edge"
+
+#: admin/views/adaptive-defense.php:75
+msgid "Connect your site to Atomic Edge to access Adaptive Defense features."
+msgstr "Connect your site to Atomic Edge to access Adaptive Defense features."
+
+#: admin/views/adaptive-defense.php:78
+#: admin/views/cdn.php:93
+msgid "Go to Settings"
+msgstr "Go to Settings"
+
+#: admin/views/analytics.php:28
+msgid "Time Period:"
+msgstr "Time Period:"
+
+#: admin/views/analytics.php:30
+msgid "Last 24 Hours"
+msgstr "Last 24 Hours"
+
+#: admin/views/analytics.php:31
+msgid "Last 7 Days"
+msgstr "Last 7 Days"
+
+#: admin/views/analytics.php:32
+msgid "Last 30 Days"
+msgstr "Last 30 Days"
+
+#: admin/views/analytics.php:36
+#: admin/views/cdn.php:159
+#: admin/views/partials/adaptive-defense-actors-tab.php:43
+#: admin/views/partials/adaptive-defense-detections-tab.php:38
+#: admin/views/partials/adaptive-defense-status-tab.php:33
+#: admin/views/waf-logs.php:44
+msgid "Refresh"
+msgstr "Refresh"
+
+#: admin/views/analytics.php:46
+#: admin/views/partials/adaptive-defense-detections-tab.php:123
+msgid "Total Requests"
+msgstr "Total Requests"
+
+#: admin/views/analytics.php:53
+msgid "Unique Visitors"
+msgstr "Unique Visitors"
+
+#: admin/views/analytics.php:60
+msgid "Requests Blocked"
+msgstr "Requests Blocked"
+
+#: admin/views/analytics.php:67
+msgid "Block Rate"
+msgstr "Block Rate"
+
+#: admin/views/analytics.php:75
+msgid "Traffic Over Time"
+msgstr "Traffic Over Time"
+
+#: admin/views/analytics.php:82
+msgid "Blocked Requests Over Time"
+msgstr "Blocked Requests Over Time"
+
+#: admin/views/analytics.php:92
+msgid "Loading analytics..."
+msgstr "Loading analytics..."
+
+#: admin/views/analytics.php:98
+msgid "Failed to load analytics. Please try again."
+msgstr "Failed to load analytics. Please try again."
+
+#: admin/views/cdn.php:52
+msgid "General"
+msgstr "General"
+
+#: admin/views/cdn.php:56
+msgid "Minification"
+msgstr "Minification"
+
+#: admin/views/cdn.php:60
+msgid "Advanced"
+msgstr "Advanced"
+
+#: admin/views/cdn.php:71
+msgid "CDN Settings"
+msgstr "CDN Settings"
+
+#: admin/views/cdn.php:74
+msgid "Content Delivery Network (CDN) caches your static assets on global edge servers for faster page loads."
+msgstr "Content Delivery Network (CDN) caches your static assets on global edge servers for faster page loads."
+
+#: admin/views/cdn.php:90
+msgid "Connect your site to Atomic Edge to access CDN features."
+msgstr "Connect your site to Atomic Edge to access CDN features."
+
+#: admin/views/cdn.php:103
+#: admin/views/partials/cdn-general-tab.php:84
+msgid "CDN Status"
+msgstr "CDN Status"
+
+#: admin/views/cdn.php:107
+msgid "CDN Not Enabled"
+msgstr "CDN Not Enabled"
+
+#: admin/views/cdn.php:113
+msgid "Enable CDN in Your Dashboard"
+msgstr "Enable CDN in Your Dashboard"
+
+#: admin/views/cdn.php:114
+msgid "CDN is not currently enabled for this site. You can enable it from your Atomic Edge dashboard."
+msgstr "CDN is not currently enabled for this site. You can enable it from your Atomic Edge dashboard."
+
+#: admin/views/cdn.php:117
+#: admin/views/partials/adaptive-defense-status-tab.php:114
+msgid "Open Dashboard"
+msgstr "Open Dashboard"
+
+#: admin/views/cdn.php:122
+msgid "Refresh Status"
+msgstr "Refresh Status"
+
+#: admin/views/cdn.php:132
+msgid "Migrating from Shift8 CDN?"
+msgstr "Migrating from Shift8 CDN?"
+
+#: admin/views/cdn.php:133
+msgid "If you were using the Shift8 CDN plugin, your CDN service will continue to work through Atomic Edge."
+msgstr "If you were using the Shift8 CDN plugin, your CDN service will continue to work through Atomic Edge."
+
+#: admin/views/cdn.php:135
+msgid "Log in to your Atomic Edge dashboard"
+msgstr "Log in to your Atomic Edge dashboard"
+
+#: admin/views/cdn.php:136
+msgid "Enable CDN for your site in the site settings"
+msgstr "Enable CDN for your site in the site settings"
+
+#: admin/views/cdn.php:137
+msgid "Return here and click \"Refresh Status\""
+msgstr "Return here and click \"Refresh Status\""
+
+#: admin/views/cdn.php:150
+#: admin/views/partials/cdn-general-tab.php:102
+msgid "CDN Active"
+msgstr "CDN Active"
+
+#: admin/views/cdn.php:163
+msgid "Purge Cache"
+msgstr "Purge Cache"
+
+#: admin/views/cdn.php:171
+msgid "Last cache purge:"
+msgstr "Last cache purge:"
+
+#: admin/views/cdn.php:211
+msgid "Save CDN Settings"
+msgstr "Save CDN Settings"
+
+#: admin/views/cdn.php:269
+msgid "Refreshing..."
+msgstr "Refreshing..."
+
+#: admin/views/cdn.php:281
+msgid "Status refreshed!"
+msgstr "Status refreshed!"
+
+#: admin/views/cdn.php:286
+msgid "Failed to refresh status."
+msgstr "Failed to refresh status."
+
+#: admin/views/cdn.php:292
+#: admin/views/cdn.php:332
+#: admin/views/cdn.php:365
+msgid "Connection failed."
+msgstr "Connection failed."
+
+#: admin/views/cdn.php:294
+msgid "Request timed out."
+msgstr "Request timed out."
+
+#: admin/views/cdn.php:306
+msgid "Are you sure you want to purge the CDN cache?"
+msgstr "Are you sure you want to purge the CDN cache?"
+
+#: admin/views/cdn.php:314
+msgid "Purging..."
+msgstr "Purging..."
+
+#: admin/views/cdn.php:325
+msgid "Cache purged!"
+msgstr "Cache purged!"
+
+#: admin/views/cdn.php:327
+#: includes/class-atomicedge-ajax.php:684
+msgid "Failed to purge cache."
+msgstr "Failed to purge cache."
+
+#: admin/views/cdn.php:347
+msgid "Saving..."
+msgstr "Saving..."
+
+#: admin/views/cdn.php:359
+msgid "Settings saved!"
+msgstr "Settings saved!"
+
+#: admin/views/cdn.php:361
+msgid "Failed to save settings."
+msgstr "Failed to save settings."
+
+#: admin/views/dashboard.php:30
+msgid "Welcome to Atomic Edge Security"
+msgstr "Welcome to Atomic Edge Security"
+
+#: admin/views/dashboard.php:31
+msgid "Protect your WordPress site with enterprise-grade WAF protection, analytics, and security tools."
+msgstr "Protect your WordPress site with enterprise-grade WAF protection, analytics, and security tools."
+
+#: admin/views/dashboard.php:35
+msgid "Connect Your Site"
+msgstr "Connect Your Site"
+
+#: admin/views/dashboard.php:36
+msgid "Enter your Atomic Edge API key to get started."
+msgstr "Enter your Atomic Edge API key to get started."
+
+#: admin/views/dashboard.php:43
+#: admin/views/settings.php:74
+msgid "API Key"
+msgstr "API Key"
+
+#: admin/views/dashboard.php:53
+#: admin/views/settings.php:84
+msgid "Paste the API key exactly as shown in the Atomic Edge dashboard (32–64 letters/numbers, no prefix)."
+msgstr "Paste the API key exactly as shown in the Atomic Edge dashboard (32–64 letters/numbers, no prefix)."
+
+#. translators: %s: AtomicEdge dashboard URL
+#: admin/views/dashboard.php:58
+#: admin/views/settings.php:89
+msgid "Get your API key from your %s."
+msgstr "Get your API key from your %s."
+
+#: admin/views/dashboard.php:59
+#: admin/views/settings.php:90
+msgid "Atomic Edge dashboard"
+msgstr "Atomic Edge dashboard"
+
+#: admin/views/dashboard.php:68
+msgid "Connect to Atomic Edge"
+msgstr "Connect to Atomic Edge"
+
+#: admin/views/dashboard.php:75
+msgid "Features"
+msgstr "Features"
+
+#: admin/views/dashboard.php:79
+msgid "WAF Protection"
+msgstr "WAF Protection"
+
+#: admin/views/dashboard.php:80
+msgid "Enterprise-grade Web Application Firewall with OWASP rules."
+msgstr "Enterprise-grade Web Application Firewall with OWASP rules."
+
+#: admin/views/dashboard.php:84
+msgid "Real-time Analytics"
+msgstr "Real-time Analytics"
+
+#: admin/views/dashboard.php:85
+msgid "Monitor traffic, threats, and security events in real-time."
+msgstr "Monitor traffic, threats, and security events in real-time."
+
+#: admin/views/dashboard.php:89
+#: admin/views/dashboard.php:159
+#: includes/class-atomicedge-admin.php:111
+#: includes/class-atomicedge-admin.php:112
+msgid "Access Control"
+msgstr "Access Control"
+
+#: admin/views/dashboard.php:90
+msgid "Block or allow IPs and countries with ease."
+msgstr "Block or allow IPs and countries with ease."
+
+#: admin/views/dashboard.php:94
+#: admin/views/dashboard.php:163
+#: includes/class-atomicedge-admin.php:121
+#: includes/class-atomicedge-admin.php:122
+msgid "Malware Scanner"
+msgstr "Malware Scanner"
+
+#: admin/views/dashboard.php:95
+msgid "Scan your WordPress files for malware and modifications."
+msgstr "Scan your WordPress files for malware and modifications."
+
+#: admin/views/dashboard.php:106
+msgid "Connected to Atomic Edge"
+msgstr "Connected to Atomic Edge"
+
+#: admin/views/dashboard.php:110
+msgid "Domain:"
+msgstr "Domain:"
+
+#: admin/views/dashboard.php:116
+msgid "Plan:"
+msgstr "Plan:"
+
+#: admin/views/dashboard.php:124
+msgid "Security Summary"
+msgstr "Security Summary"
+
+#: admin/views/dashboard.php:132
+msgid "Traffic (Last 24 Hours)"
+msgstr "Traffic (Last 24 Hours)"
+
+#: admin/views/dashboard.php:139
+msgid "Attacks Blocked (Last 24 Hours)"
+msgstr "Attacks Blocked (Last 24 Hours)"
+
+#: admin/views/dashboard.php:147
+msgid "Quick Actions"
+msgstr "Quick Actions"
+
+#: admin/views/dashboard.php:151
+#: includes/class-atomicedge-admin.php:81
+#: includes/class-atomicedge-admin.php:82
+msgid "Analytics"
+msgstr "Analytics"
+
+#: admin/views/dashboard.php:155
+#: includes/class-atomicedge-admin.php:101
+#: includes/class-atomicedge-admin.php:102
+msgid "WAF Logs"
+msgstr "WAF Logs"
+
+#: admin/views/dashboard.php:167
+#: admin/views/vulnerability-scanner.php:22
+#: includes/class-atomicedge-admin.php:131
+#: includes/class-atomicedge-admin.php:132
+msgid "Vulnerability Scanner"
+msgstr "Vulnerability Scanner"
+
+#: admin/views/dashboard.php:171
+#: atomicedge.php:255
+#: includes/class-atomicedge-admin.php:161
+#: includes/class-atomicedge-admin.php:162
+msgid "Settings"
+msgstr "Settings"
+
+#. translators: %d: number of days remaining
+#: admin/views/partials/2fa-users-tab.php:230
+msgid "%d day left"
+msgid_plural "%d days left"
+msgstr[0] "%d day left"
+msgstr[1] "%d days left"
+
+#: admin/views/partials/2fa-users-tab.php:234
+msgid "Required"
+msgstr "Required"
+
+#: admin/views/partials/adaptive-defense-actors-tab.php:22
+msgid "Behavioral profiles of IP addresses that have accessed your site. Higher scores indicate more suspicious behavior."
+msgstr "Behavioural profiles of IP addresses that have accessed your site. Higher scores indicate more suspicious behaviour."
+
+#: admin/views/partials/adaptive-defense-actors-tab.php:29
+msgid "All Actors"
+msgstr "All Actors"
+
+#: admin/views/partials/adaptive-defense-actors-tab.php:30
+msgid "Blocked Only"
+msgstr "Blocked Only"
+
+#: admin/views/partials/adaptive-defense-actors-tab.php:31
+msgid "High Risk Only"
+msgstr "High Risk Only"
+
+#: admin/views/partials/adaptive-defense-actors-tab.php:35
+msgid "Search IP"
+msgstr "Search IP"
+
+#: admin/views/partials/adaptive-defense-actors-tab.php:50
+msgid "Loading actor profiles..."
+msgstr "Loading actor profiles..."
+
+#: admin/views/partials/adaptive-defense-actors-tab.php:59
+#: admin/views/partials/adaptive-defense-blocked-tab.php:62
+#: admin/views/partials/adaptive-defense-detections-tab.php:54
+#: admin/views/partials/adaptive-defense-detections-tab.php:96
+#: admin/views/partials/adaptive-defense-status-tab.php:93
+msgid "Score"
+msgstr "Score"
+
+#: admin/views/partials/adaptive-defense-actors-tab.php:60
+#: admin/views/partials/adaptive-defense-status-tab.php:94
+msgid "Requests"
+msgstr "Requests"
+
+#: admin/views/partials/adaptive-defense-actors-tab.php:61
+#: admin/views/partials/adaptive-defense-blocked-tab.php:63
+#: admin/views/partials/adaptive-defense-detections-tab.php:127
+#: admin/views/partials/adaptive-defense-status-tab.php:95
+msgid "WAF Hits"
+msgstr "WAF Hits"
+
+#: admin/views/partials/adaptive-defense-actors-tab.php:62
+msgid "Errors"
+msgstr "Errors"
+
+#: admin/views/partials/adaptive-defense-actors-tab.php:64
+#: admin/views/partials/adaptive-defense-detections-tab.php:139
+msgid "Last Seen"
+msgstr "Last Seen"
+
+#: admin/views/partials/adaptive-defense-actors-tab.php:76
+msgid "No actor profiles found."
+msgstr "No actor profiles found."
+
+#: admin/views/partials/adaptive-defense-blocked-tab.php:20
+msgid "Blocked IP Addresses"
+msgstr "Blocked IP Addresses"
+
+#: admin/views/partials/adaptive-defense-blocked-tab.php:22
+msgid "IP addresses currently blocked by Adaptive Defense. You can unblock or permanently remove them."
+msgstr "IP addresses currently blocked by Adaptive Defense. You can unblock or permanently remove them."
+
+#: admin/views/partials/adaptive-defense-blocked-tab.php:26
+msgid "Block an IP Address"
+msgstr "Block an IP Address"
+
+#: admin/views/partials/adaptive-defense-blocked-tab.php:33
+msgid "Duration"
+msgstr "Duration"
+
+#: admin/views/partials/adaptive-defense-blocked-tab.php:35
+msgid "1 hour"
+msgstr "1 hour"
+
+#: admin/views/partials/adaptive-defense-blocked-tab.php:36
+msgid "6 hours"
+msgstr "6 hours"
+
+#: admin/views/partials/adaptive-defense-blocked-tab.php:37
+msgid "24 hours"
+msgstr "24 hours"
+
+#: admin/views/partials/adaptive-defense-blocked-tab.php:38
+msgid "7 days"
+msgstr "7 days"
+
+#: admin/views/partials/adaptive-defense-blocked-tab.php:39
+msgid "30 days"
+msgstr "30 days"
+
+#: admin/views/partials/adaptive-defense-blocked-tab.php:40
+msgid "Permanent"
+msgstr "Permanent"
+
+#: admin/views/partials/adaptive-defense-blocked-tab.php:45
+msgid "Block IP"
+msgstr "Block IP"
+
+#: admin/views/partials/adaptive-defense-blocked-tab.php:53
+msgid "Loading blocked IPs..."
+msgstr "Loading blocked IPs..."
+
+#: admin/views/partials/adaptive-defense-blocked-tab.php:64
+msgid "Expires"
+msgstr "Expires"
+
+#: admin/views/partials/adaptive-defense-blocked-tab.php:76
+msgid "No IP addresses are currently blocked."
+msgstr "No IP addresses are currently blocked."
+
+#: admin/views/partials/adaptive-defense-detections-tab.php:23
+msgid "AI-analyzed threats detected on your site. Review each detection and take action as needed."
+msgstr "AI-analyzed threats detected on your site. Review each detection and take action as needed."
+
+#: admin/views/partials/adaptive-defense-detections-tab.php:30
+msgid "All"
+msgstr "All"
+
+#: admin/views/partials/adaptive-defense-detections-tab.php:31
+msgid "Pending Review"
+msgstr "Pending Review"
+
+#: admin/views/partials/adaptive-defense-detections-tab.php:32
+msgid "Blocked"
+msgstr "Blocked"
+
+#: admin/views/partials/adaptive-defense-detections-tab.php:33
+msgid "Dismissed"
+msgstr "Dismissed"
+
+#: admin/views/partials/adaptive-defense-detections-tab.php:45
+msgid "Loading threat detections..."
+msgstr "Loading threat detections..."
+
+#: admin/views/partials/adaptive-defense-detections-tab.php:55
+msgid "Threat Level"
+msgstr "Threat Level"
+
+#: admin/views/partials/adaptive-defense-detections-tab.php:56
+msgid "Key Indicators"
+msgstr "Key Indicators"
+
+#: admin/views/partials/adaptive-defense-detections-tab.php:58
+msgid "Detected"
+msgstr "Detected"
+
+#: admin/views/partials/adaptive-defense-detections-tab.php:70
+msgid "No threat detections found."
+msgstr "No threat detections found."
+
+#: admin/views/partials/adaptive-defense-detections-tab.php:87
+msgid "Loading details..."
+msgstr "Loading details..."
+
+#: admin/views/partials/adaptive-defense-detections-tab.php:93
+msgid "Detection Details"
+msgstr "Detection Details"
+
+#: admin/views/partials/adaptive-defense-detections-tab.php:100
+msgid "Confidence"
+msgstr "Confidence"
+
+#: admin/views/partials/adaptive-defense-detections-tab.php:108
+msgid "Detected At"
+msgstr "Detected At"
+
+#: admin/views/partials/adaptive-defense-detections-tab.php:116
+msgid "Actor Profile"
+msgstr "Actor Profile"
+
+#: admin/views/partials/adaptive-defense-detections-tab.php:131
+msgid "4xx/5xx Errors"
+msgstr "4xx/5xx Errors"
+
+#: admin/views/partials/adaptive-defense-detections-tab.php:135
+msgid "First Seen"
+msgstr "First Seen"
+
+#: admin/views/partials/adaptive-defense-detections-tab.php:148
+msgid "Detection Reasons"
+msgstr "Detection Reasons"
+
+#: admin/views/partials/adaptive-defense-detections-tab.php:156
+msgid "AI Analysis"
+msgstr "AI Analysis"
+
+#: admin/views/partials/adaptive-defense-detections-tab.php:165
+msgid "Close Details"
+msgstr "Close Details"
+
+#: admin/views/partials/adaptive-defense-status-tab.php:20
+msgid "Loading Adaptive Defense status..."
+msgstr "Loading Adaptive Defense status..."
+
+#: admin/views/partials/adaptive-defense-status-tab.php:49
+msgid "Pending Reviews"
+msgstr "Pending Reviews"
+
+#: admin/views/partials/adaptive-defense-status-tab.php:53
+#: admin/views/partials/adaptive-defense-status-tab.php:87
+msgid "High Risk Actors"
+msgstr "High Risk Actors"
+
+#: admin/views/partials/adaptive-defense-status-tab.php:61
+msgid "Current Settings"
+msgstr "Current Settings"
+
+#: admin/views/partials/adaptive-defense-status-tab.php:63
+msgid "These settings are configured in your Atomic Edge dashboard."
+msgstr "These settings are configured in your Atomic Edge dashboard."
+
+#: admin/views/partials/adaptive-defense-status-tab.php:66
+msgid "Operating Mode"
+msgstr "Operating Mode"
+
+#: admin/views/partials/adaptive-defense-status-tab.php:70
+msgid "Sensitivity"
+msgstr "Sensitivity"
+
+#: admin/views/partials/adaptive-defense-status-tab.php:74
+msgid "AI Budget Used"
+msgstr "AI Budget Used"
+
+#: admin/views/partials/adaptive-defense-status-tab.php:77
+msgid "today"
+msgstr "today"
+
+#: admin/views/partials/adaptive-defense-status-tab.php:110
+msgid "Adaptive Defense is Not Enabled"
+msgstr "Adaptive Defense is Not Enabled"
+
+#: admin/views/partials/adaptive-defense-status-tab.php:111
+msgid "Enable Adaptive Defense in your Atomic Edge dashboard to start using AI-powered threat detection."
+msgstr "Enable Adaptive Defense in your Atomic Edge dashboard to start using AI-powered threat detection."
+
+#: admin/views/partials/cdn-advanced-tab.php:39
+msgid "URL Exclusions"
+msgstr "URL Exclusions"
+
+#: admin/views/partials/cdn-advanced-tab.php:42
+msgid "Specify URL patterns that should NOT be rewritten to use the CDN. Enter one pattern per line."
+msgstr "Specify URL patterns that should NOT be rewritten to use the CDN. Enter one pattern per line."
+
+#: admin/views/partials/cdn-advanced-tab.php:48
+msgid "Exclude Patterns"
+msgstr "Exclude Patterns"
+
+#: admin/views/partials/cdn-advanced-tab.php:53
+msgid "Enter one pattern per line. Patterns can be partial URLs or file extensions. Example:"
+msgstr "Enter one pattern per line. Patterns can be partial URLs or file extensions. Example:"
+
+#: admin/views/partials/cdn-advanced-tab.php:56
+msgid "Excludes all admin URLs"
+msgstr "Excludes all admin URLs"
+
+#: admin/views/partials/cdn-advanced-tab.php:57
+msgid "Excludes all PHP files (already excluded by default)"
+msgstr "Excludes all PHP files (already excluded by default)"
+
+#: admin/views/partials/cdn-advanced-tab.php:58
+msgid "Excludes a specific file"
+msgstr "Excludes a specific file"
+
+#: admin/views/partials/cdn-advanced-tab.php:67
+msgid "Always Excluded"
+msgstr "Always Excluded"
+
+#: admin/views/partials/cdn-advanced-tab.php:68
+msgid "The following patterns are always excluded for security and compatibility:"
+msgstr "The following patterns are always excluded for security and compatibility:"
+
+#: admin/views/partials/cdn-advanced-tab.php:79
+msgid "Performance Options"
+msgstr "Performance Options"
+
+#: admin/views/partials/cdn-advanced-tab.php:84
+msgid "DNS Prefetch"
+msgstr "DNS Prefetch"
+
+#: admin/views/partials/cdn-advanced-tab.php:92
+msgid "Add DNS prefetch hints for the CDN hostname to speed up initial resource loading."
+msgstr "Add DNS prefetch hints for the CDN hostname to speed up initial resource loading."
+
+#: admin/views/partials/cdn-advanced-tab.php:102
+msgid "CDN Information"
+msgstr "CDN Information"
+
+#: admin/views/partials/cdn-advanced-tab.php:110
+msgid "Dashboard CDN Status"
+msgstr "Dashboard CDN Status"
+
+#: admin/views/partials/cdn-advanced-tab.php:126
+msgid "Local CDN Status"
+msgstr "Local CDN Status"
+
+#: admin/views/partials/cdn-advanced-tab.php:131
+#: admin/views/two-factor.php:28
+msgid "Active"
+msgstr "Active"
+
+#: admin/views/partials/cdn-advanced-tab.php:136
+#: admin/views/two-factor.php:30
+msgid "Inactive"
+msgstr "Inactive"
+
+#: admin/views/partials/cdn-advanced-tab.php:142
+msgid "CDN Prefix"
+msgstr "CDN Prefix"
+
+#: admin/views/partials/cdn-advanced-tab.php:144
+#: admin/views/partials/cdn-advanced-tab.php:153
+msgid "Not set"
+msgstr "Not set"
+
+#: admin/views/partials/cdn-advanced-tab.php:148
+msgid "Active CDN URL"
+msgstr "Active CDN URL"
+
+#: admin/views/partials/cdn-advanced-tab.php:158
+msgid "Cache Directory"
+msgstr "Cache Directory"
+
+#: admin/views/partials/cdn-general-tab.php:48
+msgid "Enable CDN"
+msgstr "Enable CDN"
+
+#: admin/views/partials/cdn-general-tab.php:55
+#: includes/class-atomicedge-dev-mode.php:178
+msgid "Development Mode Active"
+msgstr "Development Mode Active"
+
+#: admin/views/partials/cdn-general-tab.php:56
+msgid "Using ATOMICEDGE_CDN_DEV_URL constant from wp-config.php:"
+msgstr "Using ATOMICEDGE_CDN_DEV_URL constant from wp-config.php:"
+
+#: admin/views/partials/cdn-general-tab.php:64
+msgid "Enable Atomic Edge CDN"
+msgstr "Enable Atomic Edge CDN"
+
+#: admin/views/partials/cdn-general-tab.php:72
+msgid "When enabled, static assets will be served through the CDN."
+msgstr "When enabled, static assets will be served through the CDN."
+
+#: admin/views/partials/cdn-general-tab.php:88
+msgid "CDN Hostname"
+msgstr "CDN Hostname"
+
+#: admin/views/partials/cdn-general-tab.php:91
+msgid "Copy to clipboard"
+msgstr "Copy to clipboard"
+
+#: admin/views/partials/cdn-general-tab.php:107
+msgid "CDN Disabled"
+msgstr "CDN Disabled"
+
+#: admin/views/partials/cdn-general-tab.php:109
+msgid "Enable the switch above to activate CDN rewriting."
+msgstr "Enable the switch above to activate CDN rewriting."
+
+#: admin/views/partials/cdn-general-tab.php:114
+msgid "Test CDN"
+msgstr "Test CDN"
+
+#: admin/views/partials/cdn-general-tab.php:117
+msgid "Test CDN Connection"
+msgstr "Test CDN Connection"
+
+#: admin/views/partials/cdn-general-tab.php:121
+msgid "Click to verify your CDN is serving assets correctly."
+msgstr "Click to verify your CDN is serving assets correctly."
+
+#: admin/views/partials/cdn-general-tab.php:133
+msgid "File Types"
+msgstr "File Types"
+
+#: admin/views/partials/cdn-general-tab.php:136
+msgid "Choose which types of files should be served through the CDN."
+msgstr "Choose which types of files should be served through the CDN."
+
+#: admin/views/partials/cdn-general-tab.php:141
+#: admin/views/partials/cdn-minification-tab.php:121
+msgid "CSS Files"
+msgstr "CSS Files"
+
+#: admin/views/partials/cdn-general-tab.php:148
+msgid "Stylesheets (.css files)"
+msgstr "Stylesheets (.css files)"
+
+#: admin/views/partials/cdn-general-tab.php:153
+msgid "JavaScript Files"
+msgstr "JavaScript Files"
+
+#: admin/views/partials/cdn-general-tab.php:160
+msgid "JavaScript files (.js files)"
+msgstr "JavaScript files (.js files)"
+
+#: admin/views/partials/cdn-general-tab.php:165
+msgid "Image & Media Files"
+msgstr "Image & Media Files"
+
+#: admin/views/partials/cdn-general-tab.php:172
+msgid "Images, fonts, PDFs, videos, and other media files"
+msgstr "Images, fonts, PDFs, videos, and other media files"
+
+#: admin/views/partials/cdn-minification-tab.php:37
+msgid "Minification Settings"
+msgstr "Minification Settings"
+
+#: admin/views/partials/cdn-minification-tab.php:40
+msgid "Minification reduces file sizes by removing whitespace and comments. This can improve page load times."
+msgstr "Minification reduces file sizes by removing whitespace and comments. This can improve page load times."
+
+#: admin/views/partials/cdn-minification-tab.php:46
+msgid "Important"
+msgstr "Important"
+
+#: admin/views/partials/cdn-minification-tab.php:46
+msgid "Minification can sometimes cause issues with certain themes or plugins. If you experience layout problems after enabling, try disabling individual options to identify conflicts."
+msgstr "Minification can sometimes cause issues with certain themes or plugins. If you experience layout problems after enabling, try disabling individual options to identify conflicts."
+
+#: admin/views/partials/cdn-minification-tab.php:53
+msgid "Minify CSS"
+msgstr "Minify CSS"
+
+#: admin/views/partials/cdn-minification-tab.php:60
+msgid "Removes whitespace and comments from CSS files. May cause issues with some themes."
+msgstr "Removes whitespace and comments from CSS files. May cause issues with some themes."
+
+#: admin/views/partials/cdn-minification-tab.php:65
+msgid "Minify JavaScript"
+msgstr "Minify JavaScript"
+
+#: admin/views/partials/cdn-minification-tab.php:72
+msgid "Removes whitespace and comments from JavaScript files. May break some scripts."
+msgstr "Removes whitespace and comments from JavaScript files. May break some scripts."
+
+#: admin/views/partials/cdn-minification-tab.php:77
+msgid "Minify HTML"
+msgstr "Minify HTML"
+
+#: admin/views/partials/cdn-minification-tab.php:84
+msgid "Removes whitespace from HTML output. Preserves script and style blocks."
+msgstr "Removes whitespace from HTML output. Preserves script and style blocks."
+
+#: admin/views/partials/cdn-minification-tab.php:93
+msgid "Minification Cache"
+msgstr "Minification Cache"
+
+#: admin/views/partials/cdn-minification-tab.php:96
+msgid "Minified files are cached locally to improve performance. Clear the cache if you have updated CSS or JavaScript files."
+msgstr "Minified files are cached locally to improve performance. Clear the cache if you have updated CSS or JavaScript files."
+
+#: admin/views/partials/cdn-minification-tab.php:105
+msgid "Total Files"
+msgstr "Total Files"
+
+#: admin/views/partials/cdn-minification-tab.php:113
+msgid "Cache Size"
+msgstr "Cache Size"
+
+#: admin/views/partials/cdn-minification-tab.php:129
+msgid "JS Files"
+msgstr "JS Files"
+
+#: admin/views/partials/cdn-minification-tab.php:137
+msgid "Clear Minification Cache"
+msgstr "Clear Minification Cache"
+
+#: admin/views/partials/cdn-minification-tab.php:153
+msgid "Clearing..."
+msgstr "Clearing..."
+
+#: admin/views/partials/cdn-minification-tab.php:170
+msgid "Failed to clear cache"
+msgstr "Failed to clear cache"
+
+#: admin/views/partials/cdn-minification-tab.php:174
+msgid "Request failed"
+msgstr "Request failed"
+
+#. translators: %s: last scan time
+#: admin/views/scanner.php:29
+#: admin/views/vulnerability-scanner.php:49
+msgid "Last scan: %s"
+msgstr "Last scan: %s"
+
+#: admin/views/scanner.php:35
+msgid "No scans have been run yet."
+msgstr "No scans have been run yet."
+
+#: admin/views/scanner.php:42
+msgid "Scan mode"
+msgstr "Scan mode"
+
+#: admin/views/scanner.php:44
+msgid "Quick scan (PHP only)"
+msgstr "Quick scan (PHP only)"
+
+#: admin/views/scanner.php:45
+msgid "Thorough scan (all files)"
+msgstr "Thorough scan (all files)"
+
+#: admin/views/scanner.php:50
+msgid "Verify AtomicEdge plugin integrity"
+msgstr "Verify AtomicEdge plugin integrity"
+
+#: admin/views/scanner.php:57
+msgid "Run Scan"
+msgstr "Run Scan"
+
+#: admin/views/scanner.php:62
+msgid "Cancel Scan"
+msgstr "Cancel Scan"
+
+#: admin/views/scanner.php:67
+msgid "Reset Scan"
+msgstr "Reset Scan"
+
+#: admin/views/scanner.php:73
+msgid "Debug Test (500 files)"
+msgstr "Debug Test (500 files)"
+
+#: admin/views/scanner.php:84
+msgid "Debug Test Results"
+msgstr "Debug Test Results"
+
+#: admin/views/scanner.php:94
+#: includes/class-atomicedge.php:201
+msgid "Scanning files..."
+msgstr "Scanning files..."
+
+#: admin/views/scanner.php:99
+msgid "Live Scan Activity"
+msgstr "Live Scan Activity"
+
+#: admin/views/scanner.php:100
+msgid "Shows what the scanner is working on right now. If progress stalls, this should still update as files are processed."
+msgstr "Shows what the scanner is working on right now. If progress stalls, this should still update as files are processed."
+
+#: admin/views/scanner.php:111
+#: admin/views/vulnerability-scanner.php:105
+msgid "Scan Results"
+msgstr "Scan Results"
+
+#: admin/views/scanner.php:117
+#: admin/views/scanner.php:276
+msgid "Modified Core Files"
+msgstr "Modified Core Files"
+
+#: admin/views/scanner.php:122
+#: admin/views/scanner.php:308
+msgid "Suspicious Files"
+msgstr "Suspicious Files"
+
+#: admin/views/scanner.php:129
+msgid "Integrity Issues"
+msgstr "Integrity Issues"
+
+#: admin/views/scanner.php:145
+msgid "Scan Coverage & Warnings"
+msgstr "Scan Coverage & Warnings"
+
+#: admin/views/scanner.php:153
+msgid "Memory limit reached"
+msgstr "Memory limit reached"
+
+#: admin/views/scanner.php:156
+msgid "Execution time limit reached"
+msgstr "Execution time limit reached"
+
+#: admin/views/scanner.php:165
+msgid "Stopped early:"
+msgstr "Stopped early:"
+
+#: admin/views/scanner.php:165
+msgid "Scan did not complete"
+msgstr "Scan did not complete"
+
+#: admin/views/scanner.php:170
+msgid "This scan may be incomplete."
+msgstr "This scan may be incomplete."
+
+#. translators: %d: number of unreadable directories
+#: admin/views/scanner.php:183
+msgid "Unreadable dirs: %d"
+msgstr "Unreadable dirs: %d"
+
+#. translators: %d: number of missing directories
+#: admin/views/scanner.php:187
+msgid "Missing dirs: %d"
+msgstr "Missing dirs: %d"
+
+#. translators: %d: number of file read failures
+#: admin/views/scanner.php:191
+msgid "Read failures: %d"
+msgstr "Read failures: %d"
+
+#. translators: %d: number of oversized files partially scanned
+#: admin/views/scanner.php:195
+msgid "Oversized partially scanned: %d"
+msgstr "Oversized partially scanned: %d"
+
+#. translators: %d: number of whitelisted files skipped
+#: admin/views/scanner.php:199
+msgid "Whitelisted skipped: %d"
+msgstr "Whitelisted skipped: %d"
+
+#: admin/views/scanner.php:211
+msgid "Area"
+msgstr "Area"
+
+#: admin/views/scanner.php:212
+msgid "PHP found"
+msgstr "PHP found"
+
+#: admin/views/scanner.php:213
+msgid "PHP scanned"
+msgstr "PHP scanned"
+
+#: admin/views/scanner.php:229
+msgid "Examples (first 5):"
+msgstr "Examples (first 5):"
+
+#: admin/views/scanner.php:232
+msgid "Unreadable dirs:"
+msgstr "Unreadable dirs:"
+
+#: admin/views/scanner.php:235
+msgid "Read failures:"
+msgstr "Read failures:"
+
+#: admin/views/scanner.php:238
+msgid "Oversized partially scanned:"
+msgstr "Oversized partially scanned:"
+
+#: admin/views/scanner.php:248
+msgid "AtomicEdge Plugin Integrity Issues"
+msgstr "AtomicEdge Plugin Integrity Issues"
+
+#: admin/views/scanner.php:251
+msgid "These files did not match the expected release manifest. This can indicate tampering or a partial/failed update."
+msgstr "These files did not match the expected release manifest. This can indicate tampering or a partial/failed update."
+
+#: admin/views/scanner.php:255
+#: admin/views/scanner.php:283
+#: admin/views/scanner.php:315
+msgid "File"
+msgstr "File"
+
+#: admin/views/scanner.php:256
+#: admin/views/scanner.php:316
+msgid "Issue"
+msgstr "Issue"
+
+#: admin/views/scanner.php:279
+msgid "These WordPress core files have been modified from their original versions."
+msgstr "These WordPress core files have been modified from their original versions."
+
+#: admin/views/scanner.php:284
+#: admin/views/scanner.php:317
+msgid "Severity"
+msgstr "Severity"
+
+#: admin/views/scanner.php:311
+msgid "These files contain potentially malicious code patterns."
+msgstr "These files contain potentially malicious code patterns."
+
+#: admin/views/scanner.php:350
+msgid "All Clear!"
+msgstr "All Clear!"
+
+#: admin/views/scanner.php:351
+msgid "No security issues were found in the last scan."
+msgstr "No security issues were found in the last scan."
+
+#: admin/views/scanner.php:358
+msgid "No Scan Results"
+msgstr "No Scan Results"
+
+#: admin/views/scanner.php:359
+msgid "Run a scan to check your WordPress files for security issues."
+msgstr "Run a scan to check your WordPress files for security issues."
+
+#: admin/views/scanner.php:366
+#: admin/views/vulnerability-scanner.php:313
+msgid "What We Check"
+msgstr "What We Check"
+
+#: admin/views/scanner.php:370
+msgid "WordPress core files against official checksums"
+msgstr "WordPress core files against official checksums"
+
+#: admin/views/scanner.php:374
+msgid "WordPress root directory for unknown PHP files"
+msgstr "WordPress root directory for unknown PHP files"
+
+#: admin/views/scanner.php:378
+msgid "wp-admin and wp-includes for malware patterns"
+msgstr "wp-admin and wp-includes for malware patterns"
+
+#: admin/views/scanner.php:382
+msgid "PHP files in uploads directory (should not exist)"
+msgstr "PHP files in uploads directory (should not exist)"
+
+#: admin/views/scanner.php:386
+msgid "Suspicious code patterns (eval, base64_decode, etc.)"
+msgstr "Suspicious code patterns (eval, base64_decode, etc.)"
+
+#: admin/views/scanner.php:390
+msgid "Obfuscated code and known webshell signatures"
+msgstr "Obfuscated code and known webshell signatures"
+
+#: admin/views/scanner.php:397
+msgid "Environment"
+msgstr "Environment"
+
+#: admin/views/scanner.php:400
+msgid "Memory Limit:"
+msgstr "Memory Limit:"
+
+#: admin/views/scanner.php:404
+msgid "Max Execution Time:"
+msgstr "Max Execution Time:"
+
+#: admin/views/scanner.php:408
+msgid "PHP Version:"
+msgstr "PHP Version:"
+
+#: admin/views/settings.php:24
+msgid "Connection Status"
+msgstr "Connection Status"
+
+#: admin/views/settings.php:30
+msgid "Connected"
+msgstr "Connected"
+
+#. translators: %s: masked API key
+#: admin/views/settings.php:41
+msgid "API Key: %s"
+msgstr "API Key: %s"
+
+#: admin/views/settings.php:55
+msgid "Are you sure you want to disconnect from Atomic Edge?"
+msgstr "Are you sure you want to disconnect from Atomic Edge?"
+
+#: admin/views/settings.php:56
+msgid "Disconnect"
+msgstr "Disconnect"
+
+#: admin/views/settings.php:64
+msgid "Not Connected"
+msgstr "Not Connected"
+
+#: admin/views/settings.php:65
+msgid "Enter your API key to connect to Atomic Edge."
+msgstr "Enter your API key to connect to Atomic Edge."
+
+#: admin/views/settings.php:99
+msgid "Connect"
+msgstr "Connect"
+
+#: admin/views/settings.php:108
+msgid "Advanced Settings"
+msgstr "Advanced Settings"
+
+#: admin/views/settings.php:115
+msgid "API URL"
+msgstr "API URL"
+
+#: admin/views/settings.php:124
+msgid "Only change this if instructed by Atomic Edge support."
+msgstr "Only change this if instructed by Atomic Edge support."
+
+#: admin/views/settings.php:131
+msgid "Save Settings"
+msgstr "Save Settings"
+
+#: admin/views/settings.php:139
+msgid "Plugin Information"
+msgstr "Plugin Information"
+
+#: admin/views/settings.php:142
+msgid "Plugin Version"
+msgstr "Plugin Version"
+
+#: admin/views/settings.php:146
+msgid "WordPress Version"
+msgstr "WordPress Version"
+
+#: admin/views/settings.php:150
+msgid "PHP Version"
+msgstr "PHP Version"
+
+#: admin/views/settings.php:154
+msgid "Site URL"
+msgstr "Site URL"
+
+#: admin/views/two-factor.php:37
+msgid "Two-factor authentication requires PHP 7.2+ with the Sodium extension. Please contact your hosting provider."
+msgstr "Two-factor authentication requires PHP 7.2+ with the Sodium extension. Please contact your hosting provider."
+
+#: admin/views/two-factor.php:44
+msgid "Method"
+msgstr "Method"
+
+#: admin/views/two-factor.php:45
+msgid "Authenticator App (TOTP)"
+msgstr "Authenticator App (TOTP)"
+
+#: admin/views/two-factor.php:53
+msgid "Last Used"
+msgstr "Last Used"
+
+#: admin/views/two-factor.php:57
+msgid "Backup Codes"
+msgstr "Backup Codes"
+
+#. translators: 1: Remaining codes count, 2: Total codes count
+#: admin/views/two-factor.php:62
+msgid "%1$d of %2$d remaining"
+msgstr "%1$d of %2$d remaining"
+
+#: admin/views/two-factor.php:69
+msgid "(Low - consider regenerating)"
+msgstr "(Low - consider regenerating)"
+
+#: admin/views/two-factor.php:77
+msgid "Regenerate Backup Codes"
+msgstr "Regenerate Backup Codes"
+
+#: admin/views/two-factor.php:80
+#: admin/views/two-factor.php:116
+msgid "Disable Two-Factor"
+msgstr "Disable Two-Factor"
+
+#: admin/views/two-factor.php:88
+#: admin/views/two-factor.php:175
+msgid "⚠️ Save These Backup Codes"
+msgstr "⚠️ Save These Backup Codes"
+
+#: admin/views/two-factor.php:89
+msgid "Each code can only be used once. Store them in a safe place."
+msgstr "Each code can only be used once. Store them in a safe place."
+
+#: admin/views/two-factor.php:99
+#: admin/views/two-factor.php:186
+#: includes/class-atomicedge-2fa.php:710
+msgid "Download Backup Codes"
+msgstr "Download Backup Codes"
+
+#: admin/views/two-factor.php:102
+#: admin/views/two-factor.php:189
+msgid "I've Saved My Codes"
+msgstr "I've Saved My Codes"
+
+#: admin/views/two-factor.php:109
+msgid "Enter your password to disable two-factor authentication:"
+msgstr "Enter your password to disable two-factor authentication:"
+
+#: admin/views/two-factor.php:111
+msgid "Password"
+msgstr "Password"
+
+#: admin/views/two-factor.php:130
+msgid "Two-factor authentication adds an extra layer of security to your account by requiring a code from your authenticator app in addition to your password."
+msgstr "Two-factor authentication adds an extra layer of security to your account by requiring a code from your authenticator app in addition to your password."
+
+#: admin/views/two-factor.php:134
+msgid "Enable Two-Factor Authentication"
+msgstr "Enable Two-Factor Authentication"
+
+#: admin/views/two-factor.php:141
+msgid "Step 1:"
+msgstr "Step 1:"
+
+#: admin/views/two-factor.php:141
+msgid "Scan this QR code with your authenticator app:"
+msgstr "Scan this QR code with your authenticator app:"
+
+#: admin/views/two-factor.php:146
+msgid "Or enter this code manually:"
+msgstr "Or enter this code manually:"
+
+#: admin/views/two-factor.php:151
+msgid "Step 2:"
+msgstr "Step 2:"
+
+#: admin/views/two-factor.php:151
+msgid "Enter the 6-digit code from your app to verify:"
+msgstr "Enter the 6-digit code from your app to verify:"
+
+#: admin/views/two-factor.php:160
+msgid "Verify & Enable"
+msgstr "Verify & Enable"
+
+#: admin/views/two-factor.php:171
+msgid "✓ Two-factor authentication is now enabled!"
+msgstr "✓ Two-factor authentication is now enabled!"
+
+#: admin/views/two-factor.php:176
+msgid "If you lose access to your authenticator app, you can use these codes to log in. Each code can only be used once."
+msgstr "If you lose access to your authenticator app, you can use these codes to log in. Each code can only be used once."
+
+#: admin/views/two-factor.php:198
+msgid "Please wait..."
+msgstr "Please wait..."
+
+#: admin/views/vulnerability-scanner.php:24
+msgid "Check your WordPress core, plugins, and themes against the Wordfence Intelligence vulnerability database for known security issues."
+msgstr "Check your WordPress core, plugins, and themes against the Wordfence Intelligence vulnerability database for known security issues."
+
+#. translators: %s: Settings page URL
+#: admin/views/vulnerability-scanner.php:34
+msgid "Vulnerability scanning requires an Atomic Edge API connection. %s to enable this feature."
+msgstr "Vulnerability scanning requires an Atomic Edge API connection. %s to enable this feature."
+
+#: admin/views/vulnerability-scanner.php:35
+msgid "Connect in Settings"
+msgstr "Connect in Settings"
+
+#: admin/views/vulnerability-scanner.php:55
+msgid "No vulnerability scans have been run yet."
+msgstr "No vulnerability scans have been run yet."
+
+#: admin/views/vulnerability-scanner.php:62
+msgid "Check Vulnerabilities"
+msgstr "Check Vulnerabilities"
+
+#: admin/views/vulnerability-scanner.php:66
+msgid "Reset Results"
+msgstr "Reset Results"
+
+#: admin/views/vulnerability-scanner.php:76
+msgid "Checking for vulnerabilities..."
+msgstr "Checking for vulnerabilities..."
+
+#: admin/views/vulnerability-scanner.php:110
+msgid "WordPress Core"
+msgstr "WordPress Core"
+
+#: admin/views/vulnerability-scanner.php:115
+msgid "Plugin Vulnerabilities"
+msgstr "Plugin Vulnerabilities"
+
+#: admin/views/vulnerability-scanner.php:120
+msgid "Theme Vulnerabilities"
+msgstr "Theme Vulnerabilities"
+
+#: admin/views/vulnerability-scanner.php:127
+msgid "Filter by severity:"
+msgstr "Filter by severity:"
+
+#: admin/views/vulnerability-scanner.php:128
+msgid "Critical"
+msgstr "Critical"
+
+#: admin/views/vulnerability-scanner.php:129
+msgid "High"
+msgstr "High"
+
+#: admin/views/vulnerability-scanner.php:130
+msgid "Medium"
+msgstr "Medium"
+
+#: admin/views/vulnerability-scanner.php:131
+msgid "Low"
+msgstr "Low"
+
+#: admin/views/vulnerability-scanner.php:138
+msgid "WordPress Core Vulnerabilities"
+msgstr "WordPress Core Vulnerabilities"
+
+#. translators: %s: WordPress version
+#: admin/views/vulnerability-scanner.php:145
+msgid "Your WordPress version (%s) has known vulnerabilities. Update to the latest version immediately."
+msgstr "Your WordPress version (%s) has known vulnerabilities. Update to the latest version immediately."
+
+#: admin/views/vulnerability-scanner.php:156
+#: admin/views/vulnerability-scanner.php:206
+#: admin/views/vulnerability-scanner.php:259
+msgid "Unknown Vulnerability"
+msgstr "Unknown Vulnerability"
+
+#. translators: %s: version number
+#: admin/views/vulnerability-scanner.php:163
+#: admin/views/vulnerability-scanner.php:213
+#: admin/views/vulnerability-scanner.php:266
+msgid "Fixed in version: %s"
+msgstr "Fixed in version: %s"
+
+#: admin/views/vulnerability-scanner.php:173
+#: admin/views/vulnerability-scanner.php:223
+#: admin/views/vulnerability-scanner.php:276
+msgid "More Info"
+msgstr "More Info"
+
+#: admin/views/vulnerability-scanner.php:191
+msgid "Vulnerable Plugins"
+msgstr "Vulnerable Plugins"
+
+#: admin/views/vulnerability-scanner.php:244
+msgid "Vulnerable Themes"
+msgstr "Vulnerable Themes"
+
+#: admin/views/vulnerability-scanner.php:296
+msgid "No Known Vulnerabilities!"
+msgstr "No Known Vulnerabilities!"
+
+#: admin/views/vulnerability-scanner.php:297
+msgid "Your WordPress core, plugins, and themes have no known vulnerabilities."
+msgstr "Your WordPress core, plugins, and themes have no known vulnerabilities."
+
+#: admin/views/vulnerability-scanner.php:304
+msgid "No Vulnerability Scan Yet"
+msgstr "No Vulnerability Scan Yet"
+
+#: admin/views/vulnerability-scanner.php:305
+msgid "Click \"Check Vulnerabilities\" to scan your plugins and themes against the Wordfence Intelligence vulnerability database."
+msgstr "Click \"Check Vulnerabilities\" to scan your plugins and themes against the Wordfence Intelligence vulnerability database."
+
+#: admin/views/vulnerability-scanner.php:317
+msgid "WordPress core version against known CVEs"
+msgstr "WordPress core version against known CVEs"
+
+#: admin/views/vulnerability-scanner.php:321
+msgid "All installed plugins for security vulnerabilities"
+msgstr "All installed plugins for security vulnerabilities"
+
+#: admin/views/vulnerability-scanner.php:325
+msgid "All installed themes for security vulnerabilities"
+msgstr "All installed themes for security vulnerabilities"
+
+#: admin/views/vulnerability-scanner.php:329
+msgid "Version-specific vulnerability filtering"
+msgstr "Version-specific vulnerability filtering"
+
+#: admin/views/waf-logs.php:29
+msgid "Search:"
+msgstr "Search:"
+
+#: admin/views/waf-logs.php:32
+msgid "IP, URI, or Rule ID..."
+msgstr "IP, URI, or Rule ID..."
+
+#: admin/views/waf-logs.php:35
+msgid "Per Page:"
+msgstr "Per Page:"
+
+#: admin/views/waf-logs.php:53
+msgid "Time"
+msgstr "Time"
+
+#: admin/views/waf-logs.php:55
+msgid "URI"
+msgstr "URI"
+
+#: admin/views/waf-logs.php:56
+msgid "Rule ID"
+msgstr "Rule ID"
+
+#: admin/views/waf-logs.php:57
+msgid "Rule Group"
+msgstr "Rule Group"
+
+#: admin/views/waf-logs.php:65
+msgid "Loading logs..."
+msgstr "Loading logs..."
+
+#: admin/views/waf-logs.php:75
+msgid "← Previous"
+msgstr "← Previous"
+
+#: admin/views/waf-logs.php:77
+msgid "Page 1"
+msgstr "Page 1"
+
+#: admin/views/waf-logs.php:79
+msgid "Next →"
+msgstr "Next →"
+
+#: admin/views/waf-logs.php:86
+msgid "No WAF Events"
+msgstr "No WAF Events"
+
+#: admin/views/waf-logs.php:87
+msgid "No security events have been logged in this time period."
+msgstr "No security events have been logged in this time period."
+
+#: admin/views/waf-logs.php:93
+msgid "Failed to load WAF logs. Please try again."
+msgstr "Failed to load WAF logs. Please try again."
+
+#. translators: 1: Current PHP version, 2: Required PHP version
+#: atomicedge.php:52
+msgid "Atomic Edge Security requires PHP %2$s or higher. You are running PHP %1$s."
+msgstr "Atomic Edge Security requires PHP %2$s or higher. You are running PHP %1$s."
+
+#. translators: 1: Current WordPress version, 2: Required WordPress version
+#: atomicedge.php:63
+msgid "Atomic Edge Security requires WordPress %2$s or higher. You are running WordPress %1$s."
+msgstr "Atomic Edge Security requires WordPress %2$s or higher. You are running WordPress %1$s."
+
+#: atomicedge.php:71
+msgid "Atomic Edge Security requires the OpenSSL PHP extension to be enabled."
+msgstr "Atomic Edge Security requires the OpenSSL PHP extension to be enabled."
+
+#: atomicedge.php:80
+msgid "Atomic Edge Security cannot be activated:"
+msgstr "Atomic Edge Security cannot be activated:"
+
+#: atomicedge.php:191
+msgid "AtomicEdge Security cannot be activated. Please check the requirements."
+msgstr "AtomicEdge Security cannot be activated. Please check the requirements."
+
+#: atomicedge.php:192
+msgid "Plugin Activation Error"
+msgstr "Plugin Activation Error"
+
+#. translators: %s: Site name
+#: includes/class-atomicedge-2fa-backup.php:188
+msgid "%s - Two-Factor Authentication Backup Codes"
+msgstr "%s - Two-Factor Authentication Backup Codes"
+
+#. translators: %s: Username
+#: includes/class-atomicedge-2fa-backup.php:195
+msgid "Account: %s"
+msgstr "Account: %s"
+
+#. translators: %s: Date
+#: includes/class-atomicedge-2fa-backup.php:199
+msgid "Generated: %s"
+msgstr "Generated: %s"
+
+#: includes/class-atomicedge-2fa-backup.php:201
+msgid "Each code can only be used once. Store these codes in a safe place."
+msgstr "Each code can only be used once. Store these codes in a safe place."
+
+#: includes/class-atomicedge-2fa-backup.php:209
+msgid "IMPORTANT: These codes will not be shown again."
+msgstr "IMPORTANT: These codes will not be shown again."
+
+#. translators: %s: Time remaining
+#: includes/class-atomicedge-2fa-login.php:190
+msgid "Too many failed attempts. Please wait %s before trying again."
+msgstr "Too many failed attempts. Please wait %s before trying again."
+
+#: includes/class-atomicedge-2fa-login.php:199
+msgid "Enter one of your backup codes:"
+msgstr "Enter one of your backup codes:"
+
+#: includes/class-atomicedge-2fa-login.php:202
+msgid "Backup Code"
+msgstr "Backup Code"
+
+#: includes/class-atomicedge-2fa-login.php:207
+msgid "Enter the 6-digit code from your authenticator app:"
+msgstr "Enter the 6-digit code from your authenticator app:"
+
+#: includes/class-atomicedge-2fa-login.php:210
+msgid "Authentication Code"
+msgstr "Authentication Code"
+
+#: includes/class-atomicedge-2fa-login.php:216
+msgid "Log In"
+msgstr "Log In"
+
+#: includes/class-atomicedge-2fa-login.php:226
+msgid "&larr; Use authenticator app"
+msgstr "&larr; Use authenticator app"
+
+#: includes/class-atomicedge-2fa-login.php:230
+msgid "Use a backup code"
+msgstr "Use a backup code"
+
+#: includes/class-atomicedge-2fa-login.php:263
+msgid "Session expired. Please log in again."
+msgstr "Session expired. Please log in again."
+
+#: includes/class-atomicedge-2fa-login.php:269
+msgid "Too many failed attempts. Please wait before trying again."
+msgstr "Too many failed attempts. Please wait before trying again."
+
+#: includes/class-atomicedge-2fa-login.php:293
+msgid "Invalid code. Please try again."
+msgstr "Invalid code. Please try again."
+
+#: includes/class-atomicedge-2fa-login.php:377
+#: includes/class-atomicedge-2fa-login.php:386
+msgid "Two-Factor Authentication Required"
+msgstr "Two-Factor Authentication Required"
+
+#: includes/class-atomicedge-2fa-login.php:389
+msgid "Your account role requires two-factor authentication to be enabled. Please set up 2FA before you can log in."
+msgstr "Your account role requires two-factor authentication to be enabled. Please set up 2FA before you can log in."
+
+#: includes/class-atomicedge-2fa-login.php:394
+msgid "Two-factor authentication adds an extra layer of security to your account by requiring a code from your phone in addition to your password."
+msgstr "Two-factor authentication adds an extra layer of security to your account by requiring a code from your phone in addition to your password."
+
+#: includes/class-atomicedge-2fa-login.php:404
+msgid "Your grace period has ended. You originally had %d day to set up 2FA."
+msgid_plural "Your grace period has ended. You originally had %d days to set up 2FA."
+msgstr[0] "Your grace period has ended. You originally had %d day to set up 2FA."
+msgstr[1] "Your grace period has ended. You originally had %d days to set up 2FA."
+
+#: includes/class-atomicedge-2fa-login.php:414
+msgid "Your grace period has ended. Please contact your site administrator to set up 2FA."
+msgstr "Your grace period has ended. Please contact your site administrator to set up 2FA."
+
+#: includes/class-atomicedge-2fa-login.php:421
+msgid "&larr; Back to Login"
+msgstr "&larr; Back to Login"
+
+#. translators: %s: User's email address
+#: includes/class-atomicedge-2fa-login.php:429
+msgid "If you need assistance, please contact your site administrator. Your account email is: %s"
+msgstr "If you need assistance, please contact your site administrator. Your account email is: %s"
+
+#: includes/class-atomicedge-2fa.php:213
+msgid "Invalid user."
+msgstr "Invalid user."
+
+#: includes/class-atomicedge-2fa.php:224
+msgid "Two-factor authentication requires libsodium encryption which is not available on this server."
+msgstr "Two-factor authentication requires libsodium encryption which is not available on this server."
+
+#. translators: %s: specific error message
+#: includes/class-atomicedge-2fa.php:245
+msgid "Encryption failed: %s"
+msgstr "Encryption failed: %s"
+
+#: includes/class-atomicedge-2fa.php:276
+msgid "Failed to save enrollment data. This may be caused by database issues or object caching. Please try again or contact support."
+msgstr "Failed to save enrollment data. This may be caused by database issues or object caching. Please try again or contact support."
+
+#: includes/class-atomicedge-2fa.php:325
+msgid "No pending enrollment found. Please start setup again."
+msgstr "No pending enrollment found. Please start setup again."
+
+#: includes/class-atomicedge-2fa.php:333
+msgid "Failed to decrypt secret. Please start setup again."
+msgstr "Failed to decrypt secret. Please start setup again."
+
+#: includes/class-atomicedge-2fa.php:341
+msgid "Invalid verification code. Please check your authenticator app and try again."
+msgstr "Invalid verification code. Please check your authenticator app and try again."
+
+#: includes/class-atomicedge-2fa.php:707
+msgid "Are you sure you want to disable two-factor authentication? This will make your account less secure."
+msgstr "Are you sure you want to disable two-factor authentication? This will make your account less secure."
+
+#: includes/class-atomicedge-2fa.php:708
+msgid "This will invalidate all existing backup codes. Are you sure?"
+msgstr "This will invalidate all existing backup codes. Are you sure?"
+
+#: includes/class-atomicedge-2fa.php:709
+msgid "Verification failed. Please try again."
+msgstr "Verification failed. Please try again."
+
+#: includes/class-atomicedge-2fa.php:881
+msgid "AtomicEdge 2FA:"
+msgstr "AtomicEdge 2FA:"
+
+#. translators: %s: List of conflicting plugins
+#: includes/class-atomicedge-2fa.php:884
+msgid "Another two-factor authentication plugin is active (%s). Using multiple 2FA solutions may cause login conflicts."
+msgstr "Another two-factor authentication plugin is active (%s). Using multiple 2FA solutions may cause login conflicts."
+
+#: includes/class-atomicedge-2fa.php:945
+msgid "Your grace period has expired. Please set up two-factor authentication immediately to maintain access to your account."
+msgstr "Your grace period has expired. Please set up two-factor authentication immediately to maintain access to your account."
+
+#. translators: %d: Number of days remaining
+#: includes/class-atomicedge-2fa.php:950
+msgid "Your grace period expires in %d day! Please set up two-factor authentication now."
+msgid_plural "Your grace period expires in %d days! Please set up two-factor authentication now."
+msgstr[0] "Your grace period expires in %d day! Please set up two-factor authentication now."
+msgstr[1] "Your grace period expires in %d days! Please set up two-factor authentication now."
+
+#. translators: %d: Number of days remaining
+#: includes/class-atomicedge-2fa.php:962
+msgid "Two-factor authentication is required for your role. You have %d day to set it up."
+msgid_plural "Two-factor authentication is required for your role. You have %d days to set it up."
+msgstr[0] "Two-factor authentication is required for your role. You have %d day to set it up."
+msgstr[1] "Two-factor authentication is required for your role. You have %d days to set it up."
+
+#: includes/class-atomicedge-2fa.php:978
+msgid "AtomicEdge Security:"
+msgstr "AtomicEdge Security:"
+
+#: includes/class-atomicedge-2fa.php:981
+msgid "Set Up 2FA"
+msgstr "Set Up 2FA"
+
+#: includes/class-atomicedge-admin.php:71
+#: includes/class-atomicedge-admin.php:72
+msgid "Dashboard"
+msgstr "Dashboard"
+
+#: includes/class-atomicedge-admin.php:141
+#: includes/class-atomicedge-admin.php:142
+msgid "CDN"
+msgstr "CDN"
+
+#: includes/class-atomicedge-admin.php:151
+#: includes/class-atomicedge-admin.php:152
+msgid "2FA"
+msgstr "2FA"
+
+#: includes/class-atomicedge-admin.php:203
+#: includes/class-atomicedge-admin.php:231
+#: includes/class-atomicedge-admin.php:278
+msgid "Security check failed. Please try again."
+msgstr "Security check failed. Please try again."
+
+#: includes/class-atomicedge-admin.php:209
+msgid "You do not have permission to change settings."
+msgstr "You do not have permission to change settings."
+
+#: includes/class-atomicedge-admin.php:219
+msgid "Settings saved successfully."
+msgstr "Settings saved successfully."
+
+#: includes/class-atomicedge-admin.php:237
+msgid "You do not have permission to connect."
+msgstr "You do not have permission to connect."
+
+#: includes/class-atomicedge-admin.php:246
+msgid "Please enter an API key."
+msgstr "Please enter an API key."
+
+#: includes/class-atomicedge-admin.php:254
+msgid "Invalid API key format. Paste the key exactly as shown in the Atomic Edge dashboard (32–64 letters/numbers, no prefix)."
+msgstr "Invalid API key format. Paste the key exactly as shown in the Atomic Edge dashboard (32–64 letters/numbers, no prefix)."
+
+#: includes/class-atomicedge-admin.php:284
+msgid "You do not have permission to disconnect."
+msgstr "You do not have permission to disconnect."
+
+#. translators: 1: plugin name, 2: deactivate link
+#: includes/class-atomicedge-admin.php:365
+msgid "%1$s is active. Atomic Edge Security should not run alongside the retired Shift8 CDN plugin. %2$s"
+msgstr "%1$s is active. Atomic Edge Security should not run alongside the retired Shift8 CDN plugin. %2$s"
+
+#: includes/class-atomicedge-admin.php:366
+msgid "Shift8 CDN"
+msgstr "Shift8 CDN"
+
+#: includes/class-atomicedge-admin.php:370
+msgid "Deactivate Shift8 CDN"
+msgstr "Deactivate Shift8 CDN"
+
+#: includes/class-atomicedge-admin.php:497
+msgid "CDN settings saved."
+msgstr "CDN settings saved."
+
+#. translators: %s: Settings page URL
+#: includes/class-atomicedge-admin.php:615
+msgid "Please <a href=\"%s\">connect your site</a> to Atomic Edge to access this feature."
+msgstr "Please <a href=\"%s\">connect your site</a> to Atomic Edge to access this feature."
+
+#: includes/class-atomicedge-ajax.php:262
+#: includes/class-atomicedge-ajax.php:291
+msgid "Please enter an IP address."
+msgstr "Please enter an IP address."
+
+#: includes/class-atomicedge-ajax.php:266
+#: includes/class-atomicedge-ajax.php:295
+msgid "Invalid IP address or CIDR range."
+msgstr "Invalid IP address or CIDR range."
+
+#: includes/class-atomicedge-ajax.php:272
+msgid "IP added to whitelist successfully."
+msgstr "IP added to whitelist successfully."
+
+#: includes/class-atomicedge-ajax.php:301
+msgid "IP added to blacklist successfully."
+msgstr "IP added to blacklist successfully."
+
+#: includes/class-atomicedge-ajax.php:320
+#: includes/class-atomicedge-ajax.php:966
+#: includes/class-atomicedge-ajax.php:998
+msgid "IP address is required."
+msgstr "IP address is required."
+
+#: includes/class-atomicedge-ajax.php:324
+msgid "Invalid list type."
+msgstr "Invalid list type."
+
+#: includes/class-atomicedge-ajax.php:330
+msgid "IP removed successfully."
+msgstr "IP removed successfully."
+
+#: includes/class-atomicedge-ajax.php:388
+msgid "Geographic rules updated successfully."
+msgstr "Geographic rules updated successfully."
+
+#: includes/class-atomicedge-ajax.php:523
+#: includes/class-atomicedge-cdn.php:526
+msgid "Cache cleared successfully."
+msgstr "Cache cleared successfully."
+
+#: includes/class-atomicedge-ajax.php:538
+#: includes/class-atomicedge-vulnerability-scanner.php:67
+msgid "Vulnerability scanning requires an Atomic Edge API connection. Please connect your site in the Settings page."
+msgstr "Vulnerability scanning requires an Atomic Edge API connection. Please connect your site in the Settings page."
+
+#: includes/class-atomicedge-ajax.php:654
+msgid "CDN status refreshed."
+msgstr "CDN status refreshed."
+
+#: includes/class-atomicedge-ajax.php:660
+msgid "Failed to fetch CDN status."
+msgstr "Failed to fetch CDN status."
+
+#: includes/class-atomicedge-ajax.php:680
+msgid "Cache purge has been queued."
+msgstr "Cache purge has been queued."
+
+#: includes/class-atomicedge-ajax.php:689
+msgid "CDN is not enabled for this site."
+msgstr "CDN is not enabled for this site."
+
+#: includes/class-atomicedge-ajax.php:692
+msgid "CDN is not configured for this site."
+msgstr "CDN is not configured for this site."
+
+#: includes/class-atomicedge-ajax.php:695
+msgid "Please wait a few minutes between purge requests."
+msgstr "Please wait a few minutes between purge requests."
+
+#: includes/class-atomicedge-ajax.php:731
+msgid "No settings provided."
+msgstr "No settings provided."
+
+#: includes/class-atomicedge-ajax.php:746
+msgid "CDN settings updated successfully."
+msgstr "CDN settings updated successfully."
+
+#: includes/class-atomicedge-ajax.php:764
+msgid "No form data provided."
+msgstr "No form data provided."
+
+#: includes/class-atomicedge-ajax.php:819
+msgid "CDN settings saved successfully."
+msgstr "CDN settings saved successfully."
+
+#: includes/class-atomicedge-ajax.php:833
+msgid "CDN module not available."
+msgstr "CDN module not available."
+
+#. translators: %d: Number of files deleted
+#: includes/class-atomicedge-ajax.php:842
+msgid "Cleared %d cached files."
+msgstr "Cleared %d cached files."
+
+#: includes/class-atomicedge-ajax.php:848
+#: includes/class-atomicedge-cdn.php:528
+msgid "Failed to clear cache."
+msgstr "Failed to clear cache."
+
+#: includes/class-atomicedge-ajax.php:882
+msgid "Failed to fetch Adaptive Defense data."
+msgstr "Failed to fetch Adaptive Defense data."
+
+#: includes/class-atomicedge-ajax.php:909
+msgid "Failed to fetch actor profiles."
+msgstr "Failed to fetch actor profiles."
+
+#: includes/class-atomicedge-ajax.php:932
+msgid "Failed to fetch threat detections."
+msgstr "Failed to fetch threat detections."
+
+#: includes/class-atomicedge-ajax.php:945
+#: includes/class-atomicedge-ajax.php:1048
+msgid "Detection ID is required."
+msgstr "Detection ID is required."
+
+#: includes/class-atomicedge-ajax.php:953
+msgid "Failed to fetch detection details."
+msgstr "Failed to fetch detection details."
+
+#. translators: %s: IP address
+#: includes/class-atomicedge-ajax.php:979
+msgid "IP address %s has been blocked."
+msgstr "IP address %s has been blocked."
+
+#: includes/class-atomicedge-ajax.php:985
+msgid "Failed to block IP address."
+msgstr "Failed to block IP address."
+
+#. translators: %s: IP address
+#: includes/class-atomicedge-ajax.php:1007
+msgid "IP address %s has been unblocked."
+msgstr "IP address %s has been unblocked."
+
+#: includes/class-atomicedge-ajax.php:1012
+msgid "Failed to unblock IP address."
+msgstr "Failed to unblock IP address."
+
+#: includes/class-atomicedge-ajax.php:1025
+msgid "Actor ID is required."
+msgstr "Actor ID is required."
+
+#: includes/class-atomicedge-ajax.php:1032
+msgid "Actor profile has been deleted."
+msgstr "Actor profile has been deleted."
+
+#: includes/class-atomicedge-ajax.php:1035
+msgid "Failed to delete actor profile."
+msgstr "Failed to delete actor profile."
+
+#: includes/class-atomicedge-ajax.php:1055
+msgid "Threat detection has been dismissed."
+msgstr "Threat detection has been dismissed."
+
+#: includes/class-atomicedge-ajax.php:1058
+msgid "Failed to dismiss detection."
+msgstr "Failed to dismiss detection."
+
+#: includes/class-atomicedge-ajax.php:1084
+msgid "Two-factor authentication is not available. Your server may not support the required encryption features."
+msgstr "Two-factor authentication is not available. Your server may not support the required encryption features."
+
+#: includes/class-atomicedge-ajax.php:1093
+msgid "Two-factor authentication is already enabled."
+msgstr "Two-factor authentication is already enabled."
+
+#: includes/class-atomicedge-ajax.php:1111
+msgid "Failed to start enrollment. Please try again."
+msgstr "Failed to start enrollment. Please try again."
+
+#: includes/class-atomicedge-ajax.php:1137
+msgid "Please enter the verification code."
+msgstr "Please enter the verification code."
+
+#: includes/class-atomicedge-ajax.php:1156
+msgid "Two-factor authentication enabled successfully!"
+msgstr "Two-factor authentication enabled successfully!"
+
+#: includes/class-atomicedge-ajax.php:1175
+msgid "Enrollment cancelled."
+msgstr "Enrollment cancelled."
+
+#: includes/class-atomicedge-ajax.php:1195
+msgid "Please enter your password to confirm."
+msgstr "Please enter your password to confirm."
+
+#: includes/class-atomicedge-ajax.php:1203
+msgid "Incorrect password. Please try again."
+msgstr "Incorrect password. Please try again."
+
+#: includes/class-atomicedge-ajax.php:1210
+msgid "Two-factor authentication has been disabled."
+msgstr "Two-factor authentication has been disabled."
+
+#: includes/class-atomicedge-ajax.php:1226
+msgid "Two-factor authentication is not enabled."
+msgstr "Two-factor authentication is not enabled."
+
+#: includes/class-atomicedge-ajax.php:1234
+msgid "Failed to regenerate backup codes. Please try again."
+msgstr "Failed to regenerate backup codes. Please try again."
+
+#: includes/class-atomicedge-ajax.php:1247
+msgid "Backup codes regenerated. Please save your new codes."
+msgstr "Backup codes regenerated. Please save your new codes."
+
+#: includes/class-atomicedge-ajax.php:1281
+msgid "Unauthorized access."
+msgstr "Unauthorized access."
+
+#: includes/class-atomicedge-ajax.php:1296
+msgid "You cannot modify another user's settings."
+msgstr "You cannot modify another user's settings."
+
+#: includes/class-atomicedge-api.php:166
+msgid "Successfully connected to Atomic Edge!"
+msgstr "Successfully connected to Atomic Edge!"
+
+#: includes/class-atomicedge-api.php:192
+msgid "Successfully disconnected from Atomic Edge."
+msgstr "Successfully disconnected from Atomic Edge."
+
+#: includes/class-atomicedge-api.php:681
+msgid "Not connected to Atomic Edge."
+msgstr "Not connected to Atomic Edge."
+
+#: includes/class-atomicedge-api.php:729
+#: includes/class-atomicedge-api.php:752
+#: includes/class-atomicedge-api.php:823
+#: includes/class-atomicedge-api.php:845
+msgid "An error occurred."
+msgstr "An error occurred."
+
+#: includes/class-atomicedge-cdn.php:74
+#: includes/class-atomicedge.php:102
+msgid "Cannot unserialize singleton"
+msgstr "Cannot unserialize singleton"
+
+#: includes/class-atomicedge-cdn.php:522
+msgid "Unauthorized"
+msgstr "Unauthorized"
+
+#: includes/class-atomicedge-cron.php:76
+msgid "Once Weekly"
+msgstr "Once Weekly"
+
+#: includes/class-atomicedge-dev-mode.php:179
+msgid "You are viewing simulated data for local development. All features are available for testing. Connect to AtomicEdge on a production site for real functionality."
+msgstr "You are viewing simulated data for local development. All features are available for testing. Connect to AtomicEdge on a production site for real functionality."
+
+#: includes/class-atomicedge-dev-mode.php:216
+msgid "[Dev Mode] Cache purge simulated."
+msgstr "[Dev Mode] Cache purge simulated."
+
+#: includes/class-atomicedge-dev-mode.php:238
+msgid "Simulated response for development."
+msgstr "Simulated response for development."
+
+#: includes/class-atomicedge-scanner.php:364
+msgid "Scan stopped early; results may be incomplete."
+msgstr "Scan stopped early; results may be incomplete."
+
+#: includes/class-atomicedge-scanner.php:644
+msgid "Integrity verification was enabled but the manifest could not be loaded; integrity checks were skipped."
+msgstr "Integrity verification was enabled but the manifest could not be loaded; integrity checks were skipped."
+
+#: includes/class-atomicedge-scanner.php:659
+msgid "Could not fetch WordPress core checksums; core integrity checks were skipped."
+msgstr "Could not fetch WordPress core checksums; core integrity checks were skipped."
+
+#: includes/class-atomicedge-scanner.php:785
+msgid "Scan failed due to an unexpected error; results may be incomplete."
+msgstr "Scan failed due to an unexpected error; results may be incomplete."
+
+#: includes/class-atomicedge-scanner.php:1123
+msgid "File missing"
+msgstr "File missing"
+
+#: includes/class-atomicedge-scanner.php:1134
+msgid "File not readable"
+msgstr "File not readable"
+
+#: includes/class-atomicedge-scanner.php:1146
+msgid "Could not compute file hash"
+msgstr "Could not compute file hash"
+
+#: includes/class-atomicedge-scanner.php:1157
+msgid "Hash mismatch"
+msgstr "Hash mismatch"
+
+#: includes/class-atomicedge-scanner.php:1213
+msgid "Run id does not match the active scan."
+msgstr "Run id does not match the active scan."
+
+#: includes/class-atomicedge-scanner.php:2128
+#: includes/class-atomicedge-scanner.php:2380
+#: includes/class-atomicedge-scanner.php:2757
+msgid "Suspicious pattern in wp-admin"
+msgstr "Suspicious pattern in wp-admin"
+
+#: includes/class-atomicedge-scanner.php:2130
+#: includes/class-atomicedge-scanner.php:2382
+#: includes/class-atomicedge-scanner.php:2760
+msgid "Suspicious pattern in wp-includes"
+msgstr "Suspicious pattern in wp-includes"
+
+#: includes/class-atomicedge-scanner.php:2132
+#: includes/class-atomicedge-scanner.php:2384
+msgid "Suspicious file in non-standard directory (possible hidden malware)"
+msgstr "Suspicious file in non-standard directory (possible hidden malware)"
+
+#: includes/class-atomicedge-scanner.php:2135
+#: includes/class-atomicedge-scanner.php:2387
+msgid "Suspicious pattern in non-standard wp-content subdirectory"
+msgstr "Suspicious pattern in non-standard wp-content subdirectory"
+
+#: includes/class-atomicedge-scanner.php:2144
+#: includes/class-atomicedge-scanner.php:2396
+#: includes/class-atomicedge-scanner.php:2984
+msgid "PHP file found in uploads directory"
+msgstr "PHP file found in uploads directory"
+
+#: includes/class-atomicedge-scanner.php:2153
+#: includes/class-atomicedge-scanner.php:2405
+msgid "PHP file found in non-standard directory (possible hidden malware)"
+msgstr "PHP file found in non-standard directory (possible hidden malware)"
+
+#: includes/class-atomicedge-scanner.php:2173
+#: includes/class-atomicedge-scanner.php:3003
+msgid "Could not read WordPress root directory; scan may be incomplete."
+msgstr "Could not read WordPress root directory; scan may be incomplete."
+
+#: includes/class-atomicedge-scanner.php:2219
+#: includes/class-atomicedge-scanner.php:2814
+msgid "Non-core file in WordPress root"
+msgstr "Non-core file in WordPress root"
+
+#: includes/class-atomicedge-scanner.php:2227
+#: includes/class-atomicedge-scanner.php:2824
+msgid "Unknown PHP file in WordPress root directory"
+msgstr "Unknown PHP file in WordPress root directory"
+
+#: includes/class-atomicedge-scanner.php:2254
+#: includes/class-atomicedge-scanner.php:2270
+#: includes/class-atomicedge-scanner.php:3336
+msgid "Some directories could not be read; scan may be incomplete."
+msgstr "Some directories could not be read; scan may be incomplete."
+
+#: includes/class-atomicedge-scanner.php:3103
+msgid "Some large files were not fully scanned; results may be incomplete."
+msgstr "Some large files were not fully scanned; results may be incomplete."
+
+#: includes/class-atomicedge-scanner.php:3117
+msgid "Some files could not be read; scan may be incomplete."
+msgstr "Some files could not be read; scan may be incomplete."
+
+#: includes/class-atomicedge-scanner.php:3126
+msgid "PHP code hidden in image file"
+msgstr "PHP code hidden in image file"
+
+#: includes/class-atomicedge-scanner.php:3254
+msgid "Suspicious pattern detected"
+msgstr "Suspicious pattern detected"
+
+#: includes/class-atomicedge-scanner.php:3348
+msgid "Some directories could not be scanned due to permissions; scan may be incomplete."
+msgstr "Some directories could not be scanned due to permissions; scan may be incomplete."
+
+#: includes/class-atomicedge-scanner.php:3654
+msgid "Backdoor: eval with user input"
+msgstr "Backdoor: eval with user input"
+
+#: includes/class-atomicedge-scanner.php:3655
+msgid "Backdoor: eval+base64 with user input"
+msgstr "Backdoor: eval+base64 with user input"
+
+#: includes/class-atomicedge-scanner.php:3656
+msgid "Direct superglobal as function"
+msgstr "Direct superglobal as function"
+
+#: includes/class-atomicedge-scanner.php:3657
+msgid "Dangerous extract from user input"
+msgstr "Dangerous extract from user input"
+
+#: includes/class-atomicedge-scanner.php:3658
+#: includes/class-atomicedge-scanner.php:3659
+msgid "Remote file inclusion via user input"
+msgstr "Remote file inclusion via user input"
+
+#: includes/class-atomicedge-scanner.php:3660
+msgid "File write from user input"
+msgstr "File write from user input"
+
+#: includes/class-atomicedge-scanner.php:3661
+msgid "Assert with user input"
+msgstr "Assert with user input"
+
+#: includes/class-atomicedge-scanner.php:3662
+msgid "Preg replace eval with user input"
+msgstr "Preg replace eval with user input"
+
+#: includes/class-atomicedge-scanner.php:3667
+msgid "C99 shell signature"
+msgstr "C99 shell signature"
+
+#: includes/class-atomicedge-scanner.php:3668
+msgid "R57 shell signature"
+msgstr "R57 shell signature"
+
+#: includes/class-atomicedge-scanner.php:3669
+msgid "B374K shell signature"
+msgstr "B374K shell signature"
+
+#: includes/class-atomicedge-scanner.php:3670
+msgid "WSO shell signature"
+msgstr "WSO shell signature"
+
+#: includes/class-atomicedge-scanner.php:3671
+msgid "Weevely shell signature"
+msgstr "Weevely shell signature"
+
+#: includes/class-atomicedge-scanner.php:3676
+msgid "WP-VCD malware"
+msgstr "WP-VCD malware"
+
+#: includes/class-atomicedge-scanner.php:3677
+msgid "WP-VCD theme modules"
+msgstr "WP-VCD theme modules"
+
+#: includes/class-atomicedge-scanner.php:3678
+msgid "WP-VCD plugin modules"
+msgstr "WP-VCD plugin modules"
+
+#: includes/class-atomicedge-scanner.php:3679
+msgid "WP-VCD temp file"
+msgstr "WP-VCD temp file"
+
+#: includes/class-atomicedge-scanner.php:3680
+msgid "WP-VCD content injection"
+msgstr "WP-VCD content injection"
+
+#: includes/class-atomicedge-scanner.php:3681
+msgid "WP-VCD setup function"
+msgstr "WP-VCD setup function"
+
+#: includes/class-atomicedge-scanner.php:3682
+msgid "Known malware domain"
+msgstr "Known malware domain"
+
+#: includes/class-atomicedge-scanner.php:3683
+msgid "Plugin update suppression"
+msgstr "Plugin update suppression"
+
+#: includes/class-atomicedge-scanner.php:3688
+msgid "Multi-layer obfuscation: eval+gzinflate+base64"
+msgstr "Multi-layer obfuscation: eval+gzinflate+base64"
+
+#: includes/class-atomicedge-scanner.php:3689
+msgid "Multi-layer obfuscation: eval+gzuncompress+base64"
+msgstr "Multi-layer obfuscation: eval+gzuncompress+base64"
+
+#: includes/class-atomicedge-scanner.php:3690
+msgid "Multi-layer obfuscation: eval+rot13+base64"
+msgstr "Multi-layer obfuscation: eval+rot13+base64"
+
+#: includes/class-atomicedge-scanner.php:3691
+msgid "Obfuscated assert"
+msgstr "Obfuscated assert"
+
+#: includes/class-atomicedge-scanner.php:3692
+msgid "Obfuscated create_function"
+msgstr "Obfuscated create_function"
+
+#: includes/class-atomicedge-scanner.php:3693
+msgid "Reversed base64_decode"
+msgstr "Reversed base64_decode"
+
+#: includes/class-atomicedge-scanner.php:3698
+msgid "Password file access attempt"
+msgstr "Password file access attempt"
+
+#: includes/class-atomicedge-scanner.php:3699
+msgid "Shadow file access attempt"
+msgstr "Shadow file access attempt"
+
+#: includes/class-atomicedge-scanner.php:3700
+msgid "Defacement signature"
+msgstr "Defacement signature"
+
+#: includes/class-atomicedge-scanner.php:3701
+#: includes/class-atomicedge-scanner.php:3702
+msgid "Shell variant"
+msgstr "Shell variant"
+
+#: includes/class-atomicedge-scanner.php:3707
+msgid "Hex-encoded eval"
+msgstr "Hex-encoded eval"
+
+#: includes/class-atomicedge-scanner.php:3708
+msgid "Hex-encoded assert"
+msgstr "Hex-encoded assert"
+
+#: includes/class-atomicedge-scanner.php:3709
+msgid "Hex-encoded system"
+msgstr "Hex-encoded system"
+
+#: includes/class-atomicedge-scanner.php:3710
+msgid "Hex-encoded exec"
+msgstr "Hex-encoded exec"
+
+#: includes/class-atomicedge-vulnerability-scanner.php:88
+msgid "Failed to check vulnerabilities."
+msgstr "Failed to check vulnerabilities."
+
+#: includes/class-atomicedge-vulnerability-scanner.php:240
+msgid "Unknown vulnerability"
+msgstr "Unknown vulnerability"
+
+#: includes/class-atomicedge.php:196
+msgid "An error occurred. Please try again."
+msgstr "An error occurred. Please try again."
+
+#: includes/class-atomicedge.php:197
+msgid "Success!"
+msgstr "Success!"
+
+#: includes/class-atomicedge.php:198
+msgid "Are you sure?"
+msgstr "Are you sure?"
+
+#: includes/class-atomicedge.php:199
+msgid "Are you sure you want to remove this IP?"
+msgstr "Are you sure you want to remove this IP?"
+
+#: includes/class-atomicedge.php:200
+msgid "Please enter a valid IP address or CIDR range."
+msgstr "Please enter a valid IP address or CIDR range."
+
+#: includes/class-atomicedge.php:202
+msgid "Scan complete!"
+msgstr "Scan complete!"

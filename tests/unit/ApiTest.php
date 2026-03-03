@@ -447,6 +447,141 @@ class ApiTest extends TestCase {
 	}
 
 	// =========================================================================
+	// WAF Log Cache Invalidation Tests (Regression: 2026-02-28)
+	//
+	// WAF logs are cached with is_blocked status. When the blacklist changes
+	// (add/remove), the WAF log cache must be invalidated so the next fetch
+	// returns the correct is_blocked values.
+	// =========================================================================
+
+	/**
+	 * Test add_ip_blacklist invalidates WAF log cache.
+	 *
+	 * Regression test: after blocking an IP, WAF logs should show the
+	 * correct is_blocked status on next fetch, not stale cached data.
+	 */
+	public function test_add_ip_blacklist_invalidates_waf_log_cache() {
+		$this->setup_connected_api();
+
+		$initial_gen = $this->get_option( 'atomicedge_waf_cache_gen', 0 );
+
+		Functions\when( 'wp_remote_request' )->justReturn(
+			array(
+				'response' => array( 'code' => 200 ),
+				'body'     => wp_json_encode( array( 'success' => true ) ),
+			)
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn( wp_json_encode( array( 'success' => true ) ) );
+
+		$api = $this->create_api_instance();
+		$api->add_ip_blacklist( '10.0.0.1', 'Test block' );
+
+		$new_gen = $this->get_option( 'atomicedge_waf_cache_gen', 0 );
+		$this->assertNotEquals( $initial_gen, $new_gen, 'WAF cache generation should change after blacklist add' );
+	}
+
+	/**
+	 * Test add_ip_whitelist invalidates WAF log cache.
+	 */
+	public function test_add_ip_whitelist_invalidates_waf_log_cache() {
+		$this->setup_connected_api();
+
+		$initial_gen = $this->get_option( 'atomicedge_waf_cache_gen', 0 );
+
+		Functions\when( 'wp_remote_request' )->justReturn(
+			array(
+				'response' => array( 'code' => 200 ),
+				'body'     => wp_json_encode( array( 'success' => true ) ),
+			)
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn( wp_json_encode( array( 'success' => true ) ) );
+
+		$api = $this->create_api_instance();
+		$api->add_ip_whitelist( '10.0.0.2', 'Test allow' );
+
+		$new_gen = $this->get_option( 'atomicedge_waf_cache_gen', 0 );
+		$this->assertNotEquals( $initial_gen, $new_gen, 'WAF cache generation should change after whitelist add' );
+	}
+
+	/**
+	 * Test remove_ip invalidates WAF log cache.
+	 */
+	public function test_remove_ip_invalidates_waf_log_cache() {
+		$this->setup_connected_api();
+
+		$initial_gen = $this->get_option( 'atomicedge_waf_cache_gen', 0 );
+
+		Functions\when( 'wp_remote_request' )->justReturn(
+			array(
+				'response' => array( 'code' => 200 ),
+				'body'     => wp_json_encode( array( 'success' => true ) ),
+			)
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn( wp_json_encode( array( 'success' => true ) ) );
+
+		$api = $this->create_api_instance();
+		$api->remove_ip( '10.0.0.1', 'blacklist' );
+
+		$new_gen = $this->get_option( 'atomicedge_waf_cache_gen', 0 );
+		$this->assertNotEquals( $initial_gen, $new_gen, 'WAF cache generation should change after IP removal' );
+	}
+
+	/**
+	 * Test WAF log cache key includes generation counter.
+	 *
+	 * Ensures that changing the generation counter effectively invalidates
+	 * all cached WAF log queries (old transient keys become orphaned).
+	 */
+	public function test_waf_log_cache_key_includes_generation() {
+		$this->setup_connected_api();
+
+		// Use reflection to test the private get_waf_cache_generation method.
+		$api        = $this->create_api_instance();
+		$reflection = new \ReflectionClass( $api );
+		$method     = $reflection->getMethod( 'get_waf_cache_generation' );
+		$method->setAccessible( true );
+
+		// Set a known generation.
+		$this->set_option( 'atomicedge_waf_cache_gen', 42 );
+		$gen = $method->invoke( $api );
+		$this->assertSame( 42, $gen );
+
+		// Change generation.
+		$this->set_option( 'atomicedge_waf_cache_gen', 99 );
+		$gen = $method->invoke( $api );
+		$this->assertSame( 99, $gen );
+	}
+
+	/**
+	 * Test failed IP operations do NOT invalidate WAF log cache.
+	 */
+	public function test_failed_blacklist_add_does_not_invalidate_waf_cache() {
+		$this->setup_connected_api();
+
+		$this->set_option( 'atomicedge_waf_cache_gen', 100 );
+
+		Functions\when( 'wp_remote_request' )->justReturn(
+			array(
+				'response' => array( 'code' => 422 ),
+				'body'     => wp_json_encode( array( 'success' => false, 'message' => 'Invalid IP' ) ),
+			)
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 422 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn(
+			wp_json_encode( array( 'success' => false, 'message' => 'Invalid IP' ) )
+		);
+
+		$api = $this->create_api_instance();
+		$api->add_ip_blacklist( 'invalid', 'Bad' );
+
+		$gen = $this->get_option( 'atomicedge_waf_cache_gen', 0 );
+		$this->assertSame( 100, $gen, 'WAF cache generation should NOT change after failed operation' );
+	}
+
+	// =========================================================================
 	// Geo Rules Tests
 	// =========================================================================
 

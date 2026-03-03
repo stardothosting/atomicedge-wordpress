@@ -555,7 +555,7 @@ class AtomicEdge_Dev_Mode {
 			array(
 				'id'              => 2001,
 				'score'           => 92,
-				'confidence'      => 87,
+				'confidence'      => 0.87,
 				'threat_level'    => 'critical',
 				'status'          => 'auto_blocked',
 				'ip_address'      => '45.33.32.156',
@@ -586,7 +586,7 @@ class AtomicEdge_Dev_Mode {
 			array(
 				'id'              => 2002,
 				'score'           => 78,
-				'confidence'      => 72,
+				'confidence'      => 0.72,
 				'threat_level'    => 'high',
 				'status'          => 'pending_review',
 				'ip_address'      => '103.235.46.39',
@@ -617,7 +617,7 @@ class AtomicEdge_Dev_Mode {
 			array(
 				'id'              => 2003,
 				'score'           => 95,
-				'confidence'      => 91,
+				'confidence'      => 0.91,
 				'threat_level'    => 'critical',
 				'status'          => 'user_blocked',
 				'ip_address'      => '203.0.113.88',
@@ -649,7 +649,7 @@ class AtomicEdge_Dev_Mode {
 			array(
 				'id'              => 2004,
 				'score'           => 55,
-				'confidence'      => 60,
+				'confidence'      => 0.60,
 				'threat_level'    => 'medium',
 				'status'          => 'pending_review',
 				'ip_address'      => '198.51.100.42',
@@ -680,7 +680,7 @@ class AtomicEdge_Dev_Mode {
 			array(
 				'id'              => 2005,
 				'score'           => 40,
-				'confidence'      => 45,
+				'confidence'      => 0.45,
 				'threat_level'    => 'low',
 				'status'          => 'dismissed',
 				'ip_address'      => '192.0.2.200',

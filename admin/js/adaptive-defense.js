@@ -668,7 +668,9 @@
 
             // Detection details
             $detailRow.find('.atomicedge-ad-detail-score').html(this.formatScore(detection.score || 0));
-            $detailRow.find('.atomicedge-ad-detail-confidence').text((detection.confidence || 0) + '%');
+            var rawConf = detection.confidence || 0;
+            var confPct = rawConf > 1 ? rawConf : Math.round(rawConf * 100);
+            $detailRow.find('.atomicedge-ad-detail-confidence').text(confPct + '%');
             $detailRow.find('.atomicedge-ad-detail-status').html(this.formatDetectionStatus(detection.status || 'pending'));
             $detailRow.find('.atomicedge-ad-detail-detected-at').text(this.formatDate(detection.detected_at || detection.created_at));
 

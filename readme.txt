@@ -4,7 +4,7 @@ Tags: security, firewall, waf, malware, protection
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 2.4.6
+Stable tag: 2.4.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -111,6 +111,10 @@ The plugin automatically detects and uses the best available option.
 9. Adaptive Defense dashboard showing AI-powered threat detections and automatic IP blocking
 
 == Changelog ==
+
+= 2.4.7 =
+* FIX: Confidence now displayed as percentage (e.g. "90%") instead of raw decimal ("0.90%") in Adaptive Defense threat detection details
+* FIX: Dev mode simulation data now uses 0.0-1.0 decimal values for confidence to match real API format
 
 = 2.4.6 =
 * FIX: Adaptive Defense dev mode now provides simulated data for all 8 AJAX endpoints (overview, actor profiles, threat detections, detection detail, block/unblock IP, dismiss detection, delete actor)

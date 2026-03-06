@@ -166,7 +166,7 @@ class DevModeAdaptiveDefenseTest extends TestCase {
 		$this->assertNotEmpty( $data['actors'] );
 
 		$required_fields = array(
-			'id', 'ip', 'ip_address', 'total_requests',
+			'id', 'ip', 'ip_address', 'country_code', 'country_flag_emoji', 'total_requests',
 			'total_waf_hits', 'total_waf_events', 'first_seen', 'first_seen_at',
 			'last_seen', 'last_seen_at',
 		);
@@ -196,7 +196,8 @@ class DevModeAdaptiveDefenseTest extends TestCase {
 
 		$required_detection_fields = array(
 			'id', 'score', 'confidence', 'threat_level', 'status',
-			'ip_address', 'created_at', 'detected_at', 'reasons',
+			'ip_address', 'country_code', 'country_flag_emoji',
+			'created_at', 'detected_at', 'reasons',
 			'key_indicators', 'actor',
 		);
 
@@ -209,6 +210,8 @@ class DevModeAdaptiveDefenseTest extends TestCase {
 			$actor = $detection['actor'];
 			$this->assertArrayHasKey( 'ip', $actor );
 			$this->assertArrayHasKey( 'ip_address', $actor );
+			$this->assertArrayHasKey( 'country_code', $actor );
+			$this->assertArrayHasKey( 'country_flag_emoji', $actor );
 			$this->assertArrayHasKey( 'total_requests', $actor );
 			$this->assertArrayHasKey( 'total_waf_hits', $actor );
 			$this->assertArrayHasKey( 'first_seen', $actor );
@@ -616,6 +619,165 @@ class DevModeAdaptiveDefenseTest extends TestCase {
 
 		$this->assertEquals( 'success', $this->json_response_type );
 		$this->assertStringContainsString( 'Dev Mode', $this->json_response['message'] );
+	}
+
+	// =========================================================================
+	// Dev Mode Bypassed When API Key Is Configured (Bug Fix 2026-03-04)
+	// =========================================================================
+
+	/**
+	 * Test that dev mode simulation is BYPASSED when an API key is configured.
+	 *
+	 * This is the regression test for the bug where dev mode intercepted all AD
+	 * AJAX handlers on .local domains even when the user had a working API key.
+	 * The original check used `is_connected()` (checks `atomicedge_connected`
+	 * option) which is only set during the connect() flow — not when an API key
+	 * is configured manually. Result: blocking an IP returned simulated success
+	 * but never actually called the API.
+	 *
+	 * Fix: should_use_dev_mode() checks for API key instead of the
+	 * `atomicedge_connected` option (which may not be set even with a
+	 * working API key on .local domains).
+	 */
+	public function test_ajax_block_ip_calls_real_api_when_connected_in_dev_mode() {
+		$this->enable_dev_mode();
+		$_POST['ip'] = '192.168.1.100';
+
+		// Simulate configured API key — dev mode should be bypassed.
+		$this->mock_api->method( 'get_api_key' )->willReturn( 'abc123def456' );
+
+		// The real API block_ip SHOULD be called.
+		$this->mock_api->expects( $this->once() )
+			->method( 'block_ip' )
+			->with( '192.168.1.100', $this->anything(), $this->anything(), $this->anything() )
+			->willReturn( array(
+				'success' => true,
+				'data'    => array( 'message' => 'IP blocked successfully' ),
+			) );
+
+		try {
+			$this->ajax->ajax_block_ip();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+		// Should NOT contain "Dev Mode" — real API was called.
+		$this->assertStringNotContainsString( 'Dev Mode', $this->json_response['message'] ?? '' );
+	}
+
+	/**
+	 * Test that get_adaptive_defense calls real API when connected in dev mode.
+	 */
+	public function test_ajax_get_adaptive_defense_calls_real_api_when_connected() {
+		$this->enable_dev_mode();
+
+		$this->mock_api->method( 'get_api_key' )->willReturn( 'abc123def456' );
+
+		$this->mock_api->expects( $this->once() )
+			->method( 'get_adaptive_defense' )
+			->willReturn( array(
+				'success' => true,
+				'data'    => array(
+					'stats'           => array( 'total_actors' => 5 ),
+					'settings'        => array( 'mode' => 'monitor' ),
+					'high_risk_actors' => array(),
+				),
+			) );
+
+		try {
+			$this->ajax->ajax_get_adaptive_defense();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+		$this->assertEquals( 5, $this->json_response['stats']['total_actors'] );
+	}
+
+	/**
+	 * Test that get_actor_profiles calls real API when connected in dev mode.
+	 */
+	public function test_ajax_get_actor_profiles_calls_real_api_when_connected() {
+		$this->enable_dev_mode();
+		$_POST['page']     = '1';
+		$_POST['per_page'] = '25';
+		$_POST['filter']   = 'all';
+
+		$this->mock_api->method( 'get_api_key' )->willReturn( 'abc123def456' );
+
+		$this->mock_api->expects( $this->once() )
+			->method( 'get_actor_profiles' )
+			->willReturn( array(
+				'success' => true,
+				'data'    => array(
+					'actors'     => array( array( 'ip' => '1.2.3.4', 'total_requests' => 100 ) ),
+					'pagination' => array( 'total' => 1 ),
+				),
+			) );
+
+		try {
+			$this->ajax->ajax_get_actor_profiles();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+		$this->assertEquals( '1.2.3.4', $this->json_response['actors'][0]['ip'] );
+	}
+
+	/**
+	 * Test that unblock_ip calls real API when connected in dev mode.
+	 */
+	public function test_ajax_unblock_ip_calls_real_api_when_connected() {
+		$this->enable_dev_mode();
+		$_POST['ip'] = '10.0.0.1';
+
+		$this->mock_api->method( 'get_api_key' )->willReturn( 'abc123def456' );
+
+		$this->mock_api->expects( $this->once() )
+			->method( 'unblock_ip' )
+			->with( '10.0.0.1' )
+			->willReturn( array(
+				'success' => true,
+				'data'    => array( 'message' => 'IP unblocked' ),
+			) );
+
+		try {
+			$this->ajax->ajax_unblock_ip();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+		$this->assertStringNotContainsString( 'Dev Mode', $this->json_response['message'] ?? '' );
+	}
+
+	/**
+	 * Test that dismiss_detection calls real API when connected in dev mode.
+	 */
+	public function test_ajax_dismiss_detection_calls_real_api_when_connected() {
+		$this->enable_dev_mode();
+		$_POST['detection_id'] = '2001';
+
+		$this->mock_api->method( 'get_api_key' )->willReturn( 'abc123def456' );
+
+		$this->mock_api->expects( $this->once() )
+			->method( 'dismiss_threat_detection' )
+			->with( 2001 )
+			->willReturn( array(
+				'success' => true,
+				'data'    => array( 'message' => 'Detection dismissed' ),
+			) );
+
+		try {
+			$this->ajax->ajax_dismiss_detection();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+		$this->assertStringNotContainsString( 'Dev Mode', $this->json_response['message'] ?? '' );
 	}
 
 	// =========================================================================

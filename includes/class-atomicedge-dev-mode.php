@@ -84,6 +84,25 @@ class AtomicEdge_Dev_Mode {
 	}
 
 	/**
+	 * Convert an ISO 3166-1 alpha-2 country code to a flag emoji.
+	 *
+	 * Uses Unicode Regional Indicator Symbols — same approach as
+	 * ActorProfile::getCountryFlagEmojiAttribute() on the Laravel side.
+	 *
+	 * @param string|null $country_code Two-letter code (e.g. 'US').
+	 * @return string Flag emoji or empty string.
+	 */
+	public static function country_code_to_flag( $country_code ) {
+		if ( empty( $country_code ) || strlen( $country_code ) !== 2 ) {
+			return '';
+		}
+		$code = strtoupper( $country_code );
+		$base = 0x1F1E6 - ord( 'A' );
+		// mb_chr requires PHP 7.2+ (WordPress 5.x minimum).
+		return mb_chr( $base + ord( $code[0] ) ) . mb_chr( $base + ord( $code[1] ) );
+	}
+
+	/**
 	 * Get simulated site data for development.
 	 *
 	 * @return array
@@ -357,10 +376,11 @@ class AtomicEdge_Dev_Mode {
 	private static function get_simulated_high_risk_actors() {
 		return array(
 			array(
-				'id'              => 1001,
-				'ip'              => '45.33.32.156',
-				'ip_address'      => '45.33.32.156',
-				'country_code'    => 'US',
+				'id'                  => 1001,
+				'ip'                  => '45.33.32.156',
+				'ip_address'          => '45.33.32.156',
+				'country_code'        => 'US',
+				'country_flag_emoji'  => self::country_code_to_flag( 'US' ),
 				'total_requests'  => 1523,
 				'total_waf_hits'  => 89,
 				'total_waf_events' => 89,
@@ -372,10 +392,11 @@ class AtomicEdge_Dev_Mode {
 				'last_seen_at'    => gmdate( 'c', time() - 3600 ),
 			),
 			array(
-				'id'              => 1002,
-				'ip'              => '103.235.46.39',
-				'ip_address'      => '103.235.46.39',
-				'country_code'    => 'CN',
+				'id'                  => 1002,
+				'ip'                  => '103.235.46.39',
+				'ip_address'          => '103.235.46.39',
+				'country_code'        => 'CN',
+				'country_flag_emoji'  => self::country_code_to_flag( 'CN' ),
 				'total_requests'  => 856,
 				'total_waf_hits'  => 45,
 				'total_waf_events' => 45,
@@ -402,6 +423,7 @@ class AtomicEdge_Dev_Mode {
 				'ip'               => '45.33.32.156',
 				'ip_address'       => '45.33.32.156',
 				'country_code'     => 'US',
+				'country_flag_emoji' => self::country_code_to_flag( 'US' ),
 				'total_requests'   => 1523,
 				'total_waf_hits'   => 89,
 				'total_waf_events' => 89,
@@ -425,6 +447,7 @@ class AtomicEdge_Dev_Mode {
 				'ip'               => '103.235.46.39',
 				'ip_address'       => '103.235.46.39',
 				'country_code'     => 'CN',
+				'country_flag_emoji' => self::country_code_to_flag( 'CN' ),
 				'total_requests'   => 856,
 				'total_waf_hits'   => 45,
 				'total_waf_events' => 45,
@@ -446,6 +469,7 @@ class AtomicEdge_Dev_Mode {
 				'ip'               => '198.51.100.42',
 				'ip_address'       => '198.51.100.42',
 				'country_code'     => 'DE',
+				'country_flag_emoji' => self::country_code_to_flag( 'DE' ),
 				'total_requests'   => 324,
 				'total_waf_hits'   => 8,
 				'total_waf_events' => 8,
@@ -467,6 +491,7 @@ class AtomicEdge_Dev_Mode {
 				'ip'               => '203.0.113.88',
 				'ip_address'       => '203.0.113.88',
 				'country_code'     => 'RU',
+				'country_flag_emoji' => self::country_code_to_flag( 'RU' ),
 				'total_requests'   => 2100,
 				'total_waf_hits'   => 156,
 				'total_waf_events' => 156,
@@ -490,6 +515,7 @@ class AtomicEdge_Dev_Mode {
 				'ip'               => '192.0.2.200',
 				'ip_address'       => '192.0.2.200',
 				'country_code'     => 'BR',
+				'country_flag_emoji' => self::country_code_to_flag( 'BR' ),
 				'total_requests'   => 98,
 				'total_waf_hits'   => 3,
 				'total_waf_events' => 3,
@@ -559,6 +585,8 @@ class AtomicEdge_Dev_Mode {
 				'threat_level'    => 'critical',
 				'status'          => 'auto_blocked',
 				'ip_address'      => '45.33.32.156',
+				'country_code'    => 'US',
+				'country_flag_emoji' => self::country_code_to_flag( 'US' ),
 				'created_at'      => gmdate( 'c', time() - 7200 ),
 				'detected_at'     => gmdate( 'c', time() - 7200 ),
 				'reasons'         => array( 'SQL injection patterns', 'High WAF hit rate', 'Known malicious user agent' ),
@@ -569,6 +597,7 @@ class AtomicEdge_Dev_Mode {
 					'ip'               => '45.33.32.156',
 					'ip_address'       => '45.33.32.156',
 					'country_code'     => 'US',
+					'country_flag_emoji' => self::country_code_to_flag( 'US' ),
 					'total_requests'   => 1523,
 					'total_waf_hits'   => 89,
 					'waf_hits'         => 89,
@@ -590,6 +619,8 @@ class AtomicEdge_Dev_Mode {
 				'threat_level'    => 'high',
 				'status'          => 'pending_review',
 				'ip_address'      => '103.235.46.39',
+				'country_code'    => 'CN',
+				'country_flag_emoji' => self::country_code_to_flag( 'CN' ),
 				'created_at'      => gmdate( 'c', time() - 14400 ),
 				'detected_at'     => gmdate( 'c', time() - 14400 ),
 				'reasons'         => array( 'Directory traversal attempts', 'Suspicious user agent rotation' ),
@@ -600,6 +631,7 @@ class AtomicEdge_Dev_Mode {
 					'ip'               => '103.235.46.39',
 					'ip_address'       => '103.235.46.39',
 					'country_code'     => 'CN',
+					'country_flag_emoji' => self::country_code_to_flag( 'CN' ),
 					'total_requests'   => 856,
 					'total_waf_hits'   => 45,
 					'waf_hits'         => 45,
@@ -621,6 +653,8 @@ class AtomicEdge_Dev_Mode {
 				'threat_level'    => 'critical',
 				'status'          => 'user_blocked',
 				'ip_address'      => '203.0.113.88',
+				'country_code'    => 'RU',
+				'country_flag_emoji' => self::country_code_to_flag( 'RU' ),
 				'created_at'      => gmdate( 'c', time() - 3600 ),
 				'detected_at'     => gmdate( 'c', time() - 3600 ),
 				'reasons'         => array( 'Automated SQL injection tool', 'Nikto scan detected', 'Extremely high WAF events' ),
@@ -632,6 +666,7 @@ class AtomicEdge_Dev_Mode {
 					'ip'               => '203.0.113.88',
 					'ip_address'       => '203.0.113.88',
 					'country_code'     => 'RU',
+					'country_flag_emoji' => self::country_code_to_flag( 'RU' ),
 					'total_requests'   => 2100,
 					'total_waf_hits'   => 156,
 					'waf_hits'         => 156,
@@ -653,6 +688,8 @@ class AtomicEdge_Dev_Mode {
 				'threat_level'    => 'medium',
 				'status'          => 'pending_review',
 				'ip_address'      => '198.51.100.42',
+				'country_code'    => 'DE',
+				'country_flag_emoji' => self::country_code_to_flag( 'DE' ),
 				'created_at'      => gmdate( 'c', time() - 28800 ),
 				'detected_at'     => gmdate( 'c', time() - 28800 ),
 				'reasons'         => array( 'Elevated error rate', 'Minor WAF triggers' ),
@@ -663,6 +700,7 @@ class AtomicEdge_Dev_Mode {
 					'ip'               => '198.51.100.42',
 					'ip_address'       => '198.51.100.42',
 					'country_code'     => 'DE',
+					'country_flag_emoji' => self::country_code_to_flag( 'DE' ),
 					'total_requests'   => 324,
 					'total_waf_hits'   => 8,
 					'waf_hits'         => 8,
@@ -684,6 +722,8 @@ class AtomicEdge_Dev_Mode {
 				'threat_level'    => 'low',
 				'status'          => 'dismissed',
 				'ip_address'      => '192.0.2.200',
+				'country_code'    => 'BR',
+				'country_flag_emoji' => self::country_code_to_flag( 'BR' ),
 				'created_at'      => gmdate( 'c', time() - 86400 ),
 				'detected_at'     => gmdate( 'c', time() - 86400 ),
 				'reasons'         => array( 'Unusual request patterns' ),
@@ -694,6 +734,7 @@ class AtomicEdge_Dev_Mode {
 					'ip'               => '192.0.2.200',
 					'ip_address'       => '192.0.2.200',
 					'country_code'     => 'BR',
+					'country_flag_emoji' => self::country_code_to_flag( 'BR' ),
 					'total_requests'   => 98,
 					'total_waf_hits'   => 3,
 					'waf_hits'         => 3,
@@ -797,6 +838,48 @@ class AtomicEdge_Dev_Mode {
 				$ip
 			),
 			'ip'      => $ip,
+		);
+	}
+
+	/**
+	 * Simulate a successful extend block response.
+	 *
+	 * @param string $ip   IP address.
+	 * @param int    $days Number of days to extend.
+	 * @return array
+	 */
+	public static function simulate_extend_block( $ip, $days = 1 ) {
+		return array(
+			'message'          => sprintf(
+				/* translators: 1: IP address, 2: number of days */
+				__( '[Dev Mode] Block for %1$s extended by %2$d day(s).', 'atomic-edge-security' ),
+				$ip,
+				$days
+			),
+			'ip'               => $ip,
+			'is_blocked'       => true,
+			'blocked_at'       => gmdate( 'c', time() - 3600 ),
+			'block_expires_at' => gmdate( 'c', time() + ( $days * 86400 ) ),
+		);
+	}
+
+	/**
+	 * Simulate a successful make permanent response.
+	 *
+	 * @param string $ip IP address.
+	 * @return array
+	 */
+	public static function simulate_make_permanent( $ip ) {
+		return array(
+			'message'          => sprintf(
+				/* translators: %s: IP address */
+				__( '[Dev Mode] Block for %s is now permanent.', 'atomic-edge-security' ),
+				$ip
+			),
+			'ip'               => $ip,
+			'is_blocked'       => true,
+			'blocked_at'       => gmdate( 'c', time() - 3600 ),
+			'block_expires_at' => null,
 		);
 	}
 

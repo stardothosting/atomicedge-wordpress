@@ -116,6 +116,91 @@ class JsSyntaxTest extends TestCase {
 	}
 
 	/**
+	 * Guard: WAF logs Block IP button must use Adaptive Defense, not IP blacklist.
+	 *
+	 * The WAF logs "Block IP" button must call blockIpFromWafLogs() which
+	 * routes to Adaptive Defense (ActorProfile.is_blocked), NOT addIpBlacklist()
+	 * which writes to Access Control (SiteSettings.ip_blacklist).
+	 *
+	 * Incident 2026-03-05: WAF logs Block IP was incorrectly writing to the
+	 * IP blacklist instead of Adaptive Defense blocked IPs.
+	 *
+	 * @return void
+	 */
+	public function test_waf_logs_block_button_uses_adaptive_defense_not_blacklist() {
+		$path    = $this->get_plugin_path( 'admin/js/admin.js' );
+		$content = file_get_contents( $path );
+
+		$this->assertNotFalse( $content, 'Could not read admin.js' );
+
+		// The WAF logs block handler must call blockIpFromWafLogs.
+		$this->assertStringContainsString(
+			'blockIpFromWafLogs',
+			$content,
+			'admin.js must contain blockIpFromWafLogs() method for WAF logs blocking'
+		);
+
+		// Extract the .atomicedge-block-ip click handler block (narrow window: 15 lines after the binding).
+		// This ensures we only inspect the WAF logs click handler, not the entire file.
+		$lines       = explode( "\n", $content );
+		$handlerBody = '';
+		$inHandler   = false;
+		$remaining   = 0;
+
+		foreach ( $lines as $line ) {
+			if ( ! $inHandler && strpos( $line, '.atomicedge-block-ip' ) !== false && strpos( $line, "'click'" ) !== false ) {
+				$inHandler = true;
+				$remaining = 15; // Capture 15 lines after the binding (handler is ~10 lines).
+			}
+			if ( $inHandler ) {
+				$handlerBody .= $line . "\n";
+				$remaining--;
+				if ( $remaining <= 0 ) {
+					break;
+				}
+			}
+		}
+
+		$this->assertNotEmpty( $handlerBody, '.atomicedge-block-ip click handler not found in admin.js' );
+
+		// The handler must call blockIpFromWafLogs, NOT addIpBlacklist.
+		$this->assertStringContainsString(
+			'blockIpFromWafLogs',
+			$handlerBody,
+			'WAF logs .atomicedge-block-ip click handler must call blockIpFromWafLogs()'
+		);
+		$this->assertStringNotContainsString(
+			'addIpBlacklist',
+			$handlerBody,
+			'WAF logs .atomicedge-block-ip click handler must NOT call addIpBlacklist(). '
+			. 'It should call blockIpFromWafLogs() to route blocks to Adaptive Defense.'
+		);
+	}
+
+	/**
+	 * Guard: blockIpFromWafLogs must use atomicedge_block_ip AJAX action.
+	 *
+	 * Ensures the method routes to the AD block endpoint, not the blacklist.
+	 *
+	 * @return void
+	 */
+	public function test_block_ip_from_waf_logs_uses_ad_ajax_action() {
+		$path    = $this->get_plugin_path( 'admin/js/admin.js' );
+		$content = file_get_contents( $path );
+
+		$this->assertNotFalse( $content, 'Could not read admin.js' );
+
+		// Find the blockIpFromWafLogs function and verify it uses atomicedge_block_ip.
+		$pattern = '/blockIpFromWafLogs\s*:.*?atomicedge_block_ip/s';
+		$this->assertMatchesRegularExpression(
+			$pattern,
+			$content,
+			'blockIpFromWafLogs() must call the atomicedge_block_ip AJAX action (Adaptive Defense), '
+			. 'NOT atomicedge_add_ip_blacklist (Access Control).'
+		);
+	}
+
+	/**
 	 * Assert that a JavaScript file has valid syntax via Node.js.
 	 *
 	 * @param string $relative_path Path relative to plugin root.

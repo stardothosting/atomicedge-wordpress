@@ -116,6 +116,15 @@ The plugin automatically detects and uses the best available option.
 
 ## Changelog
 
+### 2.4.8
+
+- NEW: Added Blocked IPs tab to Adaptive Defense with IP Address, Threat Score, WAF Hits, Type, Blocked, Expires columns and actions (Extend, Make Permanent, Unblock)
+- FIX: Adaptive Defense block actions now route through dashboard Blocked IPs (application-layer) instead of Access Control IP blacklist (edge config)
+- NEW: Manual block form on Blocked IPs tab with configurable duration (1h, 6h, 24h, 7d, 30d, permanent)
+- NEW: Extend block (+1 day) and Make Permanent actions for timed blocks
+- CHANGE: WAF Logs "Block IP" button renamed to "Blacklist IP" to clarify it adds to edge-level IP blacklist
+- NEW: Added `extend_block()` and `make_permanent()` API methods and AJAX handlers with dev mode support
+
 ### 2.4.7
 
 - FIX: Confidence now displayed as percentage (e.g. "90%") instead of raw decimal ("0.90%") in Adaptive Defense threat detection details

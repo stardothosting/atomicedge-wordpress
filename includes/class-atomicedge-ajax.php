@@ -98,6 +98,8 @@ class AtomicEdge_Ajax {
 		add_action( 'wp_ajax_atomicedge_get_threat_detection_detail', array( $this, 'ajax_get_threat_detection_detail' ) );
 		add_action( 'wp_ajax_atomicedge_block_ip', array( $this, 'ajax_block_ip' ) );
 		add_action( 'wp_ajax_atomicedge_unblock_ip', array( $this, 'ajax_unblock_ip' ) );
+		add_action( 'wp_ajax_atomicedge_extend_block', array( $this, 'ajax_extend_block' ) );
+		add_action( 'wp_ajax_atomicedge_make_permanent', array( $this, 'ajax_make_permanent' ) );
 		add_action( 'wp_ajax_atomicedge_delete_actor', array( $this, 'ajax_delete_actor' ) );
 		add_action( 'wp_ajax_atomicedge_dismiss_detection', array( $this, 'ajax_dismiss_detection' ) );
 	}
@@ -235,9 +237,10 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_get_ip_rules() {
-		$this->get_verified_post_fields( array() );
+		$post = $this->get_verified_post_fields( array( 'force_refresh' ) );
 
-		$result = $this->api->get_ip_rules();
+		$force_refresh = ! empty( $post['force_refresh'] ) && 'true' === $post['force_refresh'];
+		$result        = $this->api->get_ip_rules( $force_refresh );
 
 		if ( $result['success'] ) {
 			wp_send_json_success( $result['data'] );
@@ -862,6 +865,28 @@ class AtomicEdge_Ajax {
 		}
 	}
 
+	/**
+	 * Check whether Adaptive Defense handlers should use dev mode simulation.
+	 *
+	 * Dev mode provides simulated data for local development environments
+	 * that have NO API key configured. If an API key exists (even when the
+	 * `atomicedge_connected` flag is not set), the real API should be used.
+	 *
+	 * @return bool True if dev mode simulation should be used.
+	 */
+	private function should_use_dev_mode() {
+		if ( ! \AtomicEdge_Dev_Mode::is_enabled() ) {
+			return false;
+		}
+
+		// If an API key is configured, always use the real API.
+		if ( $this->api->get_api_key() ) {
+			return false;
+		}
+
+		return true;
+	}
+
 	// =========================================================================
 	// Adaptive Defense AJAX Handlers
 	// =========================================================================
@@ -872,14 +897,15 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_get_adaptive_defense() {
-		$this->get_verified_post_fields( array() );
+		$post = $this->get_verified_post_fields( array( 'force_refresh' ) );
 
-		// Dev mode: return simulated data.
-		if ( AtomicEdge_Dev_Mode::is_enabled() ) {
+		// Dev mode: return simulated data (only when not connected to real API).
+		if ( $this->should_use_dev_mode() ) {
 			wp_send_json_success( AtomicEdge_Dev_Mode::get_simulated_adaptive_defense() );
 		}
 
-		$response = $this->api->get_adaptive_defense();
+		$force_refresh = ! empty( $post['force_refresh'] ) && 'true' === $post['force_refresh'];
+		$response      = $this->api->get_adaptive_defense( $force_refresh );
 
 		if ( $response['success'] ) {
 			wp_send_json_success( $response['data'] );
@@ -894,7 +920,7 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_get_actor_profiles() {
-		$post = $this->get_verified_post_fields( array( 'page', 'per_page', 'filter', 'search' ) );
+		$post = $this->get_verified_post_fields( array( 'page', 'per_page', 'filter', 'search', 'force_refresh' ) );
 
 		$args = array(
 			'page'     => isset( $post['page'] ) ? absint( $post['page'] ) : 1,
@@ -906,12 +932,13 @@ class AtomicEdge_Ajax {
 			$args['search'] = $post['search'];
 		}
 
-		// Dev mode: return simulated data.
-		if ( AtomicEdge_Dev_Mode::is_enabled() ) {
+		// Dev mode: return simulated data (only when not connected to real API).
+		if ( $this->should_use_dev_mode() ) {
 			wp_send_json_success( AtomicEdge_Dev_Mode::get_simulated_actor_profiles( $args ) );
 		}
 
-		$response = $this->api->get_actor_profiles( $args );
+		$force_refresh = ! empty( $post['force_refresh'] ) && 'true' === $post['force_refresh'];
+		$response      = $this->api->get_actor_profiles( $args, $force_refresh );
 
 		if ( $response['success'] ) {
 			wp_send_json_success( $response['data'] );
@@ -926,7 +953,7 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_get_threat_detections() {
-		$post = $this->get_verified_post_fields( array( 'page', 'per_page', 'status' ) );
+		$post = $this->get_verified_post_fields( array( 'page', 'per_page', 'status', 'force_refresh' ) );
 
 		$args = array(
 			'page'     => isset( $post['page'] ) ? absint( $post['page'] ) : 1,
@@ -934,12 +961,13 @@ class AtomicEdge_Ajax {
 			'status'   => isset( $post['status'] ) ? $post['status'] : 'all',
 		);
 
-		// Dev mode: return simulated data.
-		if ( AtomicEdge_Dev_Mode::is_enabled() ) {
+		// Dev mode: return simulated data (only when not connected to real API).
+		if ( $this->should_use_dev_mode() ) {
 			wp_send_json_success( AtomicEdge_Dev_Mode::get_simulated_threat_detections( $args ) );
 		}
 
-		$response = $this->api->get_threat_detections( $args );
+		$force_refresh = ! empty( $post['force_refresh'] ) && 'true' === $post['force_refresh'];
+		$response      = $this->api->get_threat_detections( $args, $force_refresh );
 
 		if ( $response['success'] ) {
 			wp_send_json_success( $response['data'] );
@@ -960,8 +988,8 @@ class AtomicEdge_Ajax {
 			wp_send_json_error( array( 'message' => __( 'Detection ID is required.', 'atomic-edge-security' ) ) );
 		}
 
-		// Dev mode: return simulated detail data.
-		if ( AtomicEdge_Dev_Mode::is_enabled() ) {
+		// Dev mode: return simulated detail data (only when not connected to real API).
+		if ( $this->should_use_dev_mode() ) {
 			$detail = AtomicEdge_Dev_Mode::get_simulated_threat_detection_detail( absint( $post['detection_id'] ) );
 			if ( $detail ) {
 				wp_send_json_success( $detail );
@@ -995,8 +1023,8 @@ class AtomicEdge_Ajax {
 		$permanent      = isset( $post['permanent'] ) && 'true' === $post['permanent'];
 		$reason         = isset( $post['reason'] ) ? sanitize_text_field( $post['reason'] ) : '';
 
-		// Dev mode: return simulated success.
-		if ( AtomicEdge_Dev_Mode::is_enabled() ) {
+		// Dev mode: return simulated success (only when not connected to real API).
+		if ( $this->should_use_dev_mode() ) {
 			wp_send_json_success( array(
 				'message' => sprintf(
 					/* translators: %s: IP address */
@@ -1035,8 +1063,8 @@ class AtomicEdge_Ajax {
 			wp_send_json_error( array( 'message' => __( 'IP address is required.', 'atomic-edge-security' ) ) );
 		}
 
-		// Dev mode: return simulated success.
-		if ( AtomicEdge_Dev_Mode::is_enabled() ) {
+		// Dev mode: return simulated success (only when not connected to real API).
+		if ( $this->should_use_dev_mode() ) {
 			wp_send_json_success( array(
 				'message' => sprintf(
 					/* translators: %s: IP address */
@@ -1062,6 +1090,93 @@ class AtomicEdge_Ajax {
 	}
 
 	/**
+	 * Extend the block duration for a blocked IP.
+	 *
+	 * @return void
+	 */
+	public function ajax_extend_block() {
+		$post = $this->get_verified_post_fields( array( 'ip', 'days' ) );
+
+		if ( empty( $post['ip'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'IP address is required.', 'atomic-edge-security' ) ) );
+		}
+
+		$ip   = $post['ip'];
+		$days = isset( $post['days'] ) ? max( 1, absint( $post['days'] ) ) : 1;
+
+		// Dev mode: return simulated success (only when not connected to real API).
+		if ( $this->should_use_dev_mode() ) {
+			wp_send_json_success( array(
+				'message' => sprintf(
+					/* translators: 1: IP address, 2: number of days */
+					__( '[Dev Mode] Block for %1$s extended by %2$d day(s).', 'atomic-edge-security' ),
+					esc_html( $ip ),
+					$days
+				),
+				'data' => AtomicEdge_Dev_Mode::simulate_extend_block( $ip, $days ),
+			) );
+		}
+
+		$response = $this->api->extend_block( $ip, $days );
+
+		if ( $response['success'] ) {
+			wp_send_json_success( array(
+				'message' => sprintf(
+					/* translators: 1: IP address, 2: number of days */
+					__( 'Block for %1$s extended by %2$d day(s).', 'atomic-edge-security' ),
+					esc_html( $ip ),
+					$days
+				),
+				'data' => $response['data'] ?? array(),
+			) );
+		} else {
+			wp_send_json_error( array( 'message' => $response['error'] ?? __( 'Failed to extend block.', 'atomic-edge-security' ) ) );
+		}
+	}
+
+	/**
+	 * Make a timed block permanent.
+	 *
+	 * @return void
+	 */
+	public function ajax_make_permanent() {
+		$post = $this->get_verified_post_fields( array( 'ip' ) );
+
+		if ( empty( $post['ip'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'IP address is required.', 'atomic-edge-security' ) ) );
+		}
+
+		$ip = $post['ip'];
+
+		// Dev mode: return simulated success (only when not connected to real API).
+		if ( $this->should_use_dev_mode() ) {
+			wp_send_json_success( array(
+				'message' => sprintf(
+					/* translators: %s: IP address */
+					__( '[Dev Mode] Block for %s is now permanent.', 'atomic-edge-security' ),
+					esc_html( $ip )
+				),
+				'data' => AtomicEdge_Dev_Mode::simulate_make_permanent( $ip ),
+			) );
+		}
+
+		$response = $this->api->make_permanent( $ip );
+
+		if ( $response['success'] ) {
+			wp_send_json_success( array(
+				'message' => sprintf(
+					/* translators: %s: IP address */
+					__( 'Block for %s is now permanent.', 'atomic-edge-security' ),
+					esc_html( $ip )
+				),
+				'data' => $response['data'] ?? array(),
+			) );
+		} else {
+			wp_send_json_error( array( 'message' => $response['error'] ?? __( 'Failed to make block permanent.', 'atomic-edge-security' ) ) );
+		}
+	}
+
+	/**
 	 * Delete an actor profile.
 	 *
 	 * @return void
@@ -1073,8 +1188,8 @@ class AtomicEdge_Ajax {
 			wp_send_json_error( array( 'message' => __( 'Actor ID is required.', 'atomic-edge-security' ) ) );
 		}
 
-		// Dev mode: return simulated success.
-		if ( AtomicEdge_Dev_Mode::is_enabled() ) {
+		// Dev mode: return simulated success (only when not connected to real API).
+		if ( $this->should_use_dev_mode() ) {
 			wp_send_json_success( array(
 				'message' => __( '[Dev Mode] Actor profile has been deleted.', 'atomic-edge-security' ),
 			) );
@@ -1103,8 +1218,8 @@ class AtomicEdge_Ajax {
 			wp_send_json_error( array( 'message' => __( 'Detection ID is required.', 'atomic-edge-security' ) ) );
 		}
 
-		// Dev mode: return simulated success.
-		if ( AtomicEdge_Dev_Mode::is_enabled() ) {
+		// Dev mode: return simulated success (only when not connected to real API).
+		if ( $this->should_use_dev_mode() ) {
 			wp_send_json_success( array(
 				'message' => __( '[Dev Mode] Threat detection has been dismissed.', 'atomic-edge-security' ),
 			) );

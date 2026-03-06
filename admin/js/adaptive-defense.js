@@ -14,6 +14,7 @@
     var AtomicEdgeAD = {
         /** Current page for each section */
         pages: {
+            blocked: 1,
             actors: 1,
             detections: 1
         },
@@ -40,6 +41,8 @@
             // Detect which tab is visible by checking for tab-specific elements
             if ($('#atomicedge-ad-status-card').length) {
                 this.loadStatusTab();
+            } else if ($('#atomicedge-ad-blocked-card').length) {
+                this.loadBlockedIps();
             } else if ($('#atomicedge-ad-actors-card').length) {
                 this.loadActorProfiles();
             } else if ($('#atomicedge-ad-detections-card').length) {
@@ -59,6 +62,32 @@
             // Status tab refresh
             $('#atomicedge-ad-status-refresh').on('click', function() {
                 self.loadStatusTab();
+            });
+
+            // Blocked IPs tab
+            $('#atomicedge-ad-blocked-refresh').on('click', function() {
+                self.loadBlockedIps();
+            });
+            $('#atomicedge-ad-block-btn').on('click', function() {
+                self.blockIpFromForm();
+            });
+            $('#atomicedge-ad-block-ip').on('keypress', function(e) {
+                if (e.which === 13) {
+                    e.preventDefault();
+                    self.blockIpFromForm();
+                }
+            });
+            $(document).on('click', '.atomicedge-ad-unblock-btn', function() {
+                var ip = $(this).data('ip');
+                self.unblockIp(ip);
+            });
+            $(document).on('click', '.atomicedge-ad-extend-block-btn', function() {
+                var ip = $(this).data('ip');
+                self.extendBlock(ip);
+            });
+            $(document).on('click', '.atomicedge-ad-make-permanent-btn', function() {
+                var ip = $(this).data('ip');
+                self.makePermanent(ip);
             });
 
             // Actor Profiles tab
@@ -83,7 +112,7 @@
             $(document).on('click', '.atomicedge-ad-block-actor-btn', function() {
                 var $btn = $(this);
                 var ip = $btn.data('ip');
-                self.blockIpToBlacklist(ip, 'actor', $btn);
+                self.blockIpViaAD(ip, 'actor', $btn);
             });
             $(document).on('click', '.atomicedge-ad-delete-actor-btn', function() {
                 var id = $(this).data('id');
@@ -107,7 +136,7 @@
             $(document).on('click', '.atomicedge-ad-block-detection-btn', function() {
                 var $btn = $(this);
                 var ip = $btn.data('ip');
-                self.blockIpToBlacklist(ip, 'detection', $btn);
+                self.blockIpViaAD(ip, 'detection', $btn);
             });
             $(document).on('click', '.atomicedge-ad-dismiss-btn', function() {
                 var $btn = $(this);
@@ -125,6 +154,9 @@
                 self.pages[section] = page;
                 
                 switch (section) {
+                    case 'blocked':
+                        self.loadBlockedIps();
+                        break;
                     case 'actors':
                         self.loadActorProfiles();
                         break;
@@ -154,6 +186,9 @@
                 case 'status':
                     this.loadStatusTab();
                     break;
+                case 'blocked':
+                    this.loadBlockedIps();
+                    break;
                 case 'actors':
                     this.loadActorProfiles();
                     break;
@@ -179,7 +214,8 @@
                 type: 'POST',
                 data: {
                     action: 'atomicedge_get_adaptive_defense',
-                    nonce: atomicedge_admin.nonce
+                    nonce: atomicedge_admin.nonce,
+                    force_refresh: 'true'
                 },
                 success: function(response) {
                     $loading.hide();
@@ -267,7 +303,7 @@
             actors.slice(0, 5).forEach(function(actor) {
                 var ipAddress = actor.ip_address || actor.ip || '';
                 var html = '<tr>';
-                html += '<td>' + self.escapeHtml(ipAddress) + '</td>';
+                html += '<td>' + self.formatIpWithFlag(ipAddress, actor) + '</td>';
                 html += '<td>' + self.formatScore(actor.threat_score || actor.score || 0) + '</td>';
                 html += '<td>' + (actor.requests || actor.total_requests || 0) + '</td>';
                 html += '<td>' + (actor.waf_hits || actor.total_waf_hits || 0) + '</td>';
@@ -281,28 +317,16 @@
         },
 
         /**
-         * Format current date/time as a human-readable timestamp.
+         * Block an IP via Adaptive Defense (application-layer blocking).
          *
-         * @return {string} e.g. "2026-02-27 14:35 UTC"
-         */
-        formatTimestamp: function() {
-            var d = new Date();
-            var pad = function(n) { return n < 10 ? '0' + n : n; };
-            return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()) +
-                ' ' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ' UTC';
-        },
-
-        /**
-         * Block an IP by adding it to the blacklist (unified across all sources).
-         *
-         * All block actions route through the blacklist in Access Control.
-         * Source context is captured in the description field.
+         * Routes through the dashboard's Adaptive Defense system, NOT
+         * the global IP blacklist in Access Control.
          *
          * @param {string} ip      IP address to block.
-         * @param {string} source  Source context (actor, detection).
+         * @param {string} source  Source context (actor, detection, blocked).
          * @param {jQuery} $button Optional button element to update.
          */
-        blockIpToBlacklist: function(ip, source, $button) {
+        blockIpViaAD: function(ip, source, $button) {
             var self = this;
             source = source || 'adaptive_defense';
 
@@ -311,18 +335,10 @@
                 return;
             }
 
-            if (!confirm('Are you sure you want to block ' + ip + '?')) {
+            if (!confirm('Are you sure you want to block ' + ip + ' via Adaptive Defense?')) {
                 return;
             }
 
-            // Build source-contextual description.
-            var sourceLabels = {
-                actor: 'Actor Profiles',
-                detection: 'Threat Detections'
-            };
-            var description = 'Blocked from ' + (sourceLabels[source] || 'Adaptive Defense') + ' on ' + self.formatTimestamp();
-
-            // Disable the button immediately to prevent double-clicks.
             if ($button) {
                 $button.prop('disabled', true);
             }
@@ -331,32 +347,34 @@
                 url: atomicedge_admin.ajax_url,
                 type: 'POST',
                 data: {
-                    action: 'atomicedge_add_ip_blacklist',
+                    action: 'atomicedge_block_ip',
                     nonce: atomicedge_admin.nonce,
                     ip: ip,
-                    description: description
+                    duration_hours: 24,
+                    permanent: 'false',
+                    reason: 'Blocked from ' + source + ' tab'
                 },
                 success: function(response) {
                     if (response.success) {
-                        // Update button to show blocked state.
                         if ($button) {
                             $button.prop('disabled', true)
                                 .html('<span class="dashicons dashicons-yes-alt" style="margin-top:3px;color:#00a32a;"></span> Blocked');
                         }
 
                         self.showNotice(
-                            ip + ' has been added to the blacklist. Manage blocks in Access Control.',
+                            ip + ' has been blocked via Adaptive Defense.',
                             'success'
                         );
 
-                        // Refresh source tab to show updated state.
+                        // Refresh the source tab.
                         if (source === 'actor') {
                             self.loadActorProfiles();
                         } else if (source === 'detection') {
                             self.loadThreatDetections();
+                        } else if (source === 'blocked') {
+                            self.loadBlockedIps();
                         }
                     } else {
-                        // Re-enable on failure.
                         if ($button) {
                             $button.prop('disabled', false);
                         }
@@ -368,6 +386,273 @@
                     if ($button) {
                         $button.prop('disabled', false);
                     }
+                    self.showNotice('Network error: ' + error, 'error');
+                }
+            });
+        },
+
+        /**
+         * Block an IP from the Blocked IPs tab form.
+         */
+        blockIpFromForm: function() {
+            var self = this;
+            var ip = $('#atomicedge-ad-block-ip').val().trim();
+            var duration = $('#atomicedge-ad-block-duration').val();
+
+            if (!ip) {
+                self.showNotice('Please enter an IP address', 'error');
+                return;
+            }
+
+            if (!confirm('Are you sure you want to block ' + ip + '?')) {
+                return;
+            }
+
+            var isPermanent = (duration === 'permanent');
+            var durationHours = isPermanent ? 0 : parseInt(duration, 10);
+
+            var $btn = $('#atomicedge-ad-block-btn');
+            $btn.prop('disabled', true);
+
+            $.ajax({
+                url: atomicedge_admin.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'atomicedge_block_ip',
+                    nonce: atomicedge_admin.nonce,
+                    ip: ip,
+                    duration_hours: durationHours,
+                    permanent: isPermanent ? 'true' : 'false',
+                    reason: 'Manually blocked from Blocked IPs tab'
+                },
+                success: function(response) {
+                    $btn.prop('disabled', false);
+                    if (response.success) {
+                        $('#atomicedge-ad-block-ip').val('');
+                        self.showNotice(ip + ' has been blocked.', 'success');
+                        self.loadBlockedIps();
+                    } else {
+                        var message = (response.data && response.data.message) ? response.data.message : 'Failed to block IP';
+                        self.showNotice(message, 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    $btn.prop('disabled', false);
+                    self.showNotice('Network error: ' + error, 'error');
+                }
+            });
+        },
+
+        /**
+         * Load Blocked IPs tab data.
+         *
+         * Reuses the actor profiles endpoint with filter=blocked.
+         */
+        loadBlockedIps: function() {
+            var self = this;
+            var $loading = $('#atomicedge-ad-blocked-loading');
+            var $wrapper = $('#atomicedge-ad-blocked-table-wrapper');
+
+            $loading.show();
+            $wrapper.hide();
+
+            $.ajax({
+                url: atomicedge_admin.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'atomicedge_get_actor_profiles',
+                    nonce: atomicedge_admin.nonce,
+                    force_refresh: 'true',
+                    filter: 'blocked',
+                    page: self.pages.blocked,
+                    per_page: self.perPage
+                },
+                success: function(response) {
+                    $loading.hide();
+                    $wrapper.show();
+
+                    if (response.success && response.data) {
+                        self.renderBlockedIps(response.data.actors || response.data);
+                        self.renderPagination('blocked', response.data.pagination);
+                    } else {
+                        self.renderBlockedIps([]);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    $loading.hide();
+                    $wrapper.show();
+                    self.showTableError('#atomicedge-ad-blocked-body', 'Network error: ' + error);
+                }
+            });
+        },
+
+        /**
+         * Render Blocked IPs table rows.
+         *
+         * Columns: IP Address, Threat Score, WAF Hits, Type, Blocked, Expires, Actions
+         *
+         * @param {Array} actors Blocked actor profiles
+         */
+        renderBlockedIps: function(actors) {
+            var $tbody = $('#atomicedge-ad-blocked-body');
+            var $empty = $('#atomicedge-ad-blocked-empty');
+            var $table = $('#atomicedge-ad-blocked-table');
+
+            $tbody.empty();
+
+            if (!actors || actors.length === 0) {
+                $table.hide();
+                $empty.show();
+                return;
+            }
+
+            $table.show();
+            $empty.hide();
+
+            var self = this;
+            actors.forEach(function(actor) {
+                var ip = actor.ip_address || actor.ip || '';
+                var score = actor.score || actor.threat_score || 0;
+                var wafHits = actor.waf_hits || actor.total_waf_hits || 0;
+                var blockedAt = actor.blocked_at || null;
+                var expiresAt = actor.block_expires_at || null;
+                var isPermanent = actor.is_blocked && !expiresAt;
+
+                var html = '<tr>';
+                // IP Address with flag
+                html += '<td>' + self.formatIpWithFlag(ip, actor) + '</td>';
+                // Threat Score
+                html += '<td>' + self.formatScore(score) + '</td>';
+                // WAF Hits
+                html += '<td>' + wafHits + '</td>';
+                // Type (Permanent / Timed)
+                html += '<td>';
+                if (isPermanent) {
+                    html += '<span class="atomicedge-ad-status-badge atomicedge-ad-status-blocked" style="font-size:11px;">Permanent</span>';
+                } else {
+                    html += '<span class="atomicedge-ad-status-badge atomicedge-ad-status-pending" style="font-size:11px;">Timed</span>';
+                }
+                html += '</td>';
+                // Blocked (relative time)
+                html += '<td>' + self.formatRelativeTime(blockedAt) + '</td>';
+                // Expires
+                html += '<td>';
+                if (isPermanent) {
+                    html += '<strong>Never</strong>';
+                } else {
+                    html += self.formatRelativeTime(expiresAt);
+                }
+                html += '</td>';
+                // Actions
+                html += '<td>';
+                if (!isPermanent) {
+                    html += '<button type="button" class="button button-small atomicedge-ad-extend-block-btn" data-ip="' + self.escapeHtml(ip) + '" title="Extend +1 day">';
+                    html += '<span class="dashicons dashicons-clock" style="margin-top:3px;"></span></button> ';
+                    html += '<button type="button" class="button button-small atomicedge-ad-make-permanent-btn" data-ip="' + self.escapeHtml(ip) + '" title="Make permanent">';
+                    html += '<span class="dashicons dashicons-lock" style="margin-top:3px;"></span></button> ';
+                }
+                html += '<button type="button" class="button button-small atomicedge-ad-unblock-btn" data-ip="' + self.escapeHtml(ip) + '" title="Unblock">';
+                html += '<span class="dashicons dashicons-unlock" style="margin-top:3px;"></span></button>';
+                html += '</td>';
+                html += '</tr>';
+                $tbody.append(html);
+            });
+        },
+
+        /**
+         * Unblock a blocked IP address.
+         *
+         * @param {string} ip IP address
+         */
+        unblockIp: function(ip) {
+            var self = this;
+
+            if (!confirm('Are you sure you want to unblock ' + ip + '?')) {
+                return;
+            }
+
+            $.ajax({
+                url: atomicedge_admin.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'atomicedge_unblock_ip',
+                    nonce: atomicedge_admin.nonce,
+                    ip: ip
+                },
+                success: function(response) {
+                    if (response.success) {
+                        self.showNotice(ip + ' has been unblocked.', 'success');
+                        self.loadBlockedIps();
+                    } else {
+                        self.showNotice(response.data ? response.data.message : 'Failed to unblock IP', 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    self.showNotice('Network error: ' + error, 'error');
+                }
+            });
+        },
+
+        /**
+         * Extend a timed block by 1 day.
+         *
+         * @param {string} ip IP address
+         */
+        extendBlock: function(ip) {
+            var self = this;
+
+            $.ajax({
+                url: atomicedge_admin.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'atomicedge_extend_block',
+                    nonce: atomicedge_admin.nonce,
+                    ip: ip,
+                    days: 1
+                },
+                success: function(response) {
+                    if (response.success) {
+                        self.showNotice('Block for ' + ip + ' extended by 1 day.', 'success');
+                        self.loadBlockedIps();
+                    } else {
+                        self.showNotice(response.data ? response.data.message : 'Failed to extend block', 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    self.showNotice('Network error: ' + error, 'error');
+                }
+            });
+        },
+
+        /**
+         * Make a timed block permanent.
+         *
+         * @param {string} ip IP address
+         */
+        makePermanent: function(ip) {
+            var self = this;
+
+            if (!confirm('Make the block for ' + ip + ' permanent?')) {
+                return;
+            }
+
+            $.ajax({
+                url: atomicedge_admin.ajax_url,
+                type: 'POST',
+                data: {
+                    action: 'atomicedge_make_permanent',
+                    nonce: atomicedge_admin.nonce,
+                    ip: ip
+                },
+                success: function(response) {
+                    if (response.success) {
+                        self.showNotice('Block for ' + ip + ' is now permanent.', 'success');
+                        self.loadBlockedIps();
+                    } else {
+                        self.showNotice(response.data ? response.data.message : 'Failed to make block permanent', 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
                     self.showNotice('Network error: ' + error, 'error');
                 }
             });
@@ -392,6 +677,7 @@
                 data: {
                     action: 'atomicedge_get_actor_profiles',
                     nonce: atomicedge_admin.nonce,
+                    force_refresh: 'true',
                     filter: filter,
                     search: search,
                     page: self.pages.actors,
@@ -442,7 +728,7 @@
                 var score = actor.score || actor.threat_score || 0;
                 var ipAddress = actor.ip_address || actor.ip || '';
                 var html = '<tr>';
-                html += '<td>' + self.escapeHtml(ipAddress) + '</td>';
+                html += '<td>' + self.formatIpWithFlag(ipAddress, actor) + '</td>';
                 html += '<td>' + self.formatScore(score) + '</td>';
                 html += '<td>' + (actor.total_requests || actor.requests || 0) + '</td>';
                 html += '<td>' + (actor.waf_hits || 0) + '</td>';
@@ -524,6 +810,7 @@
                 data: {
                     action: 'atomicedge_get_threat_detections',
                     nonce: atomicedge_admin.nonce,
+                    force_refresh: 'true',
                     status: status !== 'all' ? status : '',
                     page: self.pages.detections,
                     per_page: self.perPage
@@ -572,7 +859,7 @@
             detections.forEach(function(detection) {
                 var ipAddress = detection.ip_address || detection.ip || (detection.actor && detection.actor.ip_address) || 'N/A';
                 var html = '<tr data-detection-id="' + detection.id + '">';
-                html += '<td>' + self.escapeHtml(ipAddress) + '</td>';
+                html += '<td>' + self.formatIpWithFlag(ipAddress, detection) + '</td>';
                 html += '<td>' + self.formatScore(detection.score || 0) + '</td>';
                 html += '<td>' + self.formatThreatLevel(detection.threat_level || 'low') + '</td>';
                 html += '<td>' + self.formatIndicators(detection.reasons || detection.reasons_summary || detection.key_indicators || []) + '</td>';
@@ -675,7 +962,10 @@
             $detailRow.find('.atomicedge-ad-detail-detected-at').text(this.formatDate(detection.detected_at || detection.created_at));
 
             // Actor details
-            $detailRow.find('.atomicedge-ad-detail-ip').text(actor.ip || actor.ip_address || detection.ip_address || 'N/A');
+            var actorIp = actor.ip || actor.ip_address || detection.ip_address || 'N/A';
+            var actorFlag = this.countryCodeToFlag(actor.country_code || detection.country_code || null);
+            var flagHtml = actorFlag ? '<span title="' + this.escapeHtml(actor.country_code || detection.country_code || '') + '" style="margin-right: 4px;">' + actorFlag + '</span>' : '';
+            $detailRow.find('.atomicedge-ad-detail-ip').html(flagHtml + this.escapeHtml(actorIp));
             $detailRow.find('.atomicedge-ad-detail-requests').text(actor.total_requests || 0);
             $detailRow.find('.atomicedge-ad-detail-waf-hits').text(actor.total_waf_hits || actor.waf_hits || 0);
             $detailRow.find('.atomicedge-ad-detail-errors').text((actor.total_4xx_errors || actor.error_4xx || 0) + ' / ' + (actor.total_5xx_errors || actor.error_5xx || 0));
@@ -973,6 +1263,44 @@
             }
         },
 
+        /**
+         * Format a date as a relative time string (e.g., "2 hours ago", "in 3 days").
+         *
+         * @param {string|null} dateString ISO date string
+         * @return {string} Relative time or em-dash
+         */
+        formatRelativeTime: function(dateString) {
+            if (!dateString) {
+                return '—';
+            }
+            try {
+                var date = new Date(dateString);
+                var now = new Date();
+                var diffMs = date.getTime() - now.getTime();
+                var absDiffMs = Math.abs(diffMs);
+                var seconds = Math.floor(absDiffMs / 1000);
+                var minutes = Math.floor(seconds / 60);
+                var hours = Math.floor(minutes / 60);
+                var days = Math.floor(hours / 24);
+
+                var label;
+                if (days > 0) {
+                    label = days + ' day' + (days > 1 ? 's' : '');
+                } else if (hours > 0) {
+                    label = hours + ' hour' + (hours > 1 ? 's' : '');
+                } else if (minutes > 0) {
+                    label = minutes + ' min' + (minutes > 1 ? 's' : '');
+                } else {
+                    label = 'just now';
+                    return label;
+                }
+
+                return diffMs < 0 ? label + ' ago' : 'in ' + label;
+            } catch (e) {
+                return dateString;
+            }
+        },
+
         /* ============================
          * Utility Helpers
          * ============================ */
@@ -990,6 +1318,44 @@
             var div = document.createElement('div');
             div.textContent = str;
             return div.innerHTML;
+        },
+
+        /**
+         * Convert ISO 3166-1 alpha-2 country code to flag emoji.
+         *
+         * Uses Unicode Regional Indicator Symbols (same approach as Laravel backend).
+         *
+         * @param {string|null} countryCode Two-letter country code (e.g., 'US', 'CN')
+         * @return {string} Flag emoji or empty string
+         */
+        countryCodeToFlag: function(countryCode) {
+            if (!countryCode || countryCode.length !== 2) {
+                return '';
+            }
+            var code = countryCode.toUpperCase();
+            var base = 0x1F1E6 - 'A'.charCodeAt(0);
+            return String.fromCodePoint(base + code.charCodeAt(0)) +
+                   String.fromCodePoint(base + code.charCodeAt(1));
+        },
+
+        /**
+         * Format an IP address with an optional country flag prefix.
+         *
+         * @param {string} ip       The IP address (already escaped)
+         * @param {Object} dataObj  The data object that may contain country_code or country_flag_emoji
+         * @return {string} HTML string with flag + IP
+         */
+        formatIpWithFlag: function(ip, dataObj) {
+            var flag = '';
+            if (dataObj) {
+                // Prefer pre-computed emoji from API, fall back to client-side conversion
+                flag = dataObj.country_flag_emoji || this.countryCodeToFlag(dataObj.country_code || null);
+            }
+            var countryCode = (dataObj && dataObj.country_code) ? dataObj.country_code : '';
+            if (flag) {
+                return '<span title="' + this.escapeHtml(countryCode) + '" style="margin-right: 4px;">' + flag + '</span>' + this.escapeHtml(ip);
+            }
+            return this.escapeHtml(ip);
         },
 
         /**

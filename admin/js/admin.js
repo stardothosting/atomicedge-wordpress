@@ -394,7 +394,7 @@
             logs.forEach(function(log) {
                 var actionCell;
                 if (log.is_blocked) {
-                    actionCell = '<span class="atomicedge-blocked-badge" title="This IP is in your blacklist" style="color:#b32d2e;font-weight:600;">' +
+                    actionCell = '<span class="atomicedge-blocked-badge" title="This IP is blocked" style="color:#b32d2e;font-weight:600;">' +
                         '<span class="dashicons dashicons-lock" style="font-size:14px;width:14px;height:14px;margin-top:3px;"></span> Blocked</span>';
                 } else {
                     actionCell = '<button type="button" class="button button-small atomicedge-block-ip" data-ip="' + self.escapeHtml(log.client_ip || '') + '">Block IP</button>';
@@ -410,12 +410,12 @@
                 $tbody.append(row);
             });
 
-            // Bind block IP buttons
+            // Bind block IP buttons — blocks go to Adaptive Defense (not IP blacklist).
             $tbody.find('.atomicedge-block-ip').on('click', function() {
                 var $btn = $(this);
                 var ip = $btn.data('ip');
                 if (confirm(atomicedgeAdmin.strings.confirm)) {
-                    self.addIpBlacklist(ip, 'Blocked from WAF logs on ' + self.formatTimestamp(), $btn);
+                    self.blockIpFromWafLogs(ip, $btn);
                 }
             });
 
@@ -483,11 +483,18 @@
 
         /**
          * Load IP rules
+         *
+         * @param {boolean} forceRefresh Bypass transient cache (default true)
          */
-        loadIpRules: function() {
+        loadIpRules: function(forceRefresh) {
             var self = this;
+            var data = {};
 
-            this.ajax('atomicedge_get_ip_rules', {}, function(data) {
+            if (forceRefresh !== false) {
+                data.force_refresh = 'true';
+            }
+
+            this.ajax('atomicedge_get_ip_rules', data, function(data) {
                 self.renderIpList('whitelist', data.whitelist || []);
                 self.renderIpList('blacklist', data.blacklist || []);
             });
@@ -569,7 +576,52 @@
         },
 
         /**
-         * Add IP to blacklist
+         * Block an IP from the WAF logs page via Adaptive Defense.
+         *
+         * This sends the block to the AD system (ActorProfile), NOT the
+         * Access Control IP blacklist (SiteSettings).  The existing
+         * ajax_block_ip AJAX handler + api->block_ip() method are reused.
+         *
+         * @param {string} ip      IP address.
+         * @param {jQuery} $button The button element to update on success.
+         */
+        blockIpFromWafLogs: function(ip, $button) {
+            var self = this;
+
+            if ($button) {
+                $button.prop('disabled', true).text(atomicedgeAdmin.strings.loading);
+            }
+
+            this.ajax('atomicedge_block_ip', {
+                ip: ip,
+                duration_hours: 24,
+                reason: 'Blocked from WAF logs'
+            }, function() {
+                // Reload WAF logs so the is_blocked badge appears.
+                if ($('#atomicedge-waf-table').length) {
+                    self.loadWafLogs();
+                }
+
+                // Immediate visual feedback.
+                if ($button) {
+                    $button.prop('disabled', true)
+                        .removeClass('button-small')
+                        .addClass('atomicedge-blocked-btn')
+                        .html('<span class="dashicons dashicons-yes-alt" style="margin-top:3px;color:#00a32a;"></span> Blocked');
+                }
+
+                self.showNotice(ip + ' has been blocked via Adaptive Defense.', 'success');
+            }, function(errData) {
+                if ($button) {
+                    $button.prop('disabled', false).text('Block IP');
+                }
+                var message = (errData && errData.message) ? errData.message : atomicedgeAdmin.strings.error;
+                self.showNotice(message, 'error');
+            });
+        },
+
+        /**
+         * Add IP to blacklist (Access Control page only).
          *
          * @param {string}  ip          IP address or CIDR.
          * @param {string}  description Optional description.
@@ -604,15 +656,11 @@
                         .html('<span class="dashicons dashicons-yes-alt" style="margin-top:3px;color:#00a32a;"></span> Blocked');
                 }
 
-                var noticeMsg = ip + ' has been added to the block list.';
-                // If blocked from outside Access Control, direct user there.
-                if ($button) {
-                    noticeMsg += ' Manage blocks in Access Control.';
-                }
+                var noticeMsg = ip + ' has been added to the IP blacklist.';
                 self.showNotice(noticeMsg, 'success');
             }, function(errData) {
                 if ($button) {
-                    $button.prop('disabled', false).text('Block IP');
+                    $button.prop('disabled', false).text('Add to Blacklist');
                 }
                 var message = (errData && errData.message) ? errData.message : atomicedgeAdmin.strings.error;
                 self.showNotice(message, 'error');

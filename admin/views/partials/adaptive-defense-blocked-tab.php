@@ -59,10 +59,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<thead>
 				<tr>
 					<th style="width: 180px;"><?php esc_html_e( 'IP Address', 'atomic-edge-security' ); ?></th>
-					<th style="width: 80px;"><?php esc_html_e( 'Score', 'atomic-edge-security' ); ?></th>
-					<th style="width: 100px;"><?php esc_html_e( 'WAF Hits', 'atomic-edge-security' ); ?></th>
-					<th><?php esc_html_e( 'Expires', 'atomic-edge-security' ); ?></th>
-					<th style="width: 180px;"><?php esc_html_e( 'Actions', 'atomic-edge-security' ); ?></th>
+					<th style="width: 80px;"><?php esc_html_e( 'Threat Score', 'atomic-edge-security' ); ?></th>
+					<th style="width: 80px;"><?php esc_html_e( 'WAF Hits', 'atomic-edge-security' ); ?></th>
+					<th style="width: 90px;"><?php esc_html_e( 'Type', 'atomic-edge-security' ); ?></th>
+					<th style="width: 110px;"><?php esc_html_e( 'Blocked', 'atomic-edge-security' ); ?></th>
+					<th style="width: 110px;"><?php esc_html_e( 'Expires', 'atomic-edge-security' ); ?></th>
+					<th style="width: 200px;"><?php esc_html_e( 'Actions', 'atomic-edge-security' ); ?></th>
 				</tr>
 			</thead>
 			<tbody id="atomicedge-ad-blocked-body">

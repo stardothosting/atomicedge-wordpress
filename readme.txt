@@ -4,7 +4,7 @@ Tags: security, firewall, waf, malware, protection
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 2.4.7
+Stable tag: 2.4.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -111,6 +111,14 @@ The plugin automatically detects and uses the best available option.
 9. Adaptive Defense dashboard showing AI-powered threat detections and automatic IP blocking
 
 == Changelog ==
+
+= 2.4.8 =
+* NEW: Added Blocked IPs tab to Adaptive Defense with IP Address, Threat Score, WAF Hits, Type, Blocked, Expires columns and actions (Extend, Make Permanent, Unblock)
+* FIX: Adaptive Defense block actions now route through dashboard Blocked IPs (application-layer) instead of Access Control IP blacklist (edge config)
+* NEW: Manual block form on Blocked IPs tab with configurable duration (1h, 6h, 24h, 7d, 30d, permanent)
+* NEW: Extend block (+1 day) and Make Permanent actions for timed blocks
+* CHANGE: WAF Logs "Block IP" button renamed to "Blacklist IP" to clarify it adds to edge-level IP blacklist
+* NEW: Added extend_block() and make_permanent() API methods and AJAX handlers with dev mode support
 
 = 2.4.7 =
 * FIX: Confidence now displayed as percentage (e.g. "90%") instead of raw decimal ("0.90%") in Adaptive Defense threat detection details

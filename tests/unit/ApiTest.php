@@ -581,6 +581,108 @@ class ApiTest extends TestCase {
 		$this->assertSame( 100, $gen, 'WAF cache generation should NOT change after failed operation' );
 	}
 
+	/**
+	 * Test block_ip() (Adaptive Defense) invalidates WAF log cache.
+	 *
+	 * Since WAF logs now show is_blocked from both the IP blacklist and
+	 * Adaptive Defense ActorProfile, blocking an IP via AD must invalidate
+	 * the WAF log cache so the is_blocked badge appears on next fetch.
+	 */
+	public function test_block_ip_invalidates_waf_log_cache() {
+		$this->setup_connected_api();
+
+		$initial_gen = $this->get_option( 'atomicedge_waf_cache_gen', 0 );
+
+		Functions\when( 'wp_remote_request' )->justReturn(
+			array(
+				'response' => array( 'code' => 200 ),
+				'body'     => wp_json_encode( array(
+					'success' => true,
+					'data'    => array(
+						'blocked' => true,
+						'ip'      => '10.0.0.5',
+					),
+				) ),
+			)
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn( wp_json_encode( array(
+			'success' => true,
+			'data'    => array(
+				'blocked' => true,
+				'ip'      => '10.0.0.5',
+			),
+		) ) );
+
+		$api = $this->create_api_instance();
+		$api->block_ip( '10.0.0.5', 24, false, 'Blocked from WAF logs' );
+
+		$new_gen = $this->get_option( 'atomicedge_waf_cache_gen', 0 );
+		$this->assertNotEquals( $initial_gen, $new_gen, 'WAF cache generation should change after AD block' );
+	}
+
+	/**
+	 * Test unblock_ip() (Adaptive Defense) invalidates WAF log cache.
+	 */
+	public function test_unblock_ip_invalidates_waf_log_cache() {
+		$this->setup_connected_api();
+
+		$initial_gen = $this->get_option( 'atomicedge_waf_cache_gen', 0 );
+
+		Functions\when( 'wp_remote_request' )->justReturn(
+			array(
+				'response' => array( 'code' => 200 ),
+				'body'     => wp_json_encode( array(
+					'success' => true,
+					'data'    => array(
+						'unblocked' => true,
+						'ip'        => '10.0.0.5',
+					),
+				) ),
+			)
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn( wp_json_encode( array(
+			'success' => true,
+			'data'    => array(
+				'unblocked' => true,
+				'ip'        => '10.0.0.5',
+			),
+		) ) );
+
+		$api = $this->create_api_instance();
+		$api->unblock_ip( '10.0.0.5' );
+
+		$new_gen = $this->get_option( 'atomicedge_waf_cache_gen', 0 );
+		$this->assertNotEquals( $initial_gen, $new_gen, 'WAF cache generation should change after AD unblock' );
+	}
+
+	/**
+	 * Test failed block_ip() does NOT invalidate WAF log cache.
+	 */
+	public function test_failed_block_ip_does_not_invalidate_waf_cache() {
+		$this->setup_connected_api();
+
+		$this->set_option( 'atomicedge_waf_cache_gen', 200 );
+
+		Functions\when( 'wp_remote_request' )->justReturn(
+			array(
+				'response' => array( 'code' => 400 ),
+				'body'     => wp_json_encode( array( 'success' => false, 'error' => 'feature_disabled' ) ),
+			)
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 400 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn(
+			wp_json_encode( array( 'success' => false, 'error' => 'feature_disabled' ) )
+		);
+
+		$api = $this->create_api_instance();
+		$api->block_ip( '10.0.0.5' );
+
+		$gen = $this->get_option( 'atomicedge_waf_cache_gen', 0 );
+		$this->assertSame( 200, $gen, 'WAF cache generation should NOT change after failed AD block' );
+	}
+
 	// =========================================================================
 	// Geo Rules Tests
 	// =========================================================================

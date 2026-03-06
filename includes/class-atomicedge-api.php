@@ -282,12 +282,14 @@ class AtomicEdge_API {
 	 *
 	 * @return array IP rules or error.
 	 */
-	public function get_ip_rules() {
+	public function get_ip_rules( $force_refresh = false ) {
 		$cache_key = 'atomicedge_ip_rules';
-		$cached    = get_transient( $cache_key );
 
-		if ( false !== $cached ) {
-			return $cached;
+		if ( ! $force_refresh ) {
+			$cached = get_transient( $cache_key );
+			if ( false !== $cached ) {
+				return $cached;
+			}
 		}
 
 		$response = $this->request( 'GET', '/ip-rules' );
@@ -515,12 +517,14 @@ class AtomicEdge_API {
 	 *
 	 * @return array Status data or error.
 	 */
-	public function get_adaptive_defense() {
+	public function get_adaptive_defense( $force_refresh = false ) {
 		$cache_key = 'atomicedge_adaptive_defense';
-		$cached    = get_transient( $cache_key );
 
-		if ( false !== $cached ) {
-			return $cached;
+		if ( ! $force_refresh ) {
+			$cached = get_transient( $cache_key );
+			if ( false !== $cached ) {
+				return $cached;
+			}
 		}
 
 		$response = $this->request( 'GET', '/adaptive-defense' );
@@ -539,7 +543,7 @@ class AtomicEdge_API {
 	 * @param array $args Query arguments (page, per_page, filter, search).
 	 * @return array Actor profiles or error.
 	 */
-	public function get_actor_profiles( $args = array() ) {
+	public function get_actor_profiles( $args = array(), $force_refresh = false ) {
 		$defaults = array(
 			'page'     => 1,
 			'per_page' => 25,
@@ -548,10 +552,12 @@ class AtomicEdge_API {
 		$args     = wp_parse_args( $args, $defaults );
 
 		$cache_key = 'atomicedge_actors_' . hash( 'sha256', (string) wp_json_encode( $args ) );
-		$cached    = get_transient( $cache_key );
 
-		if ( false !== $cached ) {
-			return $cached;
+		if ( ! $force_refresh ) {
+			$cached = get_transient( $cache_key );
+			if ( false !== $cached ) {
+				return $cached;
+			}
 		}
 
 		$response = $this->request( 'GET', '/adaptive-defense/actors', $args );
@@ -569,7 +575,7 @@ class AtomicEdge_API {
 	 * @param array $args Query arguments (page, per_page, status).
 	 * @return array Threat detections or error.
 	 */
-	public function get_threat_detections( $args = array() ) {
+	public function get_threat_detections( $args = array(), $force_refresh = false ) {
 		$defaults = array(
 			'page'     => 1,
 			'per_page' => 25,
@@ -578,10 +584,12 @@ class AtomicEdge_API {
 		$args     = wp_parse_args( $args, $defaults );
 
 		$cache_key = 'atomicedge_detections_' . hash( 'sha256', (string) wp_json_encode( $args ) );
-		$cached    = get_transient( $cache_key );
 
-		if ( false !== $cached ) {
-			return $cached;
+		if ( ! $force_refresh ) {
+			$cached = get_transient( $cache_key );
+			if ( false !== $cached ) {
+				return $cached;
+			}
 		}
 
 		$response = $this->request( 'GET', '/adaptive-defense/detections', $args );
@@ -626,8 +634,10 @@ class AtomicEdge_API {
 		$response = $this->request( 'POST', '/adaptive-defense/block', $data );
 
 		if ( $response['success'] ) {
-			// Clear caches.
+			// Clear caches — AD cache + WAF log cache (since WAF logs
+			// show is_blocked status from both blacklist and AD).
 			$this->clear_adaptive_defense_cache();
+			$this->invalidate_waf_log_cache();
 		}
 
 		return $response;
@@ -641,6 +651,43 @@ class AtomicEdge_API {
 	 */
 	public function unblock_ip( $ip ) {
 		$response = $this->request( 'POST', '/adaptive-defense/unblock', array( 'ip' => $ip ) );
+
+		if ( $response['success'] ) {
+			$this->clear_adaptive_defense_cache();
+			$this->invalidate_waf_log_cache();
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Extend the block duration for a blocked IP address.
+	 *
+	 * @param string $ip   IP address.
+	 * @param int    $days Number of days to extend (default 1).
+	 * @return array Result.
+	 */
+	public function extend_block( $ip, $days = 1 ) {
+		$response = $this->request( 'POST', '/adaptive-defense/extend-block', array(
+			'ip'   => $ip,
+			'days' => $days,
+		) );
+
+		if ( $response['success'] ) {
+			$this->clear_adaptive_defense_cache();
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Make a timed block permanent.
+	 *
+	 * @param string $ip IP address.
+	 * @return array Result.
+	 */
+	public function make_permanent( $ip ) {
+		$response = $this->request( 'POST', '/adaptive-defense/make-permanent', array( 'ip' => $ip ) );
 
 		if ( $response['success'] ) {
 			$this->clear_adaptive_defense_cache();

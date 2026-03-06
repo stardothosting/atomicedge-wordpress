@@ -984,4 +984,134 @@ class AjaxTest extends TestCase {
 			// Expected.
 		}
 	}
+
+	// =========================================================================
+	// Force Refresh (Cache Bypass) Tests
+	// =========================================================================
+
+	/**
+	 * Test get_ip_rules passes force_refresh=true when POST field is set.
+	 */
+	public function test_ajax_get_ip_rules_passes_force_refresh_true() {
+		$_POST['force_refresh'] = 'true';
+
+		$this->mock_api->expects( $this->once() )
+			->method( 'get_ip_rules' )
+			->with( true )
+			->willReturn( array( 'success' => true, 'data' => array( 'whitelist' => array(), 'blacklist' => array() ) ) );
+
+		try {
+			$this->ajax->ajax_get_ip_rules();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+	}
+
+	/**
+	 * Test get_ip_rules passes force_refresh=false by default.
+	 */
+	public function test_ajax_get_ip_rules_defaults_force_refresh_false() {
+		// No force_refresh POST field.
+
+		$this->mock_api->expects( $this->once() )
+			->method( 'get_ip_rules' )
+			->with( false )
+			->willReturn( array( 'success' => true, 'data' => array( 'whitelist' => array(), 'blacklist' => array() ) ) );
+
+		try {
+			$this->ajax->ajax_get_ip_rules();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+	}
+
+	/**
+	 * Test get_adaptive_defense passes force_refresh=true when POST field is set.
+	 */
+	public function test_ajax_get_adaptive_defense_passes_force_refresh() {
+		$_POST['force_refresh'] = 'true';
+
+		$this->mock_api->expects( $this->once() )
+			->method( 'get_adaptive_defense' )
+			->with( true )
+			->willReturn( array( 'success' => true, 'data' => array() ) );
+
+		try {
+			$this->ajax->ajax_get_adaptive_defense();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+	}
+
+	/**
+	 * Test get_actor_profiles passes force_refresh=true when POST field is set.
+	 */
+	public function test_ajax_get_actor_profiles_passes_force_refresh() {
+		$_POST['force_refresh'] = 'true';
+
+		$this->mock_api->expects( $this->once() )
+			->method( 'get_actor_profiles' )
+			->with(
+				$this->isType( 'array' ),
+				true
+			)
+			->willReturn( array( 'success' => true, 'data' => array() ) );
+
+		try {
+			$this->ajax->ajax_get_actor_profiles();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+	}
+
+	/**
+	 * Test get_threat_detections passes force_refresh=true when POST field is set.
+	 */
+	public function test_ajax_get_threat_detections_passes_force_refresh() {
+		$_POST['force_refresh'] = 'true';
+
+		$this->mock_api->expects( $this->once() )
+			->method( 'get_threat_detections' )
+			->with(
+				$this->isType( 'array' ),
+				true
+			)
+			->willReturn( array( 'success' => true, 'data' => array() ) );
+
+		try {
+			$this->ajax->ajax_get_threat_detections();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+	}
+
+	/**
+	 * Test force_refresh rejects non-'true' values.
+	 */
+	public function test_ajax_get_ip_rules_rejects_non_true_force_refresh() {
+		$_POST['force_refresh'] = '1'; // Not 'true' string — should be treated as false.
+
+		$this->mock_api->expects( $this->once() )
+			->method( 'get_ip_rules' )
+			->with( false )
+			->willReturn( array( 'success' => true, 'data' => array( 'whitelist' => array(), 'blacklist' => array() ) ) );
+
+		try {
+			$this->ajax->ajax_get_ip_rules();
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+	}
 }

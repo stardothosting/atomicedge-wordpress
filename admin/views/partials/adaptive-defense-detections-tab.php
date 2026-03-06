@@ -50,7 +50,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		<table class="wp-list-table widefat fixed striped" id="atomicedge-ad-detections-table">
 			<thead>
 				<tr>
-					<th style="width: 160px;"><?php esc_html_e( 'IP Address', 'atomic-edge-security' ); ?></th>
+					<th style="width: 185px;"><?php esc_html_e( 'IP Address', 'atomic-edge-security' ); ?></th>
 					<th style="width: 80px;"><?php esc_html_e( 'Score', 'atomic-edge-security' ); ?></th>
 					<th style="width: 100px;"><?php esc_html_e( 'Threat Level', 'atomic-edge-security' ); ?></th>
 					<th><?php esc_html_e( 'Key Indicators', 'atomic-edge-security' ); ?></th>

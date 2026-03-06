@@ -3,7 +3,7 @@
  * Plugin Name: Atomic Edge Security
  * Plugin URI: https://atomicedge.io/wordpress
  * Description: Connect your WordPress site to Atomic Edge WAF/CDN for advanced security protection, analytics, and access control management.
- * Version: 2.4.8
+ * Version: 2.4.9
  * Requires at least: 5.8
  * Requires PHP: 7.4
  * Tested up to: 6.9

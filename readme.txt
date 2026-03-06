@@ -1,10 +1,10 @@
 === Atomic Edge Security ===
 Contributors: shift8
-Tags: security, firewall, waf, malware, protection
+Tags: security, firewall, 2fa, malware scanner, security, waf
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 2.4.8
+Stable tag: 2.4.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 

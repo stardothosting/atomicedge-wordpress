@@ -536,18 +536,18 @@ class AtomicEdge_Ajax {
 
 		$vuln_scanner = AtomicEdge::get_instance()->vulnerability_scanner;
 
-		if ( ! $vuln_scanner->is_available() ) {
-			wp_send_json_error( array(
-				'message' => __( 'Vulnerability scanning requires an Atomic Edge API connection. Please connect your site in the Settings page.', 'atomic-edge-security' ),
-				'need_connection' => true,
-			) );
-		}
-
 		$force_refresh = isset( $post['force_refresh'] ) && 'true' === sanitize_text_field( $post['force_refresh'] );
 		$results = $vuln_scanner->run_full_scan( $force_refresh );
 
 		if ( isset( $results['error'] ) ) {
-			wp_send_json_error( array( 'message' => $results['error'] ) );
+			$error_data = array( 'message' => $results['error'] );
+
+			// Pass through rate limit flag so the JS can show a specific message.
+			if ( ! empty( $results['rate_limited'] ) ) {
+				$error_data['rate_limited'] = true;
+			}
+
+			wp_send_json_error( $error_data );
 		}
 
 		wp_send_json_success( $results );

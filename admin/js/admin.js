@@ -913,8 +913,9 @@
                 $progress.hide();
                 $button.prop('disabled', false);
                 
-                if (data && data.need_connection) {
-                    alert('Please connect your site to AtomicEdge in the Settings page first.');
+                if (data && data.rate_limited) {
+                    // Show the persistent rate-limit notice in the page.
+                    $('#atomicedge-vuln-rate-limit-notice').show();
                 } else {
                     alert(data.message || atomicedgeAdmin.strings.error);
                 }

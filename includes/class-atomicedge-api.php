@@ -443,13 +443,20 @@ class AtomicEdge_API {
 	 * Sends WordPress core version, plugins, and themes to AtomicEdge API
 	 * for vulnerability checking against the Wordfence vulnerability database.
 	 *
+	 * If an API key is configured, uses the authenticated endpoint (no daily cap).
+	 * If no API key, uses the public endpoint (rate limited per IP per day).
+	 *
 	 * @param array $installation_data Installation data with wordpress_version, plugins, themes.
 	 * @return array Response with success status and vulnerability data.
 	 */
 	public function check_vulnerabilities( $installation_data ) {
-		$response = $this->request( 'POST', '/wp/vulnerabilities/check', $installation_data );
+		if ( $this->get_api_key() ) {
+			// Authenticated path — no daily scan cap.
+			return $this->request( 'POST', '/wp/vulnerabilities/check', $installation_data );
+		}
 
-		return $response;
+		// Unauthenticated path — public endpoint with daily rate limit.
+		return $this->public_request( 'POST', '/wp/public/vulnerabilities/check', $installation_data );
 	}
 
 	/**
@@ -910,11 +917,19 @@ class AtomicEdge_API {
 				$error_message = $data['message'];
 			}
 			AtomicEdge::log( "Public API Error ({$code})", $error_message );
-			return array(
+
+			$result = array(
 				'success' => false,
 				'error'   => $error_message,
 				'code'    => $code,
 			);
+
+			// Flag rate-limited responses so callers can show specific UI messaging.
+			if ( 429 === $code ) {
+				$result['rate_limited'] = true;
+			}
+
+			return $result;
 		}
 
 		// Extract nested data if API returns standard response format.

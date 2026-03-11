@@ -1012,16 +1012,15 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_block_ip() {
-		$post = $this->get_verified_post_fields( array( 'ip', 'duration_hours', 'permanent', 'reason' ) );
+		$post = $this->get_verified_post_fields( array( 'ip', 'permanent', 'reason' ) );
 
 		if ( empty( $post['ip'] ) ) {
 			wp_send_json_error( array( 'message' => __( 'IP address is required.', 'atomic-edge-security' ) ) );
 		}
 
-		$ip             = $post['ip'];
-		$duration_hours = isset( $post['duration_hours'] ) ? absint( $post['duration_hours'] ) : 24;
-		$permanent      = isset( $post['permanent'] ) && 'true' === $post['permanent'];
-		$reason         = isset( $post['reason'] ) ? sanitize_text_field( $post['reason'] ) : '';
+		$ip        = $post['ip'];
+		$permanent = isset( $post['permanent'] ) && 'true' === $post['permanent'];
+		$reason    = isset( $post['reason'] ) ? sanitize_text_field( $post['reason'] ) : '';
 
 		// Dev mode: return simulated success (only when not connected to real API).
 		if ( $this->should_use_dev_mode() ) {
@@ -1035,7 +1034,7 @@ class AtomicEdge_Ajax {
 			) );
 		}
 
-		$response = $this->api->block_ip( $ip, $duration_hours, $permanent, $reason );
+		$response = $this->api->block_ip( $ip, $permanent, $reason );
 
 		if ( $response['success'] ) {
 			wp_send_json_success( array(
@@ -1091,41 +1090,39 @@ class AtomicEdge_Ajax {
 
 	/**
 	 * Extend the block duration for a blocked IP.
+	 * Duration is server-authoritative (uses the site's configured auto_block_ttl_hours).
 	 *
 	 * @return void
 	 */
 	public function ajax_extend_block() {
-		$post = $this->get_verified_post_fields( array( 'ip', 'days' ) );
+		$post = $this->get_verified_post_fields( array( 'ip' ) );
 
 		if ( empty( $post['ip'] ) ) {
 			wp_send_json_error( array( 'message' => __( 'IP address is required.', 'atomic-edge-security' ) ) );
 		}
 
-		$ip   = $post['ip'];
-		$days = isset( $post['days'] ) ? max( 1, absint( $post['days'] ) ) : 1;
+		$ip = $post['ip'];
 
 		// Dev mode: return simulated success (only when not connected to real API).
 		if ( $this->should_use_dev_mode() ) {
 			wp_send_json_success( array(
 				'message' => sprintf(
-					/* translators: 1: IP address, 2: number of days */
-					__( '[Dev Mode] Block for %1$s extended by %2$d day(s).', 'atomic-edge-security' ),
-					esc_html( $ip ),
-					$days
+					/* translators: %s: IP address */
+					__( '[Dev Mode] Block for %s has been extended.', 'atomic-edge-security' ),
+					esc_html( $ip )
 				),
-				'data' => AtomicEdge_Dev_Mode::simulate_extend_block( $ip, $days ),
+				'data' => AtomicEdge_Dev_Mode::simulate_extend_block( $ip ),
 			) );
 		}
 
-		$response = $this->api->extend_block( $ip, $days );
+		$response = $this->api->extend_block( $ip );
 
 		if ( $response['success'] ) {
 			wp_send_json_success( array(
 				'message' => sprintf(
-					/* translators: 1: IP address, 2: number of days */
-					__( 'Block for %1$s extended by %2$d day(s).', 'atomic-edge-security' ),
-					esc_html( $ip ),
-					$days
+					/* translators: %s: IP address */
+					__( 'Block for %s has been extended.', 'atomic-edge-security' ),
+					esc_html( $ip )
 				),
 				'data' => $response['data'] ?? array(),
 			) );
@@ -1172,7 +1169,11 @@ class AtomicEdge_Ajax {
 				'data' => $response['data'] ?? array(),
 			) );
 		} else {
-			wp_send_json_error( array( 'message' => $response['error'] ?? __( 'Failed to make block permanent.', 'atomic-edge-security' ) ) );
+			$error_data = array( 'message' => $response['error'] ?? __( 'Failed to make block permanent.', 'atomic-edge-security' ) );
+			if ( ! empty( $response['error_code'] ) ) {
+				$error_data['error_code'] = sanitize_text_field( $response['error_code'] );
+			}
+			wp_send_json_error( $error_data );
 		}
 	}
 

@@ -843,23 +843,22 @@ class AtomicEdge_Dev_Mode {
 
 	/**
 	 * Simulate a successful extend block response.
+	 * Duration is server-authoritative; simulates a 24h extension for dev mode.
 	 *
-	 * @param string $ip   IP address.
-	 * @param int    $days Number of days to extend.
+	 * @param string $ip IP address.
 	 * @return array
 	 */
-	public static function simulate_extend_block( $ip, $days = 1 ) {
+	public static function simulate_extend_block( $ip ) {
 		return array(
 			'message'          => sprintf(
-				/* translators: 1: IP address, 2: number of days */
-				__( '[Dev Mode] Block for %1$s extended by %2$d day(s).', 'atomic-edge-security' ),
-				$ip,
-				$days
+				/* translators: %s: IP address */
+				__( '[Dev Mode] Block for %s has been extended.', 'atomic-edge-security' ),
+				$ip
 			),
 			'ip'               => $ip,
 			'is_blocked'       => true,
 			'blocked_at'       => gmdate( 'c', time() - 3600 ),
-			'block_expires_at' => gmdate( 'c', time() + ( $days * 86400 ) ),
+			'block_expires_at' => gmdate( 'c', time() + 86400 ),
 		);
 	}
 

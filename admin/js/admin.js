@@ -594,7 +594,6 @@
 
             this.ajax('atomicedge_block_ip', {
                 ip: ip,
-                duration_hours: 24,
                 reason: 'Blocked from WAF logs'
             }, function() {
                 // Reload WAF logs so the is_blocked badge appears.

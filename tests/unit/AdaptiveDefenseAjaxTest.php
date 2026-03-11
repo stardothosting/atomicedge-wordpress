@@ -122,7 +122,7 @@ class AdaptiveDefenseAjaxTest extends TestCase {
 
 		$this->mock_api->expects( $this->once() )
 			->method( 'block_ip' )
-			->with( '192.168.1.100', 24, false, '' )
+			->with( '192.168.1.100', false, '' )
 			->willReturn( array(
 				'success' => true,
 				'data'    => array( 'blocked_at' => '2026-03-01T12:00:00Z' ),
@@ -141,17 +141,16 @@ class AdaptiveDefenseAjaxTest extends TestCase {
 	}
 
 	/**
-	 * Test block IP with custom duration, permanent, and reason.
+	 * Test block IP with permanent flag and reason.
 	 */
 	public function test_ajax_block_ip_with_custom_parameters() {
-		$_POST['ip']             = '10.0.0.1';
-		$_POST['duration_hours'] = '48';
-		$_POST['permanent']      = 'true';
-		$_POST['reason']         = 'Suspicious activity detected';
+		$_POST['ip']        = '10.0.0.1';
+		$_POST['permanent'] = 'true';
+		$_POST['reason']    = 'Suspicious activity detected';
 
 		$this->mock_api->expects( $this->once() )
 			->method( 'block_ip' )
-			->with( '10.0.0.1', 48, true, 'Suspicious activity detected' )
+			->with( '10.0.0.1', true, 'Suspicious activity detected' )
 			->willReturn( array(
 				'success' => true,
 				'data'    => array(),
@@ -249,7 +248,7 @@ class AdaptiveDefenseAjaxTest extends TestCase {
 
 		$this->mock_api->expects( $this->once() )
 			->method( 'block_ip' )
-			->with( '10.0.0.1', 24, false, '' )
+			->with( '10.0.0.1', false, '' )
 			->willReturn( array( 'success' => true, 'data' => array() ) );
 
 		try {
@@ -1245,5 +1244,239 @@ class AdaptiveDefenseAjaxTest extends TestCase {
 
 		$this->assertEquals( 'error', $this->json_response_type );
 		$this->assertStringContainsString( 'permission', $this->json_response['message'] );
+	}
+
+	// =========================================================================
+	// Extend Block Tests
+	// =========================================================================
+
+	/**
+	 * Test extend block success.
+	 */
+	public function test_ajax_extend_block_success() {
+		$_POST['ip'] = '192.168.1.100';
+
+		$this->mock_api->expects( $this->once() )
+			->method( 'extend_block' )
+			->with( '192.168.1.100' )
+			->willReturn( array(
+				'success' => true,
+				'data'    => array(
+					'block_expires_at' => '2026-03-05T12:00:00Z',
+				),
+			) );
+
+		try {
+			$this->ajax->ajax_extend_block();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+		$this->assertArrayHasKey( 'message', $this->json_response );
+		$this->assertStringContainsString( '192.168.1.100', $this->json_response['message'] );
+		$this->assertStringContainsString( 'extended', $this->json_response['message'] );
+		$this->assertArrayHasKey( 'data', $this->json_response );
+	}
+
+	/**
+	 * Test extend block requires IP address.
+	 */
+	public function test_ajax_extend_block_requires_ip() {
+		// No IP in POST.
+
+		try {
+			$this->ajax->ajax_extend_block();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+		$this->assertStringContainsString( 'IP address is required', $this->json_response['message'] );
+	}
+
+	/**
+	 * Test extend block requires non-empty IP address.
+	 */
+	public function test_ajax_extend_block_requires_nonempty_ip() {
+		$_POST['ip'] = '';
+
+		try {
+			$this->ajax->ajax_extend_block();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+		$this->assertStringContainsString( 'IP address is required', $this->json_response['message'] );
+	}
+
+	/**
+	 * Test extend block API error is propagated (e.g. max_duration_exceeded).
+	 */
+	public function test_ajax_extend_block_api_error_max_duration() {
+		$_POST['ip'] = '192.168.1.100';
+
+		$this->mock_api->method( 'extend_block' )
+			->willReturn( array(
+				'success' => false,
+				'error'   => 'Block already reaches the maximum duration of 3 days.',
+			) );
+
+		try {
+			$this->ajax->ajax_extend_block();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+		$this->assertStringContainsString( 'maximum duration', $this->json_response['message'] );
+	}
+
+	/**
+	 * Test extend block API error falls back to generic message.
+	 */
+	public function test_ajax_extend_block_api_error_fallback_message() {
+		$_POST['ip'] = '192.168.1.100';
+
+		$this->mock_api->method( 'extend_block' )
+			->willReturn( array( 'success' => false ) );
+
+		try {
+			$this->ajax->ajax_extend_block();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+		$this->assertStringContainsString( 'Failed to extend block', $this->json_response['message'] );
+	}
+
+	/**
+	 * Test extend block does not send duration params — server decides.
+	 */
+	public function test_ajax_extend_block_does_not_send_duration() {
+		$_POST['ip']             = '10.0.0.1';
+		$_POST['duration_hours'] = '720';
+		$_POST['days']           = '30';
+
+		// extend_block() is called with only $ip — no duration args.
+		$this->mock_api->expects( $this->once() )
+			->method( 'extend_block' )
+			->with( '10.0.0.1' )
+			->willReturn( array(
+				'success' => true,
+				'data'    => array(),
+			) );
+
+		try {
+			$this->ajax->ajax_extend_block();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+	}
+
+	// =========================================================================
+	// Make Permanent Tests
+	// =========================================================================
+
+	/**
+	 * Test make permanent success.
+	 */
+	public function test_ajax_make_permanent_success() {
+		$_POST['ip'] = '10.0.0.1';
+
+		$this->mock_api->expects( $this->once() )
+			->method( 'make_permanent' )
+			->with( '10.0.0.1' )
+			->willReturn( array(
+				'success' => true,
+				'data'    => array( 'ip' => '10.0.0.1', 'is_permanent' => true ),
+			) );
+
+		try {
+			$this->ajax->ajax_make_permanent();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+		$this->assertStringContainsString( '10.0.0.1', $this->json_response['message'] );
+		$this->assertStringContainsString( 'permanent', $this->json_response['message'] );
+	}
+
+	/**
+	 * Test make permanent rejects empty IP.
+	 */
+	public function test_ajax_make_permanent_rejects_empty_ip() {
+		$_POST['ip'] = '';
+
+		try {
+			$this->ajax->ajax_make_permanent();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+		$this->assertStringContainsString( 'IP', $this->json_response['message'] );
+	}
+
+	/**
+	 * Test make permanent passes through error_code from API for plan_limit.
+	 *
+	 * When the API returns a 403 with error='plan_limit' and a message,
+	 * the AJAX handler must include error_code='plan_limit' in the JSON
+	 * response so JS can show specific upgrade messaging.
+	 */
+	public function test_ajax_make_permanent_passes_plan_limit_error_code() {
+		$_POST['ip'] = '10.0.0.1';
+
+		$this->mock_api->expects( $this->once() )
+			->method( 'make_permanent' )
+			->with( '10.0.0.1' )
+			->willReturn( array(
+				'success'    => false,
+				'error'      => 'Permanent blocks require a Pro plan or above.',
+				'error_code' => 'plan_limit',
+				'code'       => 403,
+			) );
+
+		try {
+			$this->ajax->ajax_make_permanent();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+		$this->assertArrayHasKey( 'error_code', $this->json_response );
+		$this->assertEquals( 'plan_limit', $this->json_response['error_code'] );
+		$this->assertStringContainsString( 'Pro plan', $this->json_response['message'] );
+	}
+
+	/**
+	 * Test make permanent API failure without error_code omits it.
+	 */
+	public function test_ajax_make_permanent_api_error_without_error_code() {
+		$_POST['ip'] = '10.0.0.1';
+
+		$this->mock_api->expects( $this->once() )
+			->method( 'make_permanent' )
+			->with( '10.0.0.1' )
+			->willReturn( array(
+				'success' => false,
+				'error'   => 'Something went wrong.',
+			) );
+
+		try {
+			$this->ajax->ajax_make_permanent();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+		$this->assertArrayNotHasKey( 'error_code', $this->json_response );
+		$this->assertEquals( 'Something went wrong.', $this->json_response['message'] );
 	}
 }

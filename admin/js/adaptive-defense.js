@@ -546,10 +546,15 @@
                 // Actions
                 html += '<td>';
                 if (!isPermanent) {
-                    html += '<button type="button" class="button button-small atomicedge-ad-extend-block-btn" data-ip="' + self.escapeHtml(ip) + '" title="Extend +1 day">';
+                    html += '<button type="button" class="button button-small atomicedge-ad-extend-block-btn" data-ip="' + self.escapeHtml(ip) + '" title="Extend block">';
                     html += '<span class="dashicons dashicons-clock" style="margin-top:3px;"></span></button> ';
-                    html += '<button type="button" class="button button-small atomicedge-ad-make-permanent-btn" data-ip="' + self.escapeHtml(ip) + '" title="Make permanent">';
-                    html += '<span class="dashicons dashicons-lock" style="margin-top:3px;"></span></button> ';
+                    if (atomicedge_admin.can_permanent_block) {
+                        html += '<button type="button" class="button button-small atomicedge-ad-make-permanent-btn" data-ip="' + self.escapeHtml(ip) + '" title="Make permanent">';
+                        html += '<span class="dashicons dashicons-lock" style="margin-top:3px;"></span></button> ';
+                    } else {
+                        html += '<button type="button" class="button button-small" disabled title="Permanent blocks are a Pro feature. Upgrade your plan to enable this." style="opacity:0.5;cursor:not-allowed;">';
+                        html += '<span class="dashicons dashicons-lock" style="margin-top:3px;"></span></button> ';
+                    }
                 }
                 html += '<button type="button" class="button button-small atomicedge-ad-unblock-btn" data-ip="' + self.escapeHtml(ip) + '" title="Unblock">';
                 html += '<span class="dashicons dashicons-unlock" style="margin-top:3px;"></span></button>';
@@ -594,7 +599,7 @@
         },
 
         /**
-         * Extend a timed block by 1 day.
+         * Extend a timed block using the site's configured duration.
          *
          * @param {string} ip IP address
          */
@@ -607,12 +612,14 @@
                 data: {
                     action: 'atomicedge_extend_block',
                     nonce: atomicedge_admin.nonce,
-                    ip: ip,
-                    days: 1
+                    ip: ip
                 },
                 success: function(response) {
                     if (response.success) {
-                        self.showNotice('Block for ' + ip + ' extended by 1 day.', 'success');
+                        var msg = response.data && response.data.message
+                            ? response.data.message
+                            : 'Block for ' + ip + ' has been extended.';
+                        self.showNotice(msg, 'success');
                         self.loadBlockedIps();
                     } else {
                         self.showNotice(response.data ? response.data.message : 'Failed to extend block', 'error');
@@ -632,6 +639,12 @@
         makePermanent: function(ip) {
             var self = this;
 
+            // Client-side plan gate (defense in depth — server also enforces).
+            if (!atomicedge_admin.can_permanent_block) {
+                self.showNotice('Permanent blocks are a Pro feature. Please upgrade your plan to enable this.', 'warning');
+                return;
+            }
+
             if (!confirm('Make the block for ' + ip + ' permanent?')) {
                 return;
             }
@@ -649,7 +662,14 @@
                         self.showNotice('Block for ' + ip + ' is now permanent.', 'success');
                         self.loadBlockedIps();
                     } else {
-                        self.showNotice(response.data ? response.data.message : 'Failed to make block permanent', 'error');
+                        var msg = response.data ? response.data.message : 'Failed to make block permanent';
+                        var type = 'error';
+                        // Detect plan-limit error from API (defense-in-depth).
+                        if (response.data && response.data.error_code === 'plan_limit') {
+                            msg = 'Permanent blocks are a Pro feature. Please upgrade your plan to enable this.';
+                            type = 'warning';
+                        }
+                        self.showNotice(msg, type);
                     }
                 },
                 error: function(xhr, status, error) {

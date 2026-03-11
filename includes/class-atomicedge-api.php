@@ -621,17 +621,17 @@ class AtomicEdge_API {
 
 	/**
 	 * Block an IP address via Adaptive Defense.
+	 * Duration is server-authoritative (uses the site's configured auto_block_ttl_hours).
 	 *
-	 * @param string $ip             IP address to block.
-	 * @param int    $duration_hours Duration in hours (default 24).
-	 * @param bool   $permanent      Whether the block is permanent.
+	 * @param string $ip        IP address to block.
+	 * @param bool   $permanent Whether the block is permanent.
+	 * @param string $reason    Optional reason for blocking.
 	 * @return array Result.
 	 */
-	public function block_ip( $ip, $duration_hours = 24, $permanent = false, $reason = '' ) {
+	public function block_ip( $ip, $permanent = false, $reason = '' ) {
 		$data = array(
-			'ip'             => $ip,
-			'duration_hours' => $duration_hours,
-			'permanent'      => $permanent,
+			'ip'        => $ip,
+			'permanent' => $permanent,
 		);
 
 		if ( ! empty( $reason ) ) {
@@ -669,15 +669,14 @@ class AtomicEdge_API {
 
 	/**
 	 * Extend the block duration for a blocked IP address.
+	 * Duration is server-authoritative (uses the site's configured auto_block_ttl_hours).
 	 *
-	 * @param string $ip   IP address.
-	 * @param int    $days Number of days to extend (default 1).
+	 * @param string $ip IP address.
 	 * @return array Result.
 	 */
-	public function extend_block( $ip, $days = 1 ) {
+	public function extend_block( $ip ) {
 		$response = $this->request( 'POST', '/adaptive-defense/extend-block', array(
-			'ip'   => $ip,
-			'days' => $days,
+			'ip' => $ip,
 		) );
 
 		if ( $response['success'] ) {
@@ -818,16 +817,23 @@ class AtomicEdge_API {
 
 		// Handle HTTP errors.
 		if ( $code >= 400 ) {
-			$error_message = isset( $data['error'] ) ? $data['error'] : __( 'An error occurred.', 'atomic-edge-security' );
+			$error_code    = isset( $data['error'] ) ? $data['error'] : null;
+			$error_message = $error_code ?? __( 'An error occurred.', 'atomic-edge-security' );
 			if ( isset( $data['message'] ) ) {
 				$error_message = $data['message'];
 			}
 			AtomicEdge::log( "API Error ({$code})", $error_message );
-			return array(
+			$result = array(
 				'success' => false,
 				'error'   => $error_message,
 				'code'    => $code,
 			);
+			// Preserve the original error identifier (e.g. 'plan_limit') when
+			// the human-readable message is available separately.
+			if ( null !== $error_code && isset( $data['message'] ) && $error_code !== $data['message'] ) {
+				$result['error_code'] = $error_code;
+			}
+			return $result;
 		}
 
 		// Extract nested data if API returns standard response format.

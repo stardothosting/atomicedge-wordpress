@@ -399,6 +399,19 @@ class DevModeAdaptiveDefenseTest extends TestCase {
 	}
 
 	/**
+	 * Test simulate_extend_block returns correct structure.
+	 */
+	public function test_simulate_extend_block_returns_block_data() {
+		$this->enable_dev_mode();
+		$data = \AtomicEdge_Dev_Mode::simulate_extend_block( '10.0.0.1' );
+
+		$this->assertArrayHasKey( 'ip', $data );
+		$this->assertEquals( '10.0.0.1', $data['ip'] );
+		$this->assertTrue( $data['is_blocked'] );
+		$this->assertArrayHasKey( 'block_expires_at', $data );
+	}
+
+	/**
 	 * Test simulate_dismiss_detection returns correct structure.
 	 */
 	public function test_simulate_dismiss_detection_returns_success_data() {
@@ -584,6 +597,28 @@ class DevModeAdaptiveDefenseTest extends TestCase {
 	}
 
 	/**
+	 * Test that AJAX extend_block returns simulated success in dev mode.
+	 */
+	public function test_ajax_extend_block_returns_simulated_in_dev_mode() {
+		$this->enable_dev_mode();
+		$_POST['ip'] = '192.168.1.100';
+
+		$this->mock_api->expects( $this->never() )->method( 'extend_block' );
+
+		try {
+			$this->ajax->ajax_extend_block();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+		$this->assertArrayHasKey( 'message', $this->json_response );
+		$this->assertStringContainsString( 'Dev Mode', $this->json_response['message'] );
+		$this->assertStringContainsString( '192.168.1.100', $this->json_response['message'] );
+		$this->assertArrayHasKey( 'data', $this->json_response );
+	}
+
+	/**
 	 * Test that AJAX dismiss_detection returns simulated success in dev mode.
 	 */
 	public function test_ajax_dismiss_detection_returns_simulated_in_dev_mode() {
@@ -649,7 +684,7 @@ class DevModeAdaptiveDefenseTest extends TestCase {
 		// The real API block_ip SHOULD be called.
 		$this->mock_api->expects( $this->once() )
 			->method( 'block_ip' )
-			->with( '192.168.1.100', $this->anything(), $this->anything(), $this->anything() )
+			->with( '192.168.1.100', $this->anything(), $this->anything() )
 			->willReturn( array(
 				'success' => true,
 				'data'    => array( 'message' => 'IP blocked successfully' ),
@@ -960,6 +995,7 @@ class DevModeAdaptiveDefenseTest extends TestCase {
 			'get_simulated_threat_detection_detail',
 			'simulate_block_ip',
 			'simulate_unblock_ip',
+			'simulate_extend_block',
 			'simulate_dismiss_detection',
 			'simulate_delete_actor',
 		);

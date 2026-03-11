@@ -296,6 +296,67 @@ class ApiTest extends TestCase {
 	}
 
 	/**
+	 * Test API error response preserves error_code when error and message differ.
+	 *
+	 * When the dashboard returns { error: 'plan_limit', message: 'Human text' },
+	 * the request() method must preserve 'plan_limit' as error_code so callers
+	 * can distinguish specific error types (e.g., for plan-gating UI).
+	 */
+	public function test_api_error_preserves_error_code_when_error_and_message_differ() {
+		$api_response = array(
+			'success' => false,
+			'error'   => 'plan_limit',
+			'message' => 'Permanent blocks require a Pro plan or above.',
+		);
+
+		Functions\when( 'wp_remote_request' )->justReturn(
+			array(
+				'response' => array( 'code' => 403 ),
+				'body'     => wp_json_encode( $api_response ),
+			)
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 403 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn( wp_json_encode( $api_response ) );
+
+		$this->setup_connected_api();
+		$api    = $this->create_api_instance();
+		$result = $api->make_permanent( '10.0.0.1' );
+
+		$this->assertFalse( $result['success'] );
+		$this->assertEquals( 'Permanent blocks require a Pro plan or above.', $result['error'] );
+		$this->assertArrayHasKey( 'error_code', $result );
+		$this->assertEquals( 'plan_limit', $result['error_code'] );
+		$this->assertEquals( 403, $result['code'] );
+	}
+
+	/**
+	 * Test API error response omits error_code when error is the same as message.
+	 */
+	public function test_api_error_omits_error_code_when_no_separate_message() {
+		$api_response = array(
+			'success' => false,
+			'error'   => 'Something went wrong.',
+		);
+
+		Functions\when( 'wp_remote_request' )->justReturn(
+			array(
+				'response' => array( 'code' => 500 ),
+				'body'     => wp_json_encode( $api_response ),
+			)
+		);
+		Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 500 );
+		Functions\when( 'wp_remote_retrieve_body' )->justReturn( wp_json_encode( $api_response ) );
+
+		$this->setup_connected_api();
+		$api    = $this->create_api_instance();
+		$result = $api->make_permanent( '10.0.0.1' );
+
+		$this->assertFalse( $result['success'] );
+		$this->assertEquals( 'Something went wrong.', $result['error'] );
+		$this->assertArrayNotHasKey( 'error_code', $result );
+	}
+
+	/**
 	 * Test disconnect clears stored data.
 	 */
 	public function test_disconnect_clears_data() {
@@ -615,7 +676,7 @@ class ApiTest extends TestCase {
 		) ) );
 
 		$api = $this->create_api_instance();
-		$api->block_ip( '10.0.0.5', 24, false, 'Blocked from WAF logs' );
+		$api->block_ip( '10.0.0.5', false, 'Blocked from WAF logs' );
 
 		$new_gen = $this->get_option( 'atomicedge_waf_cache_gen', 0 );
 		$this->assertNotEquals( $initial_gen, $new_gen, 'WAF cache generation should change after AD block' );

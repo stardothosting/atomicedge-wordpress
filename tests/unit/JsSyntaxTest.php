@@ -234,4 +234,49 @@ class JsSyntaxTest extends TestCase {
 	private function get_plugin_path( $relative_path ) {
 		return dirname( __DIR__, 2 ) . '/' . $relative_path;
 	}
+
+	/**
+	 * Verify the make-permanent button checks can_permanent_block before rendering.
+	 *
+	 * Guard test: prevents regression where the "Make Permanent" button renders
+	 * as fully active for free tier users who cannot use the feature.
+	 */
+	public function test_make_permanent_button_checks_plan_gate_in_js() {
+		$js = file_get_contents( $this->get_plugin_path( 'admin/js/adaptive-defense.js' ) );
+
+		$this->assertStringContainsString(
+			'can_permanent_block',
+			$js,
+			'adaptive-defense.js must check atomicedge_admin.can_permanent_block before rendering the Make Permanent button'
+		);
+	}
+
+	/**
+	 * Verify makePermanent() has plan_limit error handling.
+	 *
+	 * Defense-in-depth: the JS should detect plan_limit errors from the API
+	 * and show an upgrade message instead of a generic error.
+	 */
+	public function test_make_permanent_js_handles_plan_limit_error() {
+		$js = file_get_contents( $this->get_plugin_path( 'admin/js/adaptive-defense.js' ) );
+
+		$this->assertStringContainsString(
+			'plan_limit',
+			$js,
+			'adaptive-defense.js makePermanent() must handle plan_limit error code from the API'
+		);
+	}
+
+	/**
+	 * Verify disabled button has cursor-not-allowed for free tier.
+	 */
+	public function test_make_permanent_disabled_button_has_visual_indicator() {
+		$js = file_get_contents( $this->get_plugin_path( 'admin/js/adaptive-defense.js' ) );
+
+		$this->assertStringContainsString(
+			'cursor:not-allowed',
+			$js,
+			'Free-tier Make Permanent button must have cursor:not-allowed styling'
+		);
+	}
 }

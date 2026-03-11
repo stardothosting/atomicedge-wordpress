@@ -216,13 +216,24 @@ class AtomicEdge {
 			);
 
 			// Localize script with data for adaptive-defense.js.
+			$site_data           = get_option( 'atomicedge_site_data', array() );
+			$can_permanent_block = true; // Default: allow (server-side is the ultimate gate).
+			if ( is_array( $site_data ) ) {
+				if ( isset( $site_data['features']['adaptive_defense_permanent_blocks'] ) ) {
+					$can_permanent_block = (bool) $site_data['features']['adaptive_defense_permanent_blocks'];
+				} elseif ( isset( $site_data['plan_tier'] ) ) {
+					$can_permanent_block = ( 'free' !== $site_data['plan_tier'] );
+				}
+			}
+
 			wp_localize_script(
 				'atomicedge-adaptive-defense',
 				'atomicedge_admin',
 				array(
-					'ajax_url'           => admin_url( 'admin-ajax.php' ),
-					'nonce'              => wp_create_nonce( 'atomicedge_ajax' ),
-					'access_control_url' => admin_url( 'admin.php?page=atomicedge-access-control&tab=blacklist' ),
+					'ajax_url'            => admin_url( 'admin-ajax.php' ),
+					'nonce'               => wp_create_nonce( 'atomicedge_ajax' ),
+					'access_control_url'  => admin_url( 'admin.php?page=atomicedge-access-control&tab=blacklist' ),
+					'can_permanent_block' => $can_permanent_block,
 				)
 			);
 		}

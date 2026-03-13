@@ -279,4 +279,74 @@ class JsSyntaxTest extends TestCase {
 			'Free-tier Make Permanent button must have cursor:not-allowed styling'
 		);
 	}
+
+	// =========================================================================
+	// Nonce Refresh Mechanism Guard Tests
+	// =========================================================================
+
+	/**
+	 * Guard: admin.js ajax() helper must detect nonce_error flag.
+	 *
+	 * The ajax() helper must check response.data.nonce_error so it can
+	 * transparently retry after fetching a fresh nonce.
+	 *
+	 * Incident 2026-03-09: "Security check failed" with no auto-recovery.
+	 */
+	public function test_admin_js_ajax_helper_detects_nonce_error() {
+		$js = file_get_contents( $this->get_plugin_path( 'admin/js/admin.js' ) );
+
+		$this->assertStringContainsString(
+			'nonce_error',
+			$js,
+			'admin.js ajax() helper must detect nonce_error flag from the server response '
+			. 'to trigger transparent nonce refresh and retry'
+		);
+	}
+
+	/**
+	 * Guard: admin.js must have refreshNonceAndRetry method.
+	 *
+	 * This method fetches a fresh nonce from the server and replays
+	 * the original AJAX request.
+	 */
+	public function test_admin_js_has_refresh_nonce_and_retry_method() {
+		$js = file_get_contents( $this->get_plugin_path( 'admin/js/admin.js' ) );
+
+		$this->assertStringContainsString(
+			'refreshNonceAndRetry',
+			$js,
+			'admin.js must contain refreshNonceAndRetry() method for transparent nonce recovery'
+		);
+	}
+
+	/**
+	 * Guard: refreshNonceAndRetry must call atomicedge_refresh_nonce action.
+	 *
+	 * Ensures the method uses the correct server-side endpoint.
+	 */
+	public function test_refresh_nonce_uses_correct_ajax_action() {
+		$js = file_get_contents( $this->get_plugin_path( 'admin/js/admin.js' ) );
+
+		$this->assertStringContainsString(
+			'atomicedge_refresh_nonce',
+			$js,
+			'refreshNonceAndRetry() must use the atomicedge_refresh_nonce AJAX action'
+		);
+	}
+
+	/**
+	 * Guard: ajax() helper must accept _isRetry parameter to prevent infinite loops.
+	 *
+	 * Without retry prevention, a permanent nonce failure would cause an
+	 * infinite refresh→retry→refresh loop.
+	 */
+	public function test_ajax_helper_has_retry_prevention() {
+		$js = file_get_contents( $this->get_plugin_path( 'admin/js/admin.js' ) );
+
+		$this->assertStringContainsString(
+			'_isRetry',
+			$js,
+			'admin.js ajax() must accept _isRetry parameter to prevent infinite nonce refresh loops'
+		);
+	}
 }

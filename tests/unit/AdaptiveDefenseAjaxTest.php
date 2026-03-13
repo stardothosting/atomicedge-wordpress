@@ -1479,4 +1479,132 @@ class AdaptiveDefenseAjaxTest extends TestCase {
 		$this->assertArrayNotHasKey( 'error_code', $this->json_response );
 		$this->assertEquals( 'Something went wrong.', $this->json_response['message'] );
 	}
+
+	// =========================================================================
+	// Nonce Refresh Tests
+	// =========================================================================
+
+	/**
+	 * Test nonce failure response includes nonce_error flag.
+	 *
+	 * When the nonce check fails, the response must include nonce_error: true
+	 * so the JS client can distinguish expired nonces from other errors and
+	 * auto-retry with a fresh nonce.
+	 *
+	 * Incident 2026-03-09: "Security check failed" with no recovery mechanism
+	 * when nonce expired between WAF log load and Block IP click.
+	 */
+	public function test_nonce_failure_includes_nonce_error_flag() {
+		// Override the default mock to make nonce verification fail.
+		Functions\when( 'wp_verify_nonce' )->justReturn( false );
+
+		$_POST['nonce'] = 'expired-nonce';
+		$_POST['ip']    = '192.168.1.100';
+
+		try {
+			$this->ajax->ajax_block_ip();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+		$this->assertArrayHasKey( 'nonce_error', $this->json_response );
+		$this->assertTrue( $this->json_response['nonce_error'] );
+		$this->assertStringContainsString( 'Security check failed', $this->json_response['message'] );
+	}
+
+	/**
+	 * Test nonce failure for missing nonce also includes nonce_error flag.
+	 */
+	public function test_missing_nonce_includes_nonce_error_flag() {
+		unset( $_POST['nonce'] );
+
+		try {
+			$this->ajax->ajax_block_ip();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+		$this->assertArrayHasKey( 'nonce_error', $this->json_response );
+		$this->assertTrue( $this->json_response['nonce_error'] );
+	}
+
+	/**
+	 * Test nonce refresh returns a fresh nonce for authorized users.
+	 */
+	public function test_ajax_refresh_nonce_success() {
+		Functions\when( 'current_user_can' )->justReturn( true );
+		Functions\when( 'wp_create_nonce' )->justReturn( 'fresh-nonce-token' );
+
+		try {
+			$this->ajax->ajax_refresh_nonce();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+		$this->assertArrayHasKey( 'nonce', $this->json_response );
+		$this->assertEquals( 'fresh-nonce-token', $this->json_response['nonce'] );
+	}
+
+	/**
+	 * Test nonce refresh rejects unauthorized users.
+	 */
+	public function test_ajax_refresh_nonce_unauthorized() {
+		Functions\when( 'current_user_can' )->justReturn( false );
+
+		try {
+			$this->ajax->ajax_refresh_nonce();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+		$this->assertStringContainsString( 'Unauthorized', $this->json_response['message'] );
+	}
+
+	/**
+	 * Test nonce refresh action is registered in init_hooks.
+	 */
+	public function test_nonce_refresh_action_is_registered() {
+		$source = file_get_contents( dirname( __DIR__, 2 ) . '/includes/class-atomicedge-ajax.php' );
+
+		$this->assertStringContainsString(
+			'wp_ajax_atomicedge_refresh_nonce',
+			$source,
+			'The wp_ajax_atomicedge_refresh_nonce action must be registered in init_hooks()'
+		);
+
+		$this->assertStringContainsString(
+			'ajax_refresh_nonce',
+			$source,
+			'The ajax_refresh_nonce method must exist in AtomicEdge_Ajax'
+		);
+	}
+
+	/**
+	 * Test capability check failure does NOT include nonce_error flag.
+	 *
+	 * Only nonce failures should trigger the auto-retry mechanism.
+	 * Capability failures are a different class of error.
+	 */
+	public function test_capability_failure_does_not_include_nonce_error_flag() {
+		// Nonce passes, but capability check fails.
+		Functions\when( 'wp_verify_nonce' )->justReturn( true );
+		Functions\when( 'current_user_can' )->justReturn( false );
+
+		$_POST['nonce'] = 'valid-nonce';
+		$_POST['ip']    = '192.168.1.100';
+
+		try {
+			$this->ajax->ajax_block_ip();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'error', $this->json_response_type );
+		$this->assertArrayNotHasKey( 'nonce_error', $this->json_response );
+		$this->assertStringContainsString( 'permission', $this->json_response['message'] );
+	}
 }

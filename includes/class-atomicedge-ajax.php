@@ -102,6 +102,9 @@ class AtomicEdge_Ajax {
 		add_action( 'wp_ajax_atomicedge_make_permanent', array( $this, 'ajax_make_permanent' ) );
 		add_action( 'wp_ajax_atomicedge_delete_actor', array( $this, 'ajax_delete_actor' ) );
 		add_action( 'wp_ajax_atomicedge_dismiss_detection', array( $this, 'ajax_dismiss_detection' ) );
+
+		// Nonce refresh (lightweight, no nonce required — cookie-authenticated).
+		add_action( 'wp_ajax_atomicedge_refresh_nonce', array( $this, 'ajax_refresh_nonce' ) );
 	}
 
 	/**
@@ -118,7 +121,10 @@ class AtomicEdge_Ajax {
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Sanitized immediately after isset check.
 		$nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
 		if ( ! $nonce || ! wp_verify_nonce( $nonce, 'atomicedge_ajax' ) ) {
-			wp_send_json_error( array( 'message' => __( 'Security check failed.', 'atomic-edge-security' ) ) );
+			wp_send_json_error( array(
+				'message'     => __( 'Security check failed.', 'atomic-edge-security' ),
+				'nonce_error' => true,
+			) );
 		}
 
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -1458,6 +1464,24 @@ class AtomicEdge_Ajax {
 		if ( ! current_user_can( 'read' ) ) {
 			wp_send_json_error( array( 'message' => __( 'Unauthorized access.', 'atomic-edge-security' ) ) );
 		}
+	}
+
+	/**
+	 * Return a fresh nonce so the client can retry after expiry.
+	 *
+	 * This endpoint intentionally skips nonce verification — the wp_ajax_
+	 * hook already proves the user is logged in (cookie-authenticated), and
+	 * the only value returned is a new nonce which is harmless to expose.
+	 * A capability check ensures only admins can obtain a nonce.
+	 *
+	 * @return void
+	 */
+	public function ajax_refresh_nonce() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Unauthorized.', 'atomic-edge-security' ) ) );
+		}
+
+		wp_send_json_success( array( 'nonce' => wp_create_nonce( 'atomicedge_ajax' ) ) );
 	}
 
 	/**

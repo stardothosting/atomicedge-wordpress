@@ -1356,9 +1356,19 @@
         },
 
         /**
-         * AJAX helper
+         * AJAX helper.
+         *
+         * On nonce expiry the helper transparently refreshes the nonce and
+         * retries the original request once. If the retry also fails the
+         * error is surfaced to the caller normally.
+         *
+         * @param {string}   action   WordPress AJAX action name.
+         * @param {Object}   data     POST data (action & nonce are added automatically).
+         * @param {Function} success  Callback on success (receives response.data).
+         * @param {Function} error    Callback on failure (receives response.data).
+         * @param {boolean}  _isRetry Internal flag — do not set manually.
          */
-        ajax: function(action, data, success, error) {
+        ajax: function(action, data, success, error, _isRetry) {
             var self = this;
             data = data || {};
             data.action = action;
@@ -1369,6 +1379,14 @@
                 type: 'POST',
                 data: data,
                 success: function(response) {
+                    // Transparent nonce refresh: if the server flags a nonce
+                    // error and this is not already a retry, fetch a fresh
+                    // nonce and replay the request.
+                    if (!response.success && response.data && response.data.nonce_error && !_isRetry) {
+                        self.refreshNonceAndRetry(action, data, success, error);
+                        return;
+                    }
+
                     if (response.success) {
                         if (typeof success === 'function') {
                             success(response.data);
@@ -1388,6 +1406,46 @@
                     } else {
                         self.showNotice(atomicedgeAdmin.strings.error, 'error');
                     }
+                }
+            });
+        },
+
+        /**
+         * Fetch a fresh nonce from the server and replay the failed request.
+         *
+         * The refresh endpoint is cookie-authenticated (no nonce required)
+         * so it succeeds even when the original nonce has expired.
+         *
+         * @param {string}   action  Original AJAX action.
+         * @param {Object}   data    Original POST data.
+         * @param {Function} success Original success callback.
+         * @param {Function} error   Original error callback.
+         */
+        refreshNonceAndRetry: function(action, data, success, error) {
+            var self = this;
+
+            $.ajax({
+                url: atomicedgeAdmin.ajaxUrl,
+                type: 'POST',
+                data: { action: 'atomicedge_refresh_nonce' },
+                success: function(response) {
+                    if (response.success && response.data && response.data.nonce) {
+                        // Store the fresh nonce for all future requests.
+                        atomicedgeAdmin.nonce = response.data.nonce;
+                        // Replay the original request (flagged as retry).
+                        self.ajax(action, data, success, error, true);
+                    } else {
+                        self.showNotice(
+                            'Your session has expired. Please refresh the page and try again.',
+                            'error'
+                        );
+                    }
+                },
+                error: function() {
+                    self.showNotice(
+                        'Your session has expired. Please refresh the page and try again.',
+                        'error'
+                    );
                 }
             });
         },

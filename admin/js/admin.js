@@ -394,10 +394,10 @@
             logs.forEach(function(log) {
                 var actionCell;
                 if (log.is_blocked) {
-                    actionCell = '<span class="atomicedge-blocked-badge" title="This IP is blocked" style="color:#b32d2e;font-weight:600;">' +
-                        '<span class="dashicons dashicons-lock" style="font-size:14px;width:14px;height:14px;margin-top:3px;"></span> Blocked</span>';
+                    actionCell = '<span class="atomicedge-blacklisted-badge" title="This IP is blacklisted" style="color:#b32d2e;font-weight:600;">' +
+                        '<span class="dashicons dashicons-lock" style="font-size:14px;width:14px;height:14px;margin-top:3px;"></span> Blacklisted</span>';
                 } else {
-                    actionCell = '<button type="button" class="button button-small atomicedge-block-ip" data-ip="' + self.escapeHtml(log.client_ip || '') + '">Block IP</button>';
+                    actionCell = '<button type="button" class="button button-small atomicedge-blacklist-ip" data-ip="' + self.escapeHtml(log.client_ip || '') + '">Blacklist</button>';
                 }
                 var row = '<tr>' +
                     '<td>' + self.escapeHtml(log.event_timestamp || '') + '</td>' +
@@ -410,12 +410,12 @@
                 $tbody.append(row);
             });
 
-            // Bind block IP buttons — blocks go to Adaptive Defense (not IP blacklist).
-            $tbody.find('.atomicedge-block-ip').on('click', function() {
+            // Bind blacklist buttons — adds IP to the Access Control IP blacklist.
+            $tbody.find('.atomicedge-blacklist-ip').on('click', function() {
                 var $btn = $(this);
                 var ip = $btn.data('ip');
                 if (confirm(atomicedgeAdmin.strings.confirm)) {
-                    self.blockIpFromWafLogs(ip, $btn);
+                    self.blacklistIpFromWafLogs(ip, $btn);
                 }
             });
 
@@ -578,25 +578,27 @@
         /**
          * Block an IP from the WAF logs page via Adaptive Defense.
          *
-         * This sends the block to the AD system (ActorProfile), NOT the
-         * Access Control IP blacklist (SiteSettings).  The existing
-         * ajax_block_ip AJAX handler + api->block_ip() method are reused.
+         * This adds the IP to the Access Control IP blacklist
+         * (SiteSettings.ip_blacklist) via the existing ajax_add_ip_blacklist
+         * AJAX handler + api->add_ip_blacklist() method.
          *
          * @param {string} ip      IP address.
          * @param {jQuery} $button The button element to update on success.
          */
-        blockIpFromWafLogs: function(ip, $button) {
+        blacklistIpFromWafLogs: function(ip, $button) {
             var self = this;
 
             if ($button) {
                 $button.prop('disabled', true).text(atomicedgeAdmin.strings.loading);
             }
 
-            this.ajax('atomicedge_block_ip', {
+            var description = 'Added from WordPress on ' + this.formatTimestamp();
+
+            this.ajax('atomicedge_add_ip_blacklist', {
                 ip: ip,
-                reason: 'Blocked from WAF logs'
+                description: description
             }, function() {
-                // Reload WAF logs so the is_blocked badge appears.
+                // Reload WAF logs so the blacklisted badge appears.
                 if ($('#atomicedge-waf-table').length) {
                     self.loadWafLogs();
                 }
@@ -605,14 +607,14 @@
                 if ($button) {
                     $button.prop('disabled', true)
                         .removeClass('button-small')
-                        .addClass('atomicedge-blocked-btn')
-                        .html('<span class="dashicons dashicons-yes-alt" style="margin-top:3px;color:#00a32a;"></span> Blocked');
+                        .addClass('atomicedge-blacklisted-btn')
+                        .html('<span class="dashicons dashicons-yes-alt" style="margin-top:3px;color:#00a32a;"></span> Blacklisted');
                 }
 
-                self.showNotice(ip + ' has been blocked via Adaptive Defense.', 'success');
+                self.showNotice(ip + ' has been added to the IP blacklist.', 'success');
             }, function(errData) {
                 if ($button) {
-                    $button.prop('disabled', false).text('Block IP');
+                    $button.prop('disabled', false).text('Blacklist');
                 }
                 var message = (errData && errData.message) ? errData.message : atomicedgeAdmin.strings.error;
                 self.showNotice(message, 'error');

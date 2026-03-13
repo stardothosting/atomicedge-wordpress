@@ -304,6 +304,17 @@ class AtomicEdge_Ajax {
 			wp_send_json_error( array( 'message' => __( 'Invalid IP address or CIDR range.', 'atomic-edge-security' ) ) );
 		}
 
+		// Dev mode: return simulated success (only when not connected to real API).
+		if ( $this->should_use_dev_mode() ) {
+			wp_send_json_success( array(
+				'message' => sprintf(
+					/* translators: %s: IP address */
+					__( '[Dev Mode] IP %s has been added to the blacklist.', 'atomic-edge-security' ),
+					esc_html( $ip )
+				),
+			) );
+		}
+
 		$result = $this->api->add_ip_blacklist( $ip, $description );
 
 		if ( $result['success'] ) {

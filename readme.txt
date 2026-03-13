@@ -4,7 +4,7 @@ Tags: security, firewall, 2fa, malware scanner, waf
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 2.5.0
+Stable tag: 2.5.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -111,6 +111,11 @@ The plugin automatically detects and uses the best available option.
 9. Adaptive Defense dashboard showing AI-powered threat detections and automatic IP blocking
 
 == Changelog ==
+
+= 2.5.1 =
+* CHANGE: WAF Logs "Block IP" button renamed to "Blacklist" — now adds IPs to edge-level IP Blacklist instead of Adaptive Defense
+* NEW: Dev mode support for WAF logs blacklist button
+* NEW: AJAX nonce auto-refresh — expired nonces are transparently refreshed without page reload
 
 = 2.5.0 =
 * NEW: Vulnerability scanner now works without an API key — free scans limited to 3 per day per IP

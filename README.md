@@ -116,6 +116,12 @@ The plugin automatically detects and uses the best available option.
 
 ## Changelog
 
+### 2.5.1
+
+- CHANGE: WAF Logs "Block IP" button renamed to "Blacklist" — now adds IPs to edge-level IP Blacklist instead of Adaptive Defense
+- NEW: Dev mode support for WAF logs blacklist button
+- NEW: AJAX nonce auto-refresh — expired nonces are transparently refreshed without page reload
+
 ### 2.5.0
 
 - NEW: Vulnerability scanner now works without an API key — free scans limited to 3 per day per IP

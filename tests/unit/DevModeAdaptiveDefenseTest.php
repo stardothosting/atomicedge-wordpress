@@ -1050,4 +1050,34 @@ class DevModeAdaptiveDefenseTest extends TestCase {
 			$this->assertStringContainsString( '45.33', $actor['ip'] );
 		}
 	}
+
+	// =========================================================================
+	// Blacklist AJAX Dev Mode — WAF logs blacklist button in dev mode
+	// =========================================================================
+
+	/**
+	 * Test that AJAX add_ip_blacklist returns simulated success in dev mode.
+	 *
+	 * The WAF logs "Blacklist" button uses the atomicedge_add_ip_blacklist action.
+	 * In dev mode, it must return a simulated success without calling the real API.
+	 */
+	public function test_ajax_add_ip_blacklist_returns_simulated_in_dev_mode() {
+		$this->enable_dev_mode();
+		$_POST['ip']          = '10.20.30.40';
+		$_POST['description'] = 'Added from WordPress on 2026-03-13 12:00 UTC';
+
+		$this->mock_api->method( 'is_valid_ip' )->willReturn( true );
+		$this->mock_api->expects( $this->never() )->method( 'add_ip_blacklist' );
+
+		try {
+			$this->ajax->ajax_add_ip_blacklist();
+		} catch ( AjaxExitException $e ) {
+			// Expected.
+		}
+
+		$this->assertEquals( 'success', $this->json_response_type );
+		$this->assertArrayHasKey( 'message', $this->json_response );
+		$this->assertStringContainsString( 'Dev Mode', $this->json_response['message'] );
+		$this->assertStringContainsString( '10.20.30.40', $this->json_response['message'] );
+	}
 }

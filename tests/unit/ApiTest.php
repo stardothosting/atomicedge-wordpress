@@ -645,9 +645,9 @@ class ApiTest extends TestCase {
 	/**
 	 * Test block_ip() (Adaptive Defense) invalidates WAF log cache.
 	 *
-	 * Since WAF logs now show is_blocked from both the IP blacklist and
-	 * Adaptive Defense ActorProfile, blocking an IP via AD must invalidate
-	 * the WAF log cache so the is_blocked badge appears on next fetch.
+	 * Note: WAF logs is_blocked only reflects ip_blacklist (not AD) since
+	 * 2026-03-13. This cache invalidation is kept as defense-in-depth but
+	 * AD block/unblock no longer changes the is_blocked badge in WAF logs.
 	 */
 	public function test_block_ip_invalidates_waf_log_cache() {
 		$this->setup_connected_api();

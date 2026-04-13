@@ -787,12 +787,6 @@ class AtomicEdge_Ajax {
 		// Parse the serialized form data.
 		parse_str( $post['formData'], $form_data );
 
-		// DEBUG: Log raw form data to trace corruption.
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-		error_log( 'AtomicEdge CDN Save - Raw formData: ' . $post['formData'] );
-		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log, WordPress.PHP.DevelopmentFunctions.error_log_print_r
-		error_log( 'AtomicEdge CDN Save - Parsed form_data: ' . print_r( $form_data, true ) );
-
 		// Verify nonce from form data.
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Already sanitized by get_verified_post_fields.
 		$form_nonce = isset( $form_data['atomicedge_cdn_nonce'] ) ? sanitize_text_field( $form_data['atomicedge_cdn_nonce'] ) : '';
@@ -800,40 +794,47 @@ class AtomicEdge_Ajax {
 			wp_send_json_error( array( 'message' => __( 'Security check failed.', 'atomic-edge-security' ) ) );
 		}
 
-		// General tab settings.
-		$cdn_local_enabled = isset( $form_data['atomicedge_cdn_local_enabled'] ) && 'on' === $form_data['atomicedge_cdn_local_enabled'];
-		update_option( 'atomicedge_cdn_local_enabled', $cdn_local_enabled ? 'on' : 'off' );
+		// Determine which tab is being saved — only save that tab's settings.
+		$current_tab = isset( $form_data['atomicedge_cdn_tab'] ) ? sanitize_text_field( $form_data['atomicedge_cdn_tab'] ) : 'general';
 
-		// File type settings.
-		$cdn_css = isset( $form_data['atomicedge_cdn_css'] ) && 'on' === $form_data['atomicedge_cdn_css'];
-		update_option( 'atomicedge_cdn_css', $cdn_css ? 'on' : 'off' );
+		if ( 'general' === $current_tab ) {
+			// General tab settings.
+			$cdn_local_enabled = isset( $form_data['atomicedge_cdn_local_enabled'] ) && 'on' === $form_data['atomicedge_cdn_local_enabled'];
+			update_option( 'atomicedge_cdn_local_enabled', $cdn_local_enabled ? 'on' : 'off' );
 
-		$cdn_js = isset( $form_data['atomicedge_cdn_js'] ) && 'on' === $form_data['atomicedge_cdn_js'];
-		update_option( 'atomicedge_cdn_js', $cdn_js ? 'on' : 'off' );
+			// File type settings.
+			$cdn_css = isset( $form_data['atomicedge_cdn_css'] ) && 'on' === $form_data['atomicedge_cdn_css'];
+			update_option( 'atomicedge_cdn_css', $cdn_css ? 'on' : 'off' );
 
-		$cdn_media = isset( $form_data['atomicedge_cdn_media'] ) && 'on' === $form_data['atomicedge_cdn_media'];
-		update_option( 'atomicedge_cdn_media', $cdn_media ? 'on' : 'off' );
+			$cdn_js = isset( $form_data['atomicedge_cdn_js'] ) && 'on' === $form_data['atomicedge_cdn_js'];
+			update_option( 'atomicedge_cdn_js', $cdn_js ? 'on' : 'off' );
 
-		// Note: CDN URL comes from dashboard - no user-configurable URL needed.
-
-		// Minification tab settings.
-		$minify_css = isset( $form_data['atomicedge_cdn_minify_css'] ) && 'on' === $form_data['atomicedge_cdn_minify_css'];
-		update_option( 'atomicedge_cdn_minify_css', $minify_css ? 'on' : 'off' );
-
-		$minify_js = isset( $form_data['atomicedge_cdn_minify_js'] ) && 'on' === $form_data['atomicedge_cdn_minify_js'];
-		update_option( 'atomicedge_cdn_minify_js', $minify_js ? 'on' : 'off' );
-
-		$minify_html = isset( $form_data['atomicedge_cdn_minify_html'] ) && 'on' === $form_data['atomicedge_cdn_minify_html'];
-		update_option( 'atomicedge_cdn_minify_html', $minify_html ? 'on' : 'off' );
-
-		// Advanced tab settings.
-		if ( isset( $form_data['atomicedge_cdn_reject_files'] ) ) {
-			$reject_files = sanitize_textarea_field( $form_data['atomicedge_cdn_reject_files'] );
-			update_option( 'atomicedge_cdn_reject_files', $reject_files );
+			$cdn_media = isset( $form_data['atomicedge_cdn_media'] ) && 'on' === $form_data['atomicedge_cdn_media'];
+			update_option( 'atomicedge_cdn_media', $cdn_media ? 'on' : 'off' );
 		}
 
-		$dns_prefetch = isset( $form_data['atomicedge_cdn_dns_prefetch'] ) && 'on' === $form_data['atomicedge_cdn_dns_prefetch'];
-		update_option( 'atomicedge_cdn_dns_prefetch', $dns_prefetch ? 'on' : 'off' );
+		if ( 'minification' === $current_tab ) {
+			// Minification tab settings.
+			$minify_css = isset( $form_data['atomicedge_cdn_minify_css'] ) && 'on' === $form_data['atomicedge_cdn_minify_css'];
+			update_option( 'atomicedge_cdn_minify_css', $minify_css ? 'on' : 'off' );
+
+			$minify_js = isset( $form_data['atomicedge_cdn_minify_js'] ) && 'on' === $form_data['atomicedge_cdn_minify_js'];
+			update_option( 'atomicedge_cdn_minify_js', $minify_js ? 'on' : 'off' );
+
+			$minify_html = isset( $form_data['atomicedge_cdn_minify_html'] ) && 'on' === $form_data['atomicedge_cdn_minify_html'];
+			update_option( 'atomicedge_cdn_minify_html', $minify_html ? 'on' : 'off' );
+		}
+
+		if ( 'advanced' === $current_tab ) {
+			// Advanced tab settings.
+			if ( isset( $form_data['atomicedge_cdn_reject_files'] ) ) {
+				$reject_files = sanitize_textarea_field( $form_data['atomicedge_cdn_reject_files'] );
+				update_option( 'atomicedge_cdn_reject_files', $reject_files );
+			}
+
+			$dns_prefetch = isset( $form_data['atomicedge_cdn_dns_prefetch'] ) && 'on' === $form_data['atomicedge_cdn_dns_prefetch'];
+			update_option( 'atomicedge_cdn_dns_prefetch', $dns_prefetch ? 'on' : 'off' );
+		}
 
 		wp_send_json_success( array(
 			'message' => __( 'CDN settings saved successfully.', 'atomic-edge-security' ),

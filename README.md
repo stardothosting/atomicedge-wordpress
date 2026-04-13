@@ -116,6 +116,12 @@ The plugin automatically detects and uses the best available option.
 
 ## Changelog
 
+### 2.5.2
+
+- FIX: CDN toggle not persisting after save — hourly cron sync was overwriting CDN data instead of merging
+- FIX: Saving CDN settings from Minification or Advanced tabs incorrectly disabled CDN
+- FIX: Removed debug logging from CDN settings save handler
+
 ### 2.5.1
 
 - CHANGE: WAF Logs "Block IP" button renamed to "Blacklist" — now adds IPs to edge-level IP Blacklist instead of Adaptive Defense

@@ -125,7 +125,12 @@ class AtomicEdge_Cron {
 		$site_info = $this->api->get_site_info();
 
 		if ( $site_info['success'] && isset( $site_info['data'] ) ) {
-			update_option( 'atomicedge_site_data', $site_info['data'] );
+			// Merge into existing site data to preserve CDN fields from refresh.
+			$existing = get_option( 'atomicedge_site_data', array() );
+			if ( ! is_array( $existing ) ) {
+				$existing = array();
+			}
+			update_option( 'atomicedge_site_data', array_merge( $existing, $site_info['data'] ) );
 			AtomicEdge::log( 'Settings sync completed' );
 		} else {
 			AtomicEdge::log( 'Settings sync failed', $site_info );

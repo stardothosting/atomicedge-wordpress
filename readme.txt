@@ -4,7 +4,7 @@ Tags: security, firewall, 2fa, malware scanner, waf
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 2.5.1
+Stable tag: 2.5.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -111,6 +111,11 @@ The plugin automatically detects and uses the best available option.
 9. Adaptive Defense dashboard showing AI-powered threat detections and automatic IP blocking
 
 == Changelog ==
+
+= 2.5.2 =
+* FIX: CDN toggle not persisting after save — hourly cron sync was overwriting CDN data instead of merging
+* FIX: Saving CDN settings from Minification or Advanced tabs incorrectly disabled CDN
+* FIX: Removed debug logging from CDN settings save handler
 
 = 2.5.1 =
 * CHANGE: WAF Logs "Block IP" button renamed to "Blacklist" — now adds IPs to edge-level IP Blacklist instead of Adaptive Defense

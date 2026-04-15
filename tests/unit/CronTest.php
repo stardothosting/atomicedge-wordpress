@@ -42,6 +42,124 @@ class CronTest extends TestCase {
 		$this->assertSame( array( 'site' => 'demo' ), get_option( 'atomicedge_site_data' ) );
 	}
 
+	/**
+	 * Regression test: sync_settings must preserve pre-existing CDN fields
+	 * when the API response does not include them.
+	 *
+	 * Bug 2026-07: The hourly cron replaced atomicedge_site_data entirely,
+	 * wiping CDN fields (cdn_enabled, cdn_prefix, cdn_url) that were set by
+	 * the CDN status refresh. Fixed by using array_merge().
+	 */
+	public function test_sync_settings_preserves_existing_cdn_fields_on_merge() {
+		$api     = $this->createMock( \AtomicEdge_API::class );
+		$scanner = $this->createMock( \AtomicEdge_Scanner::class );
+
+		$api->method( 'is_connected' )->willReturn( true );
+
+		// API returns data WITHOUT CDN fields (simulates GET /connect response).
+		$api->method( 'get_site_info' )->willReturn(
+			array(
+				'success' => true,
+				'data'    => array(
+					'site_name' => 'example.com',
+					'plan'      => 'free',
+				),
+			)
+		);
+
+		// Pre-populate site_data with CDN fields from a prior CDN status refresh.
+		$this->set_option( 'atomicedge_site_data', array(
+			'site_name'   => 'old-name.com',
+			'cdn_enabled' => true,
+			'cdn_prefix'  => 'abc12345',
+			'cdn_url'     => 'https://abc12345.wpcdn.shift8cdn.com',
+		) );
+
+		$cron = new \AtomicEdge_Cron( $api, $scanner );
+		$cron->sync_settings();
+
+		$result = get_option( 'atomicedge_site_data' );
+
+		// New data should overwrite matching keys.
+		$this->assertSame( 'example.com', $result['site_name'] );
+		$this->assertSame( 'free', $result['plan'] );
+
+		// Pre-existing CDN fields MUST be preserved.
+		$this->assertTrue( $result['cdn_enabled'], 'cdn_enabled was wiped by sync' );
+		$this->assertSame( 'abc12345', $result['cdn_prefix'], 'cdn_prefix was wiped by sync' );
+		$this->assertSame( 'https://abc12345.wpcdn.shift8cdn.com', $result['cdn_url'], 'cdn_url was wiped by sync' );
+	}
+
+	/**
+	 * Regression test: sync_settings updates CDN fields when the API response
+	 * includes them (e.g., after connect endpoint is updated).
+	 */
+	public function test_sync_settings_updates_cdn_fields_when_api_returns_them() {
+		$api     = $this->createMock( \AtomicEdge_API::class );
+		$scanner = $this->createMock( \AtomicEdge_Scanner::class );
+
+		$api->method( 'is_connected' )->willReturn( true );
+
+		// API returns data WITH CDN fields.
+		$api->method( 'get_site_info' )->willReturn(
+			array(
+				'success' => true,
+				'data'    => array(
+					'site_name'   => 'example.com',
+					'cdn_enabled' => false,
+					'cdn_prefix'  => 'new99999',
+					'cdn_url'     => 'https://new99999.wpcdn.shift8cdn.com',
+				),
+			)
+		);
+
+		// Pre-populate with old CDN data.
+		$this->set_option( 'atomicedge_site_data', array(
+			'cdn_enabled' => true,
+			'cdn_prefix'  => 'old12345',
+			'cdn_url'     => 'https://old12345.wpcdn.shift8cdn.com',
+		) );
+
+		$cron = new \AtomicEdge_Cron( $api, $scanner );
+		$cron->sync_settings();
+
+		$result = get_option( 'atomicedge_site_data' );
+
+		// CDN fields should be updated from the API response.
+		$this->assertFalse( $result['cdn_enabled'] );
+		$this->assertSame( 'new99999', $result['cdn_prefix'] );
+		$this->assertSame( 'https://new99999.wpcdn.shift8cdn.com', $result['cdn_url'] );
+	}
+
+	/**
+	 * Regression test: sync_settings handles corrupted (non-array) existing
+	 * site_data gracefully.
+	 */
+	public function test_sync_settings_handles_non_array_existing_data() {
+		$api     = $this->createMock( \AtomicEdge_API::class );
+		$scanner = $this->createMock( \AtomicEdge_Scanner::class );
+
+		$api->method( 'is_connected' )->willReturn( true );
+		$api->method( 'get_site_info' )->willReturn(
+			array(
+				'success' => true,
+				'data'    => array( 'site_name' => 'example.com' ),
+			)
+		);
+
+		// Pre-populate with corrupted data (string instead of array).
+		$this->set_option( 'atomicedge_site_data', 'corrupted-string' );
+
+		$cron = new \AtomicEdge_Cron( $api, $scanner );
+		$cron->sync_settings();
+
+		$result = get_option( 'atomicedge_site_data' );
+
+		// Should have the new data, not crash.
+		$this->assertIsArray( $result );
+		$this->assertSame( 'example.com', $result['site_name'] );
+	}
+
 	public function test_run_daily_scan_triggers_action_when_issues_found() {
 		$api = $this->createMock( \AtomicEdge_API::class );
 		$scanner = $this->createMock( \AtomicEdge_Scanner::class );

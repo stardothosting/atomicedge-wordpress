@@ -3637,10 +3637,17 @@ class AtomicEdge_Scanner {
 	/**
 	 * Get refined patterns for plugin/theme scanning.
 	 *
-	 * These patterns focus on TRULY malicious indicators that are unlikely
-	 * to appear in legitimate code. Generic functions like eval() and base64_decode()
-	 * are NOT included here because many legitimate plugins use them.
+	 * Sources patterns from the Malware Signature API (same as get_malware_patterns()),
+	 * but filters to only high-confidence categories suitable for plugin/theme files.
+	 * Generic patterns like standalone eval() or base64_decode() are excluded because
+	 * many legitimate plugins use them.
 	 *
+	 * IMPORTANT: This method MUST NOT contain hardcoded malware signature strings.
+	 * Hosting provider malware scanners (ClamAV, Imunify360) scan plugin source
+	 * code and flag files containing plaintext signatures like webshell names,
+	 * backdoor patterns, etc. All signatures must come from the API.
+	 *
+	 * @see https://github.com/shift8-projects/atomicedge/issues/FP-scanner — false positive incident
 	 * @return array Refined pattern groups.
 	 */
 	private function get_refined_patterns_for_plugins() {
@@ -3648,68 +3655,29 @@ class AtomicEdge_Scanner {
 			return $this->refined_patterns_cache;
 		}
 
-		$this->refined_patterns_cache = array(
-			// Critical: Definite backdoor patterns (these are ALWAYS malicious).
-			'backdoor_patterns'    => array(
-				'@eval\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)'                        => __( 'Backdoor: eval with user input', 'atomic-edge-security' ),
-				'@eval\s*\(\s*base64_decode\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE)'   => __( 'Backdoor: eval+base64 with user input', 'atomic-edge-security' ),
-				'\$_(?:GET|POST|REQUEST|COOKIE)\s*\[[^\]]+\]\s*\('                   => __( 'Direct superglobal as function', 'atomic-edge-security' ),
-				'extract\s*\(\s*\$_(?:GET|POST|REQUEST)'                             => __( 'Dangerous extract from user input', 'atomic-edge-security' ),
-				'include\s*\(\s*\$_(?:GET|POST|REQUEST)'                             => __( 'Remote file inclusion via user input', 'atomic-edge-security' ),
-				'require\s*\(\s*\$_(?:GET|POST|REQUEST)'                             => __( 'Remote file inclusion via user input', 'atomic-edge-security' ),
-				'file_put_contents\s*\([^,]+,\s*\$_(?:GET|POST|REQUEST)'             => __( 'File write from user input', 'atomic-edge-security' ),
-				'assert\s*\(\s*\$_(?:GET|POST|REQUEST)'                              => __( 'Assert with user input', 'atomic-edge-security' ),
-				'preg_replace\s*\([^,]+["\'].*\/e["\'][^,]*,\s*\$_'                  => __( 'Preg replace eval with user input', 'atomic-edge-security' ),
-			),
-
-			// Critical: Known webshell signatures (unique identifiers).
-			'webshells'            => array(
-				'c99shell'                                                           => __( 'C99 shell signature', 'atomic-edge-security' ),
-				'r57shell'                                                           => __( 'R57 shell signature', 'atomic-edge-security' ),
-				'b374k'                                                              => __( 'B374K shell signature', 'atomic-edge-security' ),
-				'WSO\s+[\d\.]+'                                                      => __( 'WSO shell signature', 'atomic-edge-security' ),
-				'Weevely'                                                            => __( 'Weevely shell signature', 'atomic-edge-security' ),
-			),
-
-			// Critical: WordPress-specific malware.
-			'wordpress_malware'    => array(
-				'wp-vcd'                                                             => __( 'WP-VCD malware', 'atomic-edge-security' ),
-				'class\.theme-modules\.php'                                          => __( 'WP-VCD theme modules', 'atomic-edge-security' ),
-				'class\.plugin-modules\.php'                                         => __( 'WP-VCD plugin modules', 'atomic-edge-security' ),
-				'wp-tmp\.php'                                                        => __( 'WP-VCD temp file', 'atomic-edge-security' ),
-				'tmpcontentx'                                                        => __( 'WP-VCD content injection', 'atomic-edge-security' ),
-				'wp_temp_setupx'                                                     => __( 'WP-VCD setup function', 'atomic-edge-security' ),
-				'derna\.top'                                                         => __( 'Known malware domain', 'atomic-edge-security' ),
-				'/\*\s*@noupdate\s*\*/'                                              => __( 'Plugin update suppression', 'atomic-edge-security' ),
-			),
-
-			// High: Obfuscated code execution (multi-layer obfuscation is suspicious).
-			'obfuscated_execution' => array(
-				'eval\s*\(\s*gzinflate\s*\(\s*base64_decode'                         => __( 'Multi-layer obfuscation: eval+gzinflate+base64', 'atomic-edge-security' ),
-				'eval\s*\(\s*gzuncompress\s*\(\s*base64_decode'                      => __( 'Multi-layer obfuscation: eval+gzuncompress+base64', 'atomic-edge-security' ),
-				'eval\s*\(\s*str_rot13\s*\(\s*base64_decode'                         => __( 'Multi-layer obfuscation: eval+rot13+base64', 'atomic-edge-security' ),
-				'assert\s*\(\s*base64_decode'                                        => __( 'Obfuscated assert', 'atomic-edge-security' ),
-				'create_function\s*\([^)]*base64_decode'                             => __( 'Obfuscated create_function', 'atomic-edge-security' ),
-				'edoced_46esab'                                                      => __( 'Reversed base64_decode', 'atomic-edge-security' ),
-			),
-
-			// High: Suspicious strings that are almost never legitimate.
-			'suspicious_strings'   => array(
-				'/etc/passwd'                                                        => __( 'Password file access attempt', 'atomic-edge-security' ),
-				'/etc/shadow'                                                        => __( 'Shadow file access attempt', 'atomic-edge-security' ),
-				'HACKED BY'                                                          => __( 'Defacement signature', 'atomic-edge-security' ),
-				'c999sh'                                                             => __( 'Shell variant', 'atomic-edge-security' ),
-				'r57sh'                                                              => __( 'Shell variant', 'atomic-edge-security' ),
-			),
-
-			// Medium: Hex-encoded function calls (used to evade detection).
-			'hex_obfuscation'      => array(
-				'\\\\x65\\\\x76\\\\x61\\\\x6c'                                       => __( 'Hex-encoded eval', 'atomic-edge-security' ),
-				'\\\\x61\\\\x73\\\\x73\\\\x65\\\\x72\\\\x74'                         => __( 'Hex-encoded assert', 'atomic-edge-security' ),
-				'\\\\x73\\\\x79\\\\x73\\\\x74\\\\x65\\\\x6d'                         => __( 'Hex-encoded system', 'atomic-edge-security' ),
-				'\\\\x65\\\\x78\\\\x65\\\\x63'                                       => __( 'Hex-encoded exec', 'atomic-edge-security' ),
-			),
+		// High-confidence categories that are safe to match in plugin/theme code.
+		// These categories contain patterns that are ALWAYS malicious (e.g., eval
+		// combined with user input, known webshell identifiers, WP-specific malware).
+		$refined_categories = array(
+			'backdoor_patterns',
+			'webshells',
+			'wordpress_malware',
+			'obfuscation',
+			'suspicious_strings',
 		);
+
+		$all_patterns = $this->get_malware_patterns();
+
+		if ( ! empty( $all_patterns ) ) {
+			$this->refined_patterns_cache = array_intersect_key(
+				$all_patterns,
+				array_flip( $refined_categories )
+			);
+		} else {
+			// API unavailable — return empty (no hardcoded fallback).
+			AtomicEdge::log( 'Refined plugin patterns unavailable — API not reachable' );
+			$this->refined_patterns_cache = array();
+		}
 
 		return $this->refined_patterns_cache;
 	}

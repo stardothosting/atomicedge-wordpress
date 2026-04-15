@@ -220,12 +220,22 @@ class ScannerTest extends TestCase {
 	 * Actual pattern content comes from API.
 	 */
 	public function test_refined_plugin_patterns_returns_array_structure() {
-		$ref    = new \ReflectionClass( $this->scanner );
+		$scanner = $this->create_scanner_with_mocked_api();
+
+		$ref    = new \ReflectionClass( $scanner );
 		$method = $ref->getMethod( 'get_refined_patterns_for_plugins' );
 		$method->setAccessible( true );
-		$groups = $method->invoke( $this->scanner );
+		$groups = $method->invoke( $scanner );
 
 		$this->assertIsArray( $groups );
+		// Should only include the refined categories that exist in the mock data.
+		foreach ( array_keys( $groups ) as $category ) {
+			$this->assertContains(
+				$category,
+				array( 'backdoor_patterns', 'webshells', 'wordpress_malware', 'obfuscation', 'suspicious_strings' ),
+				"Unexpected category '$category' in refined patterns"
+			);
+		}
 	}
 
 	/**

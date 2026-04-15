@@ -4,7 +4,7 @@ Tags: security, firewall, 2fa, malware scanner, waf
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 2.5.2
+Stable tag: 2.5.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -111,6 +111,10 @@ The plugin automatically detects and uses the best available option.
 9. Adaptive Defense dashboard showing AI-powered threat detections and automatic IP blocking
 
 == Changelog ==
+
+= 2.5.3 =
+* FIX: Removed hardcoded malware signature strings from scanner that triggered ClamAV false-positive (Txt.Backdoor.Webshell-9891631-0) on hosting providers
+* CHANGE: Refined plugin patterns now sourced exclusively from API instead of local hardcoded strings
 
 = 2.5.2 =
 * FIX: CDN toggle not persisting after save — hourly cron sync was overwriting CDN data instead of merging

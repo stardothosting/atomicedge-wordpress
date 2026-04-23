@@ -4,7 +4,7 @@ Tags: security, firewall, 2fa, malware scanner, waf
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 2.5.3
+Stable tag: 2.5.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -111,6 +111,13 @@ The plugin automatically detects and uses the best available option.
 9. Adaptive Defense dashboard showing AI-powered threat detections and automatic IP blocking
 
 == Changelog ==
+
+= 2.5.4 =
+* FIX: Minification persisted after being disabled — stale cached files were not cleared on toggle off
+* FIX: Clear minification cache button silently failed — wp_delete_file() return value was incorrectly checked
+* FIX: Cache clear now verifies file deletion with file_exists() and reports accurate deleted count
+* CHANGE: Disabling CSS or JS minification now auto-clears the minification cache
+* CLEANUP: Removed dead AJAX handler with mismatched nonce in CDN class
 
 = 2.5.3 =
 * FIX: Removed hardcoded malware signature strings from scanner that triggered ClamAV false-positive (Txt.Backdoor.Webshell-9891631-0) on hosting providers

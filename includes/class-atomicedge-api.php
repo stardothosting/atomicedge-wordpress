@@ -742,6 +742,11 @@ class AtomicEdge_API {
 	private function clear_adaptive_defense_cache() {
 		global $wpdb;
 
+		// Guard: $wpdb may not be available in unit test environments.
+		if ( ! $wpdb ) {
+			return;
+		}
+
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query(
 			$wpdb->prepare(

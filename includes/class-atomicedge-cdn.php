@@ -82,9 +82,6 @@ class AtomicEdge_CDN {
 	private function init_hooks() {
 		// Register settings.
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
-
-		// AJAX handlers for minified cache.
-		add_action( 'wp_ajax_atomicedge_cdn_clear_minified_cache', array( $this, 'ajax_clear_minified_cache' ) );
 	}
 
 	/**
@@ -478,7 +475,8 @@ class AtomicEdge_CDN {
 			if ( $css_files ) {
 				foreach ( $css_files as $file ) {
 					if ( is_file( $file ) ) {
-						if ( wp_delete_file( $file ) !== false ) {
+						wp_delete_file( $file );
+						if ( ! file_exists( $file ) ) {
 							++$deleted;
 						}
 					}
@@ -493,7 +491,8 @@ class AtomicEdge_CDN {
 			if ( $js_files ) {
 				foreach ( $js_files as $file ) {
 					if ( is_file( $file ) ) {
-						if ( wp_delete_file( $file ) !== false ) {
+						wp_delete_file( $file );
+						if ( ! file_exists( $file ) ) {
 							++$deleted;
 						}
 					}
@@ -508,25 +507,6 @@ class AtomicEdge_CDN {
 			'success' => true,
 			'deleted' => $deleted,
 		);
-	}
-
-	/**
-	 * AJAX handler to clear minified cache.
-	 *
-	 * @return void
-	 */
-	public function ajax_clear_minified_cache() {
-		check_ajax_referer( 'atomicedge_cdn_clear_cache', 'nonce' );
-
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( array( 'message' => __( 'Unauthorized', 'atomic-edge-security' ) ) );
-		}
-
-		if ( self::clear_minified_cache() ) {
-			wp_send_json_success( array( 'message' => __( 'Cache cleared successfully.', 'atomic-edge-security' ) ) );
-		} else {
-			wp_send_json_error( array( 'message' => __( 'Failed to clear cache.', 'atomic-edge-security' ) ) );
-		}
 	}
 
 	/**

@@ -814,6 +814,10 @@ class AtomicEdge_Ajax {
 		}
 
 		if ( 'minification' === $current_tab ) {
+			// Capture previous state to detect disable transitions.
+			$was_css_on  = 'on' === get_option( 'atomicedge_cdn_minify_css', '' );
+			$was_js_on   = 'on' === get_option( 'atomicedge_cdn_minify_js', '' );
+
 			// Minification tab settings.
 			$minify_css = isset( $form_data['atomicedge_cdn_minify_css'] ) && 'on' === $form_data['atomicedge_cdn_minify_css'];
 			update_option( 'atomicedge_cdn_minify_css', $minify_css ? 'on' : 'off' );
@@ -823,6 +827,16 @@ class AtomicEdge_Ajax {
 
 			$minify_html = isset( $form_data['atomicedge_cdn_minify_html'] ) && 'on' === $form_data['atomicedge_cdn_minify_html'];
 			update_option( 'atomicedge_cdn_minify_html', $minify_html ? 'on' : 'off' );
+
+			// Auto-clear minification cache when CSS or JS minification is disabled.
+			// Stale cached files cause minified content to persist after disabling.
+			$css_disabled = $was_css_on && ! $minify_css;
+			$js_disabled  = $was_js_on && ! $minify_js;
+			if ( $css_disabled || $js_disabled ) {
+				if ( class_exists( 'AtomicEdge_CDN' ) ) {
+					AtomicEdge_CDN::clear_minified_cache();
+				}
+			}
 		}
 
 		if ( 'advanced' === $current_tab ) {

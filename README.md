@@ -1,23 +1,33 @@
 # Atomic Edge Security - Firewall, Malware Scan and Login Security
 
-Free enterprise level dedicated edge firewall, Two factor auth, malware scanner comprehensive security solution with Atomic Edge.
+WordPress firewall with cloud WAF rules, malware scanning, 2FA, vulnerability checks, IP blocking, and real-time security logs.
 
 | Field | Value |
 |---|---|
 | Requires at least | WordPress 5.8 |
 | Tested up to | WordPress 6.9 |
 | Requires PHP | 7.4 |
-| Stable tag | 2.5.5 |
+| Stable tag | 2.5.6 |
 | License | GPLv2 or later |
 | License URI | https://www.gnu.org/licenses/gpl-2.0.html |
 
 ## Description
 
-Atomic Edge Security connects your WordPress site to the Atomic Edge WAF/CDN service, providing enterprise-grade security protection without the complexity.
+Atomic Edge Security is a WordPress firewall plugin that protects your site with cloud-based WAF rules, malware scanning, 2FA, vulnerability checks, IP blocking, and real-time security logs.
+
+It blocks malicious traffic before it reaches WordPress while giving site owners firewall controls directly inside the WordPress admin.
 
 ### Watch the Overview
 
 [![Atomic Edge Security Overview](https://img.youtube.com/vi/HP_EiWLtuZE/maxresdefault.jpg)](https://www.youtube.com/watch?v=HP_EiWLtuZE)
+
+### WordPress Firewall Protection
+
+Atomic Edge includes a cloud-based WordPress firewall that helps block malicious traffic before it reaches your website. The firewall protects against common attacks such as SQL injection, cross-site scripting (XSS), local file inclusion, remote file inclusion, brute-force login attempts, and suspicious bot activity.
+
+### Web Application Firewall (WAF)
+
+The Atomic Edge WAF uses OWASP Core Rules and WordPress-specific security rules to protect high-risk areas such as wp-login.php, wp-admin, XML-RPC, REST API endpoints, vulnerable plugin paths, and common exploit patterns.
 
 ## Features
 
@@ -116,7 +126,7 @@ The plugin automatically detects and uses the best available option.
 
 ## Changelog
 
-### 2.5.5
+### 2.5.6
 
 - CHANGE: Updated WordPress.org directory title, tags, and short description for better discoverability
 

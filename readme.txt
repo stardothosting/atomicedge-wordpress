@@ -16,7 +16,7 @@ Atomic Edge Security is a WordPress firewall plugin that protects your site with
 
 It blocks malicious traffic before it reaches WordPress while giving site owners firewall controls directly inside the WordPress admin.
 
-[youtube https://www.youtube.com/watch?v=HP_EiWLtuZE]
+[youtube https://youtu.be/1_y-mRHpMK0]
 
 = WordPress Firewall Protection =
 

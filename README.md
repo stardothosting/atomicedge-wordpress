@@ -19,7 +19,7 @@ It blocks malicious traffic before it reaches WordPress while giving site owners
 
 ### Watch the Overview
 
-[![Atomic Edge Security Overview](https://img.youtube.com/vi/HP_EiWLtuZE/maxresdefault.jpg)](https://www.youtube.com/watch?v=HP_EiWLtuZE)
+[![Atomic Edge Security Overview](https://img.youtube.com/vi/HP_EiWLtuZE/maxresdefault.jpg)](https://youtu.be/1_y-mRHpMK0)
 
 ### WordPress Firewall Protection
 

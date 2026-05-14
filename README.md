@@ -7,7 +7,7 @@ WordPress firewall with cloud WAF rules, malware scanning, 2FA, vulnerability ch
 | Requires at least | WordPress 5.8 |
 | Tested up to | WordPress 6.9 |
 | Requires PHP | 7.4 |
-| Stable tag | 2.5.6 |
+| Stable tag | 2.5.7 |
 | License | GPLv2 or later |
 | License URI | https://www.gnu.org/licenses/gpl-2.0.html |
 
@@ -19,7 +19,7 @@ It blocks malicious traffic before it reaches WordPress while giving site owners
 
 ### Watch the Overview
 
-[![Atomic Edge Security Overview](https://img.youtube.com/vi/HP_EiWLtuZE/maxresdefault.jpg)](https://youtu.be/1_y-mRHpMK0)
+[![Atomic Edge Security Overview](https://img.youtube.com/vi/1_y-mRHpMK0/maxresdefault.jpg)](https://youtu.be/1_y-mRHpMK0)
 
 ### WordPress Firewall Protection
 

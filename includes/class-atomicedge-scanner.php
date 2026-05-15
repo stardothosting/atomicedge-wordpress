@@ -951,12 +951,127 @@ class AtomicEdge_Scanner {
 		$total += $this->count_php_files_for_dir( $this->get_wp_mu_plugins_path(), 'mu-plugins' );
 
 		if ( 'all' === $scan_mode ) {
-			$total += $this->count_php_files_for_dir( $this->get_wp_admin_path(), 'wp-admin' );
-			$total += $this->count_php_files_for_dir( $this->get_wp_includes_path(), 'wp-includes' );
-			$total += $this->count_php_files_for_dir( $this->get_wp_uploads_path(), 'uploads' );
+			$total += $this->count_thorough_scan_files();
 		}
 
 		return max( 0, (int) $total );
+	}
+
+	/**
+	 * Count the extra directories that thorough mode actually discovers and queues.
+	 *
+	 * @return int
+	 */
+	private function count_thorough_scan_files() {
+		$root_path = $this->get_wp_root_path();
+		if ( ! $root_path || ! is_dir( $root_path ) || ! is_readable( $root_path ) ) {
+			return 0;
+		}
+
+		$already_queued = array(
+			rtrim( $this->get_wp_plugins_path(), '/' ),
+			rtrim( $this->get_wp_themes_path(), '/' ),
+			rtrim( $this->get_wp_mu_plugins_path(), '/' ),
+		);
+
+		$skip_dirs = array(
+			'.git',
+			'.svn',
+			'.hg',
+			'node_modules',
+			'vendor',
+		);
+
+		$total = 0;
+
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		$handle = @opendir( $root_path );
+		if ( ! $handle ) {
+			return 0;
+		}
+
+		while ( false !== ( $entry = readdir( $handle ) ) ) {
+			if ( '.' === $entry || '..' === $entry ) {
+				continue;
+			}
+
+			$full_path = rtrim( $root_path, '/' ) . '/' . $entry;
+			if ( ! is_dir( $full_path ) || is_link( $full_path ) || in_array( $entry, $skip_dirs, true ) ) {
+				continue;
+			}
+
+			if ( in_array( rtrim( $full_path, '/' ), $already_queued, true ) ) {
+				continue;
+			}
+
+			if ( 'wp-content' === $entry ) {
+				$total += $this->count_thorough_wp_content_files( $full_path, $already_queued );
+				continue;
+			}
+
+			$area = 'unknown';
+			if ( 'wp-admin' === $entry ) {
+				$area = 'wp-admin';
+			} elseif ( 'wp-includes' === $entry ) {
+				$area = 'wp-includes';
+			}
+
+			$total += $this->count_php_files_for_dir( $full_path, $area );
+		}
+
+		closedir( $handle );
+
+		return (int) $total;
+	}
+
+	/**
+	 * Count wp-content subdirectories that thorough mode discovers beyond standard plugins/themes.
+	 *
+	 * @param string $wp_content_path Path to wp-content.
+	 * @param array  $already_queued Directories already included in quick scan totals.
+	 * @return int
+	 */
+	private function count_thorough_wp_content_files( $wp_content_path, $already_queued ) {
+		if ( ! $wp_content_path || ! is_dir( $wp_content_path ) || ! is_readable( $wp_content_path ) ) {
+			return 0;
+		}
+
+		$known_wp_content_areas = array(
+			'uploads' => 'uploads',
+			'upgrade' => 'wp-content',
+			'cache'   => 'wp-content',
+			'languages' => 'wp-content',
+		);
+
+		$total = 0;
+
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		$handle = @opendir( $wp_content_path );
+		if ( ! $handle ) {
+			return 0;
+		}
+
+		while ( false !== ( $entry = readdir( $handle ) ) ) {
+			if ( '.' === $entry || '..' === $entry ) {
+				continue;
+			}
+
+			$full_path = rtrim( $wp_content_path, '/' ) . '/' . $entry;
+			if ( ! is_dir( $full_path ) || is_link( $full_path ) ) {
+				continue;
+			}
+
+			if ( in_array( rtrim( $full_path, '/' ), $already_queued, true ) ) {
+				continue;
+			}
+
+			$area = isset( $known_wp_content_areas[ $entry ] ) ? $known_wp_content_areas[ $entry ] : 'unknown';
+			$total += $this->count_php_files_for_dir( $full_path, $area );
+		}
+
+		closedir( $handle );
+
+		return (int) $total;
 	}
 
 	/**
@@ -1025,6 +1140,10 @@ class AtomicEdge_Scanner {
 			return;
 		}
 
+		if ( isset( $state['eta_seconds'] ) && is_numeric( $state['eta_seconds'] ) && (int) $state['eta_seconds'] > 0 ) {
+			$eta_seconds = (int) round( ( (int) $state['eta_seconds'] * 0.65 ) + ( $eta_seconds * 0.35 ) );
+		}
+
 		$state['eta_seconds'] = $eta_seconds;
 		$state['eta_label'] = $this->format_eta_label( $eta_seconds );
 	}
@@ -1038,13 +1157,14 @@ class AtomicEdge_Scanner {
 	private function calculate_eta_seconds( $state ) {
 		$total = isset( $state['results']['scan_stats']['files_total'] ) ? (int) $state['results']['scan_stats']['files_total'] : 0;
 		$scanned = isset( $state['results']['scan_stats']['files_scanned'] ) ? (int) $state['results']['scan_stats']['files_scanned'] : 0;
-		if ( $total <= 0 || $scanned < 5 ) {
+		$minimum_scanned = $total > 100 ? min( 100, max( 20, (int) ceil( $total * 0.02 ) ) ) : 5;
+		if ( $total <= 0 || $scanned < $minimum_scanned ) {
 			return null;
 		}
 
 		$started_at = isset( $state['results']['started_at'] ) ? strtotime( (string) $state['results']['started_at'] ) : 0;
 		$elapsed = $started_at > 0 ? ( time() - $started_at ) : 0;
-		if ( $elapsed <= 2 ) {
+		if ( $elapsed <= 5 ) {
 			return null;
 		}
 

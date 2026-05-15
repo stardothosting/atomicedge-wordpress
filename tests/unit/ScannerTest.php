@@ -491,6 +491,67 @@ class ScannerTest extends TestCase {
 	}
 
 	/**
+	 * Thorough scan totals must mirror the directories actually discovered by the queue.
+	 */
+	public function test_thorough_scan_file_totals_follow_directory_discovery() {
+		$source = file_get_contents( ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-scanner.php' );
+
+		$this->assertStringContainsString( 'count_thorough_scan_files', $source );
+		$this->assertStringContainsString( 'count_thorough_wp_content_files', $source );
+		$this->assertStringContainsString( 'discover_all_directories', $source );
+		$this->assertStringNotContainsString( "\$total += \$this->count_php_files_for_dir( \$this->get_wp_admin_path(), 'wp-admin' );", $source );
+	}
+
+	/**
+	 * ETA should wait until enough files have completed to avoid early wild swings.
+	 */
+	public function test_eta_waits_for_meaningful_progress_on_large_scans() {
+		$ref = new \ReflectionClass( $this->scanner );
+		$method = $ref->getMethod( 'calculate_eta_seconds' );
+		$method->setAccessible( true );
+
+		$state = array(
+			'results' => array(
+				'started_at' => date( 'Y-m-d H:i:s', time() - 120 ),
+				'scan_stats' => array(
+					'files_total'   => 1000,
+					'files_scanned' => 10,
+				),
+			),
+		);
+
+		$this->assertNull( $method->invoke( $this->scanner, $state ) );
+
+		$state['results']['scan_stats']['files_scanned'] = 20;
+		$this->assertIsInt( $method->invoke( $this->scanner, $state ) );
+	}
+
+	/**
+	 * ETA updates should be smoothed so one slow or fast step does not jerk the UI around.
+	 */
+	public function test_eta_estimate_is_smoothed_between_steps() {
+		$ref = new \ReflectionClass( $this->scanner );
+		$method = $ref->getMethod( 'add_eta_estimate' );
+		$method->setAccessible( true );
+
+		$state = array(
+			'eta_seconds' => 1000,
+			'results' => array(
+				'started_at' => date( 'Y-m-d H:i:s', time() - 100 ),
+				'scan_stats' => array(
+					'files_total'   => 1000,
+					'files_scanned' => 500,
+				),
+			),
+		);
+
+		$method->invokeArgs( $this->scanner, array( &$state ) );
+
+		$this->assertSame( 685, $state['eta_seconds'] );
+		$this->assertSame( '11m 25s', $state['eta_label'] );
+	}
+
+	/**
 	 * Scan steps should recover queue rows abandoned by killed AJAX requests.
 	 */
 	public function test_scan_step_recovers_abandoned_processing_items() {

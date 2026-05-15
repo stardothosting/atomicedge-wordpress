@@ -7,7 +7,7 @@ WordPress firewall with cloud WAF rules, malware scanning, 2FA, vulnerability ch
 | Requires at least | WordPress 5.8 |
 | Tested up to | WordPress 6.9 |
 | Requires PHP | 7.4 |
-| Stable tag | 2.5.7 |
+| Stable tag | 2.6.0 |
 | License | GPLv2 or later |
 | License URI | https://www.gnu.org/licenses/gpl-2.0.html |
 
@@ -125,6 +125,13 @@ The plugin automatically detects and uses the best available option.
 9. Adaptive Defense dashboard showing AI-powered threat detections and automatic IP blocking
 
 ## Changelog
+
+### 2.6.0
+
+- FIX: Malware scanner now uses shorter resumable AJAX steps to avoid gateway timeouts on varied hosting stacks
+- FIX: Scanner retries with smaller steps after gateway-style timeout failures instead of failing immediately
+- FIX: Abandoned scan queue items are recovered when a request is killed mid-scan
+- FIX: Scans no longer finalize while queue items are still processing
 
 ### 2.5.6
 
@@ -410,6 +417,10 @@ The plugin automatically detects and uses the best available option.
 - Malware scanner
 
 ## Upgrade Notice
+
+### 2.6.0
+
+Improves malware scanner reliability on hosts with stricter gateway or PHP request timeouts.
 
 ### 1.9.2
 

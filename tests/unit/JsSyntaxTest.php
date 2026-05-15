@@ -342,4 +342,16 @@ class JsSyntaxTest extends TestCase {
 			'admin.js ajax() must accept _isRetry parameter to prevent infinite nonce refresh loops'
 		);
 	}
+
+	/**
+	 * Guard: malware scanner should adapt after gateway-style failures.
+	 */
+	public function test_malware_scan_retries_with_smaller_budget_after_gateway_timeout() {
+		$js = file_get_contents( $this->get_plugin_path( 'admin/js/admin.js' ) );
+
+		$this->assertStringContainsString( 'http_status', $js );
+		$this->assertStringContainsString( 'status === 504', $js );
+		$this->assertStringContainsString( 'timeBudget = 4', $js );
+		$this->assertStringContainsString( 'time_budget:', $js );
+	}
 }

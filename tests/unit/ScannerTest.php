@@ -463,6 +463,90 @@ class ScannerTest extends TestCase {
 		$this->assertFalse( $this->get_transient( 'atomicedge_scan_run_state' ) );
 	}
 
+	/**
+	 * Scan steps should stay below common web-server gateway timeouts.
+	 */
+	public function test_optimal_scan_step_budget_is_gateway_safe() {
+		$ref = new \ReflectionClass( $this->scanner );
+		$method = $ref->getMethod( 'get_optimal_time_budget' );
+		$method->setAccessible( true );
+
+		$budget = $method->invoke( $this->scanner );
+
+		$this->assertIsInt( $budget );
+		$this->assertGreaterThanOrEqual( 1, $budget );
+		$this->assertLessThanOrEqual( 15, $budget );
+	}
+
+	/**
+	 * Explicit scan step budgets should be capped defensively.
+	 */
+	public function test_scan_step_budget_normalization_caps_large_values() {
+		$ref = new \ReflectionClass( $this->scanner );
+		$method = $ref->getMethod( 'normalize_step_time_budget' );
+		$method->setAccessible( true );
+
+		$this->assertEquals( 15, $method->invoke( $this->scanner, 120 ) );
+		$this->assertEquals( 1, $method->invoke( $this->scanner, 0 ) );
+	}
+
+	/**
+	 * Scan steps should recover queue rows abandoned by killed AJAX requests.
+	 */
+	public function test_scan_step_recovers_abandoned_processing_items() {
+		$source = file_get_contents( ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-scanner.php' );
+
+		$this->assertStringContainsString( 'recover_abandoned_processing_items', $source );
+		$this->assertStringContainsString( "status = 'pending'", $source );
+		$this->assertStringContainsString( "status = 'processing'", $source );
+		$this->assertStringContainsString( "current_time( 'timestamp' )", $source );
+	}
+
+	/**
+	 * A scan must not complete while rows are still leased as processing.
+	 */
+	public function test_scan_finalize_waits_for_processing_items() {
+		global $wpdb;
+
+		if ( ! defined( 'ARRAY_A' ) ) {
+			define( 'ARRAY_A', 'ARRAY_A' );
+		}
+
+		$wpdb = $this->getMockBuilder( \stdClass::class )
+			->addMethods( array( 'get_results', 'prepare', 'query' ) )
+			->getMock();
+		$wpdb->prefix = 'wp_';
+		$wpdb->method( 'prepare' )->willReturnArgument( 0 );
+		$wpdb->method( 'get_results' )->willReturn(
+			array(
+				array(
+					'status' => 'processing',
+					'c'      => 1,
+				),
+			)
+		);
+		$wpdb->expects( $this->never() )->method( 'query' );
+
+		$state = array(
+			'run_id'  => 'scan_test',
+			'status'  => 'running',
+			'results' => array(
+				'started_at'  => '2026-05-14 12:00:00',
+				'core_files'  => array(),
+				'suspicious'  => array(),
+				'scan_stats'  => array(),
+			),
+		);
+
+		$ref = new \ReflectionClass( $this->scanner );
+		$method = $ref->getMethod( 'finalize_run_if_done' );
+		$method->setAccessible( true );
+		$result = $method->invoke( $this->scanner, $state );
+
+		$this->assertSame( 'running', $result['status'] );
+		$this->assertNull( $this->get_option( 'atomicedge_scan_results', null ) );
+	}
+
 	// =========================================================================
 	// File Analysis Tests
 	// =========================================================================

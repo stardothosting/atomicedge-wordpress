@@ -145,6 +145,17 @@ class AjaxTest extends TestCase {
 		$this->assertStringContainsString( 'permission', $this->json_response['message'] ?? '' );
 	}
 
+	/**
+	 * Guard: malware scan steps must forward adaptive time budgets to the scanner.
+	 */
+	public function test_scan_step_ajax_accepts_time_budget() {
+		$source = file_get_contents( ATOMICEDGE_PLUGIN_DIR . 'includes/class-atomicedge-ajax.php' );
+
+		$this->assertStringContainsString( "array( 'run_id', 'time_budget' )", $source );
+		$this->assertStringContainsString( 'absint( $post[\'time_budget\'] )', $source );
+		$this->assertStringContainsString( 'step_resumable_scan( $run_id, $time_budget )', $source );
+	}
+
 	// =========================================================================
 	// Analytics AJAX Tests
 	// =========================================================================

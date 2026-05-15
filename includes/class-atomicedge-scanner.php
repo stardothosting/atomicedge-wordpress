@@ -43,6 +43,21 @@ class AtomicEdge_Scanner {
 	private const INTEGRITY_MANIFEST_REL_PATH = 'admin/assets/integrity/atomicedge-manifest.json';
 
 	/**
+	 * Default per-request scan time budget.
+	 */
+	private const DEFAULT_STEP_TIME_BUDGET_SECONDS = 8;
+
+	/**
+	 * Maximum per-request scan time budget.
+	 */
+	private const MAX_STEP_TIME_BUDGET_SECONDS = 15;
+
+	/**
+	 * Minimum age before an abandoned processing queue item is re-queued.
+	 */
+	private const PROCESSING_ITEM_LEASE_SECONDS = 120;
+
+	/**
 	 * API instance for fetching signatures.
 	 *
 	 * @var AtomicEdge_API|null
@@ -415,30 +430,34 @@ class AtomicEdge_Scanner {
 	/**
 	 * Get optimal time budget for a scan step based on server configuration.
 	 *
-	 * Adapts to the server's max_execution_time setting to maximize work per step
-	 * while staying safe from timeouts. The goal is to do as much work as possible
-	 * per HTTP request to minimize AJAX round-trip overhead.
+	 * PHP cannot reliably see reverse proxy, web server, or PHP gateway timeouts.
+	 * Keep each AJAX slice short by default, then cap it further when PHP itself
+	 * has a very low max_execution_time.
 	 *
-	 * @return int Time budget in seconds (5-45 range).
+	 * @return int Time budget in seconds.
 	 */
 	private function get_optimal_time_budget() {
-		// Get max_execution_time (0 means no limit).
 		$max_time = (int) ini_get( 'max_execution_time' );
+		$budget = self::DEFAULT_STEP_TIME_BUDGET_SECONDS;
 
-		// If unlimited or very high (local dev, CLI, or generous hosting), use 45s.
-		// This dramatically reduces the number of AJAX round-trips needed.
-		// 45s is safe even on most restrictive nginx/Apache timeouts (typically 60s+).
-		if ( 0 === $max_time || $max_time >= 120 ) {
-			return 45;
+		if ( $max_time > 0 ) {
+			$budget = min( $budget, max( 1, $max_time - 3 ) );
 		}
 
-		// For typical shared hosting (30s), use 50% to be safe (15s).
-		// For restrictive hosting (15-20s), use 60% to balance safety with progress.
-		$budget = (int) ( $max_time * 0.5 );
+		return $this->normalize_step_time_budget( $budget );
+	}
 
-		// Clamp to reasonable range: minimum 5s, maximum 45s.
-		// Raising the max from 25s to 45s allows more work on capable servers.
-		return max( 5, min( 45, $budget ) );
+	/**
+	 * Normalize a scan step time budget.
+	 *
+	 * @param int $seconds Requested budget.
+	 * @return int Normalized budget.
+	 */
+	private function normalize_step_time_budget( $seconds ) {
+		$max_budget = (int) apply_filters( 'atomicedge_scan_step_max_time_budget', self::MAX_STEP_TIME_BUDGET_SECONDS );
+		$max_budget = max( 1, min( 30, $max_budget ) );
+
+		return max( 1, min( $max_budget, (int) $seconds ) );
 	}
 
 	/**
@@ -710,7 +729,7 @@ class AtomicEdge_Scanner {
 		if ( $time_budget_seconds <= 0 ) {
 			$time_budget_seconds = $this->get_optimal_time_budget();
 		}
-		$time_budget_seconds = max( 1, (int) $time_budget_seconds );
+		$time_budget_seconds = $this->normalize_step_time_budget( $time_budget_seconds );
 
 		// Store the time budget in state so JS can adapt polling interval.
 		$state['time_budget'] = $time_budget_seconds;
@@ -723,6 +742,8 @@ class AtomicEdge_Scanner {
 		}
 
 		$this->append_scan_log( $state, sprintf( '[%s] Step start (stage=%s)', current_time( 'mysql' ), isset( $state['stage'] ) ? (string) $state['stage'] : '' ) );
+
+		$this->recover_abandoned_processing_items( $state['run_id'], $time_budget_seconds );
 
 		// Reset pending done queue for this step.
 		$this->pending_done_ids = array();
@@ -771,7 +792,7 @@ class AtomicEdge_Scanner {
 						break 2; // Exit both foreach and while.
 					}
 
-					$this->process_queue_item_batched( $item, $state );
+					$this->process_queue_item_batched( $item, $state, $started, $time_budget_seconds );
 				}
 
 				// Flush completed items after each batch.
@@ -1964,6 +1985,42 @@ class AtomicEdge_Scanner {
 	}
 
 	/**
+	 * Return abandoned processing items to the pending queue.
+	 *
+	 * Gateway/proxy timeouts can kill an AJAX request after queue rows have been
+	 * claimed but before the step can flush completions. Treat processing rows as
+	 * leased work and re-queue them once the lease is safely older than any normal
+	 * scan step.
+	 *
+	 * @param string $run_id Run id.
+	 * @param int    $time_budget_seconds Current step budget.
+	 * @return void
+	 */
+	private function recover_abandoned_processing_items( $run_id, $time_budget_seconds ) {
+		global $wpdb;
+
+		$table_sql = $this->get_queue_table_name_sql();
+		if ( '' === $table_sql ) {
+			return;
+		}
+
+		$lease_seconds = max( self::PROCESSING_ITEM_LEASE_SECONDS, (int) $time_budget_seconds * 6 );
+		$current_timestamp = (int) current_time( 'timestamp' );
+		$cutoff = date( 'Y-m-d H:i:s', $current_timestamp - $lease_seconds );
+		$now = current_time( 'mysql' );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter
+		$wpdb->query(
+			$wpdb->prepare(
+				'UPDATE ' . $table_sql . " SET status = 'pending', updated_at = %s WHERE run_id = %s AND status = 'processing' AND updated_at < %s",
+				$now,
+				$run_id,
+				$cutoff
+			)
+		);
+	}
+
+	/**
 	 * Process a single queue item.
 	 *
 	 * @param array $item Item row.
@@ -2030,7 +2087,7 @@ class AtomicEdge_Scanner {
 	 * @param array $state Run state (by reference).
 	 * @return void
 	 */
-	private function process_queue_item_batched( $item, &$state ) {
+	private function process_queue_item_batched( $item, &$state, $started, $time_budget_seconds ) {
 		$item_type = isset( $item['item_type'] ) ? (string) $item['item_type'] : '';
 		$area      = isset( $item['area'] ) ? (string) $item['area'] : '';
 		$path      = isset( $item['path'] ) ? (string) $item['path'] : '';
@@ -2056,17 +2113,13 @@ class AtomicEdge_Scanner {
 			'path' => $this->make_relative_to_root( $path ),
 		);
 
-		// Use a generous time budget for these since they're infrequent.
-		$dummy_started = microtime( true );
-		$dummy_budget = 30;
-
 		if ( 'rootfiles' === $item_type ) {
-			$this->process_rootfiles_item( $item_id, $area, $path, $meta, $state, $dummy_started, $dummy_budget );
+			$this->process_rootfiles_item( $item_id, $area, $path, $meta, $state, $started, $time_budget_seconds );
 			return;
 		}
 
 		if ( 'dir' === $item_type ) {
-			$this->process_dir_item( $item_id, $area, $path, $meta, $state, $dummy_started, $dummy_budget );
+			$this->process_dir_item( $item_id, $area, $path, $meta, $state, $started, $time_budget_seconds );
 			return;
 		}
 
@@ -2480,6 +2533,9 @@ class AtomicEdge_Scanner {
 	private function finalize_run_if_done( $state ) {
 		$counts = $this->get_queue_counts( $state['run_id'] );
 		if ( isset( $counts['pending'] ) && (int) $counts['pending'] > 0 ) {
+			return $state;
+		}
+		if ( isset( $counts['processing'] ) && (int) $counts['processing'] > 0 ) {
 			return $state;
 		}
 

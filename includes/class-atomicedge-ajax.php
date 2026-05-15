@@ -438,13 +438,13 @@ class AtomicEdge_Ajax {
 	 * @return void
 	 */
 	public function ajax_scan_step() {
-		$post = $this->get_verified_post_fields( array( 'run_id' ) );
+		$post = $this->get_verified_post_fields( array( 'run_id', 'time_budget' ) );
 
 		$run_id = isset( $post['run_id'] ) ? sanitize_text_field( $post['run_id'] ) : '';
+		$time_budget = isset( $post['time_budget'] ) ? absint( $post['time_budget'] ) : 0;
 
 		$scanner = AtomicEdge::get_instance()->scanner;
-		// Pass 0 to auto-detect optimal time budget based on server config.
-		$state = $scanner->step_resumable_scan( $run_id, 0 );
+		$state = $scanner->step_resumable_scan( $run_id, $time_budget );
 
 		if ( isset( $state['status'] ) && 'complete' === $state['status'] ) {
 			// Fire completion hook with the saved final results.

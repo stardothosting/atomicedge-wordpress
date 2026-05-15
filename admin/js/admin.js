@@ -1116,6 +1116,8 @@
             this.state.scan.runId = null;
             this.state.scan.pollTimeout = null;
             this.state.scan.progressInterval = null;
+            this.state.scan.timeBudget = 0;
+            this.state.scan.gatewayRetries = 0;
 
             $button.prop('disabled', true);
             $cancelButton.prop('disabled', false);
@@ -1203,7 +1205,13 @@
                 if (self.state.scan && self.state.scan.cancelled) {
                     return;
                 }
-                self.ajax('atomicedge_scan_step', { run_id: runId || '' }, function(stepData) {
+                self.ajax('atomicedge_scan_step', {
+                    run_id: runId || '',
+                    time_budget: (self.state.scan && self.state.scan.timeBudget) ? self.state.scan.timeBudget : 0
+                }, function(stepData) {
+                    if (self.state.scan) {
+                        self.state.scan.gatewayRetries = 0;
+                    }
                     renderStatus(stepData);
 
                     if (stepData && stepData.status === 'complete') {
@@ -1228,6 +1236,16 @@
                     var pollDelay = Math.min(800, Math.max(300, timeBudget * 40));
                     self.state.scan.pollTimeout = setTimeout(pollStep, pollDelay);
                 }, function(err) {
+                    var status = err && err.http_status ? parseInt(err.http_status, 10) : 0;
+                    var isGatewayTimeout = status === 0 || status === 502 || status === 503 || status === 504;
+                    if (isGatewayTimeout && self.state.scan && !self.state.scan.cancelled) {
+                        self.state.scan.gatewayRetries = (self.state.scan.gatewayRetries || 0) + 1;
+                        self.state.scan.timeBudget = 4;
+                        $progressText.text('Connection timed out while scanning. Retrying with smaller steps...');
+                        self.state.scan.pollTimeout = setTimeout(pollStep, Math.min(15000, 3000 * self.state.scan.gatewayRetries));
+                        return;
+                    }
+
                     clearInterval(progressInterval);
                     $progress.hide();
                     $logSection.hide();
@@ -1402,11 +1420,28 @@
                         }
                     }
                 },
-                error: function() {
+                error: function(jqXHR, textStatus) {
+                    var status = jqXHR && jqXHR.status !== undefined ? jqXHR.status : 0;
+                    var message = atomicedgeAdmin.strings.error;
+
+                    if (status === 504) {
+                        message = 'The server gateway timed out before this request finished.';
+                    } else if (status === 502 || status === 503) {
+                        message = 'The server gateway was temporarily unavailable.';
+                    } else if (textStatus === 'timeout') {
+                        message = 'The request timed out before the server responded.';
+                    }
+
+                    var errorData = {
+                        message: message,
+                        http_status: status,
+                        text_status: textStatus || ''
+                    };
+
                     if (typeof error === 'function') {
-                        error();
+                        error(errorData);
                     } else {
-                        self.showNotice(atomicedgeAdmin.strings.error, 'error');
+                        self.showNotice(message, 'error');
                     }
                 }
             });

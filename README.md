@@ -7,7 +7,7 @@ WordPress firewall with cloud WAF rules, malware scanning, 2FA, vulnerability ch
 | Requires at least | WordPress 5.8 |
 | Tested up to | WordPress 7.0 |
 | Requires PHP | 7.4 |
-| Stable tag | 2.8.0 |
+| Stable tag | 2.9.0 |
 | License | GPLv2 or later |
 | License URI | https://www.gnu.org/licenses/gpl-2.0.html |
 
@@ -125,6 +125,10 @@ The plugin automatically detects and uses the best available option.
 9. Adaptive Defense dashboard showing AI-powered threat detections and automatic IP blocking
 
 ## Changelog
+
+### 2.9.0
+
+- FIX: Aligned Dashicons vertically inside Atomic Edge admin buttons across dashboard, scanner, vulnerability, and CDN screens
 
 ### 2.8.0
 
@@ -426,6 +430,10 @@ The plugin automatically detects and uses the best available option.
 - Malware scanner
 
 ## Upgrade Notice
+
+### 2.9.0
+
+Improves admin button icon alignment across Atomic Edge plugin screens.
 
 ### 2.8.0
 

@@ -4,7 +4,7 @@ Tags: 2FA, Firewall, Malware, Scanner, Security
 Requires at least: 5.8
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 2.9.3
+Stable tag: 2.9.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -137,6 +137,10 @@ The plugin automatically detects and uses the best available option.
 9. Adaptive Defense dashboard showing AI-powered threat detections and automatic IP blocking
 
 == Changelog ==
+
+= 2.9.4 =
+* FIX: Updated the WordPress.org release process to exclude development-only files such as vendor dependencies, test suites, Composer metadata, and PHPUnit configuration from SVN payloads
+* FIX: Reduced oversized SVN commit payloads that could trigger timeouts during plugin directory releases
 
 = 2.9.3 =
 * CHANGE: Updated WordPress.org documentation with contextual technical guides for performance, WooCommerce abuse prevention, login hardening, and REST API/XML-RPC security

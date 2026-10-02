@@ -7,15 +7,17 @@ WordPress firewall with cloud WAF rules, malware scanning, 2FA, vulnerability ch
 | Requires at least | WordPress 5.8 |
 | Tested up to | WordPress 7.1 |
 | Requires PHP | 7.4 |
-| Stable tag | 2.9.2 |
+| Stable tag | 2.9.3 |
 | License | GPLv2 or later |
-| License URI | https://www.gnu.org/licenses/gpl-2.0.html |
+| License URI | [https://www.gnu.org/licenses/gpl-2.0.html](https://www.gnu.org/licenses/gpl-2.0.html) |
 
 ## Description
 
 Atomic Edge Security is a WordPress firewall plugin that protects your site with cloud-based WAF rules, malware scanning, 2FA, vulnerability checks, IP blocking, and real-time security logs.
 
 It blocks malicious traffic before it reaches WordPress while giving site owners firewall controls directly inside the WordPress admin.
+
+For site owners comparing edge filtering with plugin-level scanning and firewall overhead, our guide to [Wordfence performance and TTFB bottlenecks](https://atomicedge.io/is-wordfence-slowing-down-your-site-a-technical-guide-to-fixing-ttfb-core-web-vitals-and-security/) explains where response-time slowdowns commonly appear and how edge security changes the request path.
 
 ### Watch the Overview
 
@@ -29,25 +31,27 @@ Atomic Edge includes a cloud-based WordPress firewall that helps block malicious
 
 The Atomic Edge WAF uses OWASP Core Rules and WordPress-specific security rules to protect high-risk areas such as wp-login.php, wp-admin, XML-RPC, REST API endpoints, vulnerable plugin paths, and common exploit patterns.
 
+If you are specifically hardening authentication or application endpoints, see our guides for [wp-login.php brute force protection](https://atomicedge.io/wp-login-php-brute-force-protection-how-to-protect-wp-login-php-without-breaking-wordpress/) and [REST API and XML-RPC edge hardening](https://atomicedge.io/wordpress-rest-api-security-a-developers-guide-to-hardening-wp-json-and-xmlrpc-php-at-the-edge/).
+
 ## Features
 
 - **Two-Factor Authentication (2FA)** - Protect WordPress logins with TOTP authenticator apps
 - **2FA Enforcement Policies** - Require 2FA for specific user roles with configurable grace periods
 - **2FA Audit Logging** - Complete security audit trail for all 2FA events
-- **Adaptive Defense** - AI-powered threat detection that automatically identifies and blocks malicious actors
-- **Web Application Firewall (WAF)** - Block SQL injection, XSS, and other attacks with OWASP Core Rules
+- **Adaptive Defense** - AI-powered threat detection that automatically identifies and blocks malicious actors, including bot patterns that commonly affect WooCommerce checkouts and account flows
+- **Web Application Firewall (WAF)** - Block SQL injection, XSS, and other attacks with OWASP Core Rules while protecting high-risk WordPress entry points such as wp-login.php, XML-RPC, and REST API routes
 - **Content Delivery Network (CDN)** - Serve static assets from global edge servers for faster page loads
 - **Real-time Analytics** - Monitor traffic, blocked threats, and security events in real-time
 - **IP Access Control** - Easily whitelist or blacklist IP addresses and CIDR ranges
 - **Geographic Blocking** - Block or allow access based on visitor country
 - **Malware Scanner** - Scan WordPress files for modifications and suspicious code patterns
 - **Vulnerability Scanner** - Check WordPress core, plugins, and themes for known vulnerabilities (requires Atomic Edge connection)
-- **WAF Log Viewer** - See exactly what threats are being blocked
+- **WAF Log Viewer** - See exactly what threats are being blocked and use the traffic data to troubleshoot abuse patterns such as brute-force login attempts
 - **WP-CLI Integration** - Run security scans from the command line
 
 ## How It Works
 
-1. Sign up for an Atomic Edge account at https://atomicedge.io
+1. Sign up for an Atomic Edge account at [atomicedge.io](https://atomicedge.io)
 2. Add your site to Atomic Edge and get your API key
 3. Install this plugin and enter your API key
 4. Manage your security settings directly from WordPress
@@ -72,7 +76,7 @@ Vulnerability scanning is available when connected and uses Atomic Edge's vulner
 
 ### Do I need an Atomic Edge account?
 
-Yes, this plugin requires an Atomic Edge account to function. You can sign up for free at https://atomicedge.io.
+Yes, this plugin requires an Atomic Edge account to function. You can sign up for free at [atomicedge.io](https://atomicedge.io).
 
 ### Is there a free tier?
 
@@ -85,6 +89,8 @@ After creating your Atomic Edge account and adding your site, you can generate a
 ### Does this plugin slow down my site?
 
 No. The Atomic Edge WAF runs on our edge servers, not on your WordPress installation. The plugin only communicates with our API for configuration and analytics.
+
+If you are currently investigating high TTFB or Core Web Vitals regressions from plugin-level inspection, see our technical write-up on [whether Wordfence is slowing down your site](https://atomicedge.io/is-wordfence-slowing-down-your-site-a-technical-guide-to-fixing-ttfb-core-web-vitals-and-security/).
 
 ### Does the plugin include vulnerability scanning?
 
@@ -100,6 +106,16 @@ Atomic Edge uses the OWASP Core Rule Set to block:
 - Local File Inclusion
 - And many more common attack vectors
 
+For focused login hardening, see our guide to [wp-login.php brute force protection](https://atomicedge.io/wp-login-php-brute-force-protection-how-to-protect-wp-login-php-without-breaking-wordpress/).
+
+### Can Atomic Edge help protect WooCommerce from bots, carding, and fake orders?
+
+Yes. Atomic Edge can help reduce automated checkout abuse, credential stuffing, card testing, and fake order traffic before it reaches WooCommerce. For implementation details and operational guidance, see our guide to [WooCommerce bot and carding protection](https://atomicedge.io/woocommerce-security-best-practices-stop-carding-attacks-fake-orders-bot-abuse/).
+
+### How does Atomic Edge protect the WordPress REST API and XML-RPC?
+
+Atomic Edge can apply edge-level controls to wp-json and xmlrpc.php so abusive or unnecessary traffic is filtered before it hits WordPress. For a deeper technical explanation, see our guide to [REST API and XML-RPC security](https://atomicedge.io/wordpress-rest-api-security-a-developers-guide-to-hardening-wp-json-and-xmlrpc-php-at-the-edge/).
+
 ### Does Two-Factor Authentication (2FA) work without an Atomic Edge account?
 
 Yes! The 2FA feature works independently and does not require an Atomic Edge account or API connection. It uses industry-standard TOTP (Time-based One-Time Password) compatible with Google Authenticator, Authy, 1Password, and other authenticator apps.
@@ -107,6 +123,7 @@ Yes! The 2FA feature works independently and does not require an Atomic Edge acc
 ### What are the server requirements for 2FA?
 
 2FA requires PHP 7.2+ with either:
+
 - Native libsodium extension (recommended, included in most modern PHP installations), OR
 - WordPress 5.2+ (which includes sodium_compat, a pure PHP fallback)
 
@@ -126,6 +143,11 @@ The plugin automatically detects and uses the best available option.
 
 ## Changelog
 
+### 2.9.3
+
+- CHANGE: Updated WordPress.org documentation with contextual technical guides for performance, WooCommerce abuse prevention, login hardening, and REST API/XML-RPC security
+- CHANGE: Version bump and documentation sync for the 2.9.3 release
+
 ### 2.9.2
 
 - Code cleanup
@@ -134,19 +156,19 @@ The plugin automatically detects and uses the best available option.
 
 - WordPress 7.1 compatibility 
 
-### 2.9.0
+### Upgrade to 2.9.0
 
 - FIX: Aligned Dashicons vertically inside Atomic Edge admin buttons across dashboard, scanner, vulnerability, and CDN screens
 
-### 2.8.0
+### Upgrade to 2.8.0
 
 - CHANGE: Confirmed compatibility with WordPress 7.0 after full plugin test validation and compatibility review
 
-### 2.7.0
+### Upgrade to 2.7.0
 
 - CHANGE: Minor release for malware scanner timeout resilience and progress reporting improvements
 
-### 2.6.0
+### Upgrade to 2.6.0
 
 - FIX: Malware scanner now uses shorter resumable AJAX steps to avoid gateway timeouts on varied hosting stacks
 - FIX: Scanner retries with smaller steps after gateway-style timeout failures instead of failing immediately
@@ -333,13 +355,13 @@ The plugin automatically detects and uses the best available option.
 - IMPROVED: 2FA enrollment now shows specific error messages (encryption unavailable, encryption failed, database issues)
 - Better diagnostics for troubleshooting 2FA setup failures
 
-### 1.9.2
+### Upgrade to 1.9.2
 
 - FIX: 2FA enrollment now works on servers with persistent object caching (Redis, Memcached)
 - Added cache bypass for enrollment state verification
 - Added debug logging for 2FA enrollment failures
 
-### 1.9.1
+### Upgrade to 1.9.1
 
 - SECURITY: Fixed potential XSS vulnerability in JavaScript error message display (admin.js)
 - Security audit: Verified proper escaping for all external data (WAF logs, analytics, 2FA audit logs)
@@ -428,7 +450,7 @@ The plugin automatically detects and uses the best available option.
 - Improved vulnerability scanner UX (scan summary jump links and consistent "More Info" links)
 - Simplified Settings page to focus on connection and core configuration
 
-### 1.0.0
+### Upgrade to 1.0.0
 
 - Initial release
 - WAF integration

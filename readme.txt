@@ -122,6 +122,9 @@ The plugin automatically detects and uses the best available option.
 
 == Changelog ==
 
+= 2.9.1 = 
+* Wordpress 7.1 Compatility 
+
 = 2.9.0 =
 * FIX: Aligned Dashicons vertically inside Atomic Edge admin buttons across dashboard, scanner, vulnerability, and CDN screens
 
@@ -459,3 +462,4 @@ The malware scanner fetches signature patterns from a public API endpoint.
 = Data Storage =
 
 All API responses are cached locally using WordPress transients to minimize external requests. Malware signature data is cached for 24 hours. Analytics data is fetched fresh on each page load but displayed quickly via JavaScript pagination.
+

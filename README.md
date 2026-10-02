@@ -126,6 +126,10 @@ The plugin automatically detects and uses the best available option.
 
 ## Changelog
 
+### 2.9.1
+
+- WordPress 7.1 compatibility 
+
 ### 2.9.0
 
 - FIX: Aligned Dashicons vertically inside Atomic Edge admin buttons across dashboard, scanner, vulnerability, and CDN screens

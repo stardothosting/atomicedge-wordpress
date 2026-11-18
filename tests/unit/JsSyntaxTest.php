@@ -61,6 +61,13 @@ class JsSyntaxTest extends TestCase {
 		$this->assert_js_syntax_valid( 'admin/js/admin.js' );
 	}
 
+	public function test_scanner_polling_stops_on_errors_retries_and_no_progress() {
+		$output = array();
+		$code = 0;
+		exec( 'node ' . escapeshellarg( __DIR__ . '/scanner-polling.js' ) . ' 2>&1', $output, $code );
+		$this->assertSame( 0, $code, implode( "\n", $output ) );
+	}
+
 	/**
 	 * Test adaptive-defense.js has valid JavaScript syntax.
 	 *

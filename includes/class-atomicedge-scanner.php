@@ -703,6 +703,39 @@ class AtomicEdge_Scanner {
 	 * @return array Updated run state.
 	 */
 	public function step_resumable_scan( $run_id = '', $time_budget_seconds = 0 ) {
+		global $wpdb;
+
+		$lock_name = 'ae_scan_' . substr( hash( 'sha256', ( defined( 'DB_NAME' ) ? DB_NAME : '' ) . '|' . $wpdb->prefix ), 0, 40 );
+		$locked = false;
+		try {
+			$lock = $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, 0)', $lock_name ) );
+			if ( '0' === (string) $lock ) {
+				$state = $this->get_resumable_scan_status( $run_id );
+				$state['busy'] = true;
+				return $state;
+			}
+			if ( '1' !== (string) $lock ) {
+				throw new \RuntimeException( __( 'Could not acquire the scan database lock.', 'atomic-edge-security' ) );
+			}
+			$locked = true;
+			return $this->run_resumable_scan_step( $run_id, $time_budget_seconds );
+		} catch ( \Throwable $e ) {
+			AtomicEdge::log( 'Scan step failed', array( 'error' => $e->getMessage() ) );
+			return array( 'status' => 'error', 'error' => $e->getMessage() );
+		} finally {
+			if ( $locked ) {
+				$released = $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock_name ) );
+				if ( '1' !== (string) $released ) {
+					AtomicEdge::log( 'Could not release the scan database lock.' );
+				}
+			}
+		}
+	}
+
+	/**
+	 * Run one scan slice while holding the connection-owned database lock.
+	 */
+	private function run_resumable_scan_step( $run_id, $time_budget_seconds ) {
 		$this->ensure_queue_table_exists();
 
 		$state = $this->get_resumable_scan_state();
@@ -724,6 +757,9 @@ class AtomicEdge_Scanner {
 			: $this->get_default_scan_diagnostics();
 
 		$started = microtime( true );
+		$scanned_before = (int) $state['results']['scan_stats']['files_scanned'];
+		$items_processed = 0;
+		$timing = array( 'queue_ms' => 0, 'discovery_ms' => 0, 'scanning_ms' => 0 );
 
 		// Auto-detect optimal time budget based on server configuration.
 		if ( $time_budget_seconds <= 0 ) {
@@ -741,16 +777,16 @@ class AtomicEdge_Scanner {
 			$state['current_item'] = array();
 		}
 
-		$this->append_scan_log( $state, sprintf( '[%s] Step start (stage=%s)', current_time( 'mysql' ), isset( $state['stage'] ) ? (string) $state['stage'] : '' ) );
-
-		$this->recover_abandoned_processing_items( $state['run_id'], $time_budget_seconds );
-
 		// Reset pending done queue for this step.
 		$this->pending_done_ids = array();
 
 		try {
+			$recovered = $this->recover_abandoned_processing_items( $state['run_id'], $time_budget_seconds );
+			if ( $recovered > 0 ) {
+				$this->append_scan_log( $state, sprintf( '[%s] Recovered %d abandoned queue items', current_time( 'mysql' ), $recovered ) );
+			}
 			$work_iterations = 0;
-			while ( $work_iterations < 10 && ( microtime( true ) - $started ) < $time_budget_seconds ) {
+			while ( $work_iterations < 1000 && ( microtime( true ) - $started ) < $time_budget_seconds ) {
 				$work_iterations++;
 
 				if ( 'integrity' === $state['stage'] ) {
@@ -771,9 +807,10 @@ class AtomicEdge_Scanner {
 					continue;
 				}
 
-				// BATCH PROCESSING: Claim multiple items at once.
-				$batch_size = 100; // Process up to 100 files per batch claim.
+				$batch_size = isset( $state['batch_size'] ) ? max( 1, min( 25, (int) $state['batch_size'] ) ) : 10;
+				$queue_started = microtime( true );
 				$items = $this->claim_batch_queue_items( $state['run_id'], $batch_size );
+				$timing['queue_ms'] += ( microtime( true ) - $queue_started ) * 1000;
 
 				if ( empty( $items ) ) {
 					// Flush any pending done items before finalizing.
@@ -783,20 +820,7 @@ class AtomicEdge_Scanner {
 					break;
 				}
 
-				// Process all items in the batch.
-				foreach ( $items as $item ) {
-					// Check time budget within batch processing.
-					if ( ( microtime( true ) - $started ) >= $time_budget_seconds ) {
-						// Flush completed items so far.
-						$this->flush_pending_done_items();
-						break 2; // Exit both foreach and while.
-					}
-
-					$this->process_queue_item_batched( $item, $state, $started, $time_budget_seconds );
-				}
-
-				// Flush completed items after each batch.
-				$this->flush_pending_done_items();
+				$this->process_claimed_batch( $items, $state, $started, $time_budget_seconds, $items_processed, $timing );
 			}
 		} catch ( \Throwable $e ) {
 			// Flush any pending items before error handling.
@@ -811,11 +835,27 @@ class AtomicEdge_Scanner {
 		$this->flush_pending_done_items();
 
 		$state['updated_at'] = time();
+		$elapsed = max( 0.001, microtime( true ) - $started );
+		$state['batch_size'] = max( 1, min( 25, (int) floor( $items_processed / $elapsed ) ) );
+		$state['step_stats'] = array_merge( $timing, array(
+			'elapsed_ms' => round( $elapsed * 1000, 1 ),
+			'items_processed' => $items_processed,
+			'files_scanned' => (int) $state['results']['scan_stats']['files_scanned'] - $scanned_before,
+		) );
+		$state['results']['scan_stats']['time_elapsed'] = max( 0, time() - strtotime( $state['started_at'] ) );
+		$state['results']['scan_stats']['memory_peak'] = memory_get_peak_usage( true );
 		$state['diagnostics'] = $this->scan_diagnostics;
 		$state['results']['scan_diagnostics'] = $this->scan_diagnostics;
 
 		$counts = $this->get_queue_counts( $state['run_id'] );
 		$state['queue_counts'] = $counts;
+		$state['discovery_complete'] = 0 === $counts['directories_remaining'];
+		$this->append_scan_log( $state, sprintf(
+			'[%s] Step: %d items, %d files scanned in %.1fs; pending=%d, processing=%d, done=%d; discovery=%.0fms, scan=%.0fms, queue claims=%.0fms',
+			current_time( 'mysql' ), $items_processed, $state['step_stats']['files_scanned'], $elapsed,
+			$counts['pending'], $counts['processing'], $counts['done'],
+			$timing['discovery_ms'], $timing['scanning_ms'], $timing['queue_ms']
+		) );
 
 		$progress = $this->calculate_resumable_progress( $state, $counts );
 		if ( ! isset( $state['progress_floor'] ) ) {
@@ -828,6 +868,53 @@ class AtomicEdge_Scanner {
 
 		$this->save_resumable_scan_state( $state );
 		return $state;
+	}
+
+	/**
+	 * Release untouched claims even when a slice ends normally or an item fails.
+	 */
+	private function process_claimed_batch( $items, &$state, $started, $budget, &$processed, &$timing ) {
+		$remaining = array_map( 'intval', array_column( $items, 'id' ) );
+		try {
+			foreach ( $items as $item ) {
+				if ( microtime( true ) - $started >= $budget ) {
+					break;
+				}
+				array_shift( $remaining );
+				$item_started = microtime( true );
+				$this->process_queue_item_batched( $item, $state, $started, $budget );
+				$key = 'file' === $item['item_type'] ? 'scanning_ms' : 'discovery_ms';
+				$timing[ $key ] += ( microtime( true ) - $item_started ) * 1000;
+				$processed++;
+			}
+		} finally {
+			try {
+				$this->flush_pending_done_items();
+			} finally {
+				$this->release_queue_items( $remaining );
+			}
+		}
+	}
+
+	private function release_queue_items( $ids ) {
+		if ( empty( $ids ) ) {
+			return;
+		}
+		global $wpdb;
+		$table = $this->get_queue_table_name_sql();
+		$placeholders = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+		$result = $wpdb->query( $wpdb->prepare(
+			'UPDATE ' . $table . " SET status = 'pending', updated_at = %s WHERE status = 'processing' AND id IN ($placeholders)",
+			array_merge( array( current_time( 'mysql' ) ), $ids )
+		) );
+		$this->check_queue_result( $result );
+	}
+
+	private function check_queue_result( $result ) {
+		global $wpdb;
+		if ( false === $result || null === $result || ! empty( $wpdb->last_error ) ) {
+			throw new \RuntimeException( __( 'Scan queue database operation failed. Check the database error log.', 'atomic-edge-security' ) );
+		}
 	}
 
 	/**
@@ -866,6 +953,7 @@ class AtomicEdge_Scanner {
 
 		$counts = $this->get_queue_counts( $state['run_id'] );
 		$state['queue_counts'] = $counts;
+		$state['discovery_complete'] = 0 === $counts['directories_remaining'];
 
 		$progress = $this->calculate_resumable_progress( $state, $counts );
 		if ( isset( $state['progress_floor'] ) ) {
@@ -1155,6 +1243,9 @@ class AtomicEdge_Scanner {
 	 * @return int|null
 	 */
 	private function calculate_eta_seconds( $state ) {
+		if ( isset( $state['discovery_complete'] ) && ! $state['discovery_complete'] ) {
+			return null;
+		}
 		$total = isset( $state['results']['scan_stats']['files_total'] ) ? (int) $state['results']['scan_stats']['files_total'] : 0;
 		$scanned = isset( $state['results']['scan_stats']['files_scanned'] ) ? (int) $state['results']['scan_stats']['files_scanned'] : 0;
 		$minimum_scanned = $total > 100 ? min( 100, max( 20, (int) ceil( $total * 0.02 ) ) ) : 5;
@@ -1865,7 +1956,7 @@ class AtomicEdge_Scanner {
 
 		// Use $wpdb->insert() to avoid interpolated table SQL in prepared statements.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->insert(
+		$inserted = $wpdb->insert(
 			$table,
 			array(
 				'run_id'     => $run_id,
@@ -1880,6 +1971,16 @@ class AtomicEdge_Scanner {
 			),
 			array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' )
 		);
+		if ( false === $inserted ) {
+			// A resumed directory can rediscover an already queued path.
+			$existing = $wpdb->get_var( $wpdb->prepare(
+				'SELECT id FROM ' . $this->get_queue_table_name_sql() . ' WHERE run_id = %s AND item_type = %s AND path_hash = %s',
+				$run_id, $item_type, $path_hash
+			) );
+			if ( ! $existing ) {
+				$this->check_queue_result( false );
+			}
+		}
 	}
 
 	/**
@@ -1938,7 +2039,7 @@ class AtomicEdge_Scanner {
 		$error_val = $error ? $error : null;
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->update(
+		$result = $wpdb->update(
 			$table,
 			array(
 				'status' => $status,
@@ -1950,6 +2051,7 @@ class AtomicEdge_Scanner {
 			array( '%s', '%s', '%s', '%s' ),
 			array( '%d' )
 		);
+		$this->check_queue_result( $result );
 	}
 
 	/**
@@ -1968,7 +2070,7 @@ class AtomicEdge_Scanner {
 			return array();
 		}
 		$table_sql = '`' . $table_name . '`';
-		$batch_size = max( 10, min( 500, (int) $batch_size ) );
+		$batch_size = max( 1, min( 25, (int) $batch_size ) );
 
 		// Fetch batch of pending items.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -1982,6 +2084,7 @@ class AtomicEdge_Scanner {
 			ARRAY_A
 		);
 
+		$this->check_queue_result( $items );
 		if ( empty( $items ) ) {
 			return array();
 		}
@@ -1992,13 +2095,18 @@ class AtomicEdge_Scanner {
 		$now = current_time( 'mysql' );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->query(
+		$updated = $wpdb->query(
 			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter
 			$wpdb->prepare(
-				'UPDATE ' . $table_sql . " SET status = 'processing', updated_at = %s WHERE id IN ($placeholders)",
+				'UPDATE ' . $table_sql . " SET status = 'processing', updated_at = %s WHERE status = 'pending' AND id IN ($placeholders)",
 				array_merge( array( $now ), $ids )
 			)
 		);
+		$this->check_queue_result( $updated );
+		if ( count( $ids ) !== (int) $updated ) {
+			$this->release_queue_items( $ids );
+			throw new \RuntimeException( __( 'Scan queue claims changed unexpectedly. Retry the scan.', 'atomic-edge-security' ) );
+		}
 
 		return $items;
 	}
@@ -2026,13 +2134,14 @@ class AtomicEdge_Scanner {
 		$now = current_time( 'mysql' );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->query(
+		$result = $wpdb->query(
 			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter
 			$wpdb->prepare(
 				'UPDATE ' . $table_sql . " SET status = 'done', updated_at = %s WHERE id IN ($placeholders)",
 				array_merge( array( $now ), $ids )
 			)
 		);
+		$this->check_queue_result( $result );
 	}
 
 	/**
@@ -2080,9 +2189,10 @@ class AtomicEdge_Scanner {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$rows = $wpdb->get_results(
 			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter
-			$wpdb->prepare( 'SELECT status, COUNT(*) as c FROM ' . $table_sql . ' WHERE run_id = %s GROUP BY status', $run_id ),
+			$wpdb->prepare( "SELECT status, COUNT(*) as c, SUM(item_type IN ('dir','rootfiles')) AS directories FROM " . $table_sql . ' WHERE run_id = %s GROUP BY status', $run_id ),
 			ARRAY_A
 		);
+		$this->check_queue_result( $rows );
 
 		$counts = array(
 			'total' => 0,
@@ -2090,6 +2200,7 @@ class AtomicEdge_Scanner {
 			'processing' => 0,
 			'done' => 0,
 			'error' => 0,
+			'directories_remaining' => 0,
 		);
 
 		foreach ( $rows as $row ) {
@@ -2098,6 +2209,9 @@ class AtomicEdge_Scanner {
 			$counts['total'] += $c;
 			if ( isset( $counts[ $status ] ) ) {
 				$counts[ $status ] += $c;
+			}
+			if ( in_array( $status, array( 'pending', 'processing' ), true ) ) {
+				$counts['directories_remaining'] += isset( $row['directories'] ) ? (int) $row['directories'] : 0;
 			}
 		}
 
@@ -2114,14 +2228,14 @@ class AtomicEdge_Scanner {
 	 *
 	 * @param string $run_id Run id.
 	 * @param int    $time_budget_seconds Current step budget.
-	 * @return void
+	 * @return int Recovered claims.
 	 */
 	private function recover_abandoned_processing_items( $run_id, $time_budget_seconds ) {
 		global $wpdb;
 
 		$table_sql = $this->get_queue_table_name_sql();
 		if ( '' === $table_sql ) {
-			return;
+			return 0;
 		}
 
 		$lease_seconds = max( self::PROCESSING_ITEM_LEASE_SECONDS, (int) $time_budget_seconds * 6 );
@@ -2130,7 +2244,7 @@ class AtomicEdge_Scanner {
 		$now = current_time( 'mysql' );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter
-		$wpdb->query(
+		$result = $wpdb->query(
 			$wpdb->prepare(
 				'UPDATE ' . $table_sql . " SET status = 'pending', updated_at = %s WHERE run_id = %s AND status = 'processing' AND updated_at < %s",
 				$now,
@@ -2138,6 +2252,8 @@ class AtomicEdge_Scanner {
 				$cutoff
 			)
 		);
+		$this->check_queue_result( $result );
+		return (int) $result;
 	}
 
 	/**
@@ -2261,6 +2377,7 @@ class AtomicEdge_Scanner {
 	 */
 	private function process_file_item_batched( $id, $area, $filepath, &$state ) {
 		$relative_path = $this->make_relative_to_root( $filepath );
+		$state['current_item'] = array( 'id' => $id, 'type' => 'file', 'area' => $area, 'path' => $relative_path );
 
 		if ( ! file_exists( $filepath ) ) {
 			$this->queue_item_done( $id );
@@ -2365,13 +2482,11 @@ class AtomicEdge_Scanner {
 			}
 
 			$processed++;
-			$meta['last_entry'] = $entry;
-
-			if ( $processed >= 300 || ( microtime( true ) - $started ) >= $time_budget_seconds ) {
+			$filepath = $root . $entry;
+			if ( $processed > 300 || ( microtime( true ) - $started ) >= $time_budget_seconds ) {
 				break;
 			}
-
-			$filepath = $root . $entry;
+			$meta['last_entry'] = $entry;
 			if ( ! ( is_file( $filepath ) && preg_match( '/\.php$/i', $entry ) ) ) {
 				continue;
 			}
@@ -2410,6 +2525,7 @@ class AtomicEdge_Scanner {
 		}
 
 		$this->update_queue_item( $id, 'pending', $meta );
+		$state['discovery_cursor'] = $this->make_relative_to_root( $root ) . '|' . ( $meta['last_entry'] ?? '' );
 	}
 
 	/**
@@ -2506,6 +2622,7 @@ class AtomicEdge_Scanner {
 
 		// More work remains in this directory.
 		$this->update_queue_item( $id, 'pending', $meta );
+		$state['discovery_cursor'] = $relative_dir . '|' . ( $meta['last_entry'] ?? '' );
 	}
 
 	/**
@@ -3631,7 +3748,10 @@ class AtomicEdge_Scanner {
 			return $this->api_signatures;
 		}
 
+		$signature_started = microtime( true );
 		$signatures = $api->get_malware_signatures();
+		$this->scan_diagnostics['timing']['total_signature_ms'] = ( $this->scan_diagnostics['timing']['total_signature_ms'] ?? 0 )
+			+ ( microtime( true ) - $signature_started ) * 1000;
 
 		if ( false === $signatures || ! is_array( $signatures ) ) {
 			$this->api_signatures = array();

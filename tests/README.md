@@ -52,6 +52,29 @@ tests/
 
 ## Test Categories
 
+### 2.9.5 scanner regressions and compatibility
+
+| Adjustment | Coverage evaluation |
+|---|---|
+| Release untouched claims on time-budget exit | New behavioral tests in `ScannerTest.php`: an expired slice releases every claim, a partially processed batch releases only its tail, and item exceptions still release untouched work. |
+| Smaller adaptive batches and step diagnostics | New full-step test checks persisted timing/summary output, current-item processing, discovery state, and bounded adaptive batch size. Existing scan-budget tests remain applicable. |
+| Concurrent step ownership | New tests verify that a busy database lock prevents claims and that the connection-owned lock is released after queue errors. The lock is scoped to the WordPress database/table prefix, shared across tabs, and does not rely on expiring transients. |
+| Explicit database failures | New tests reject failed reads, empty arrays accompanied by WordPress's `last_error`, and failed completion writes. Existing completion guard still requires zero pending/processing rows. |
+| Root-directory resumption | New filesystem-backed test proves an expired slice does not advance its cursor past an unscanned file. |
+| Discovery-aware ETA | New test withholds ETA during discovery and allows it afterward. Existing minimum-sample and smoothing tests remain unchanged. |
+| Browser polling | `JsSyntaxTest.php` executes `scanner-polling.js` with Node's built-in assertions: terminal errors stop, gateway retries are bounded, unchanged work pauses, advancing work/cursors continue, completion stops, scan-step requests have a timeout, and progress is never synthetically animated. No npm dependencies or browser/network calls are needed. |
+| Release metadata | Version/compatibility declarations are updated together in the plugin entry file and both release readmes; no runtime behavior or minimum requirements change, so no constant-only tests were added. |
+
+Compatibility evaluation (2026-11-17):
+
+- WordPress.org's [download page](https://wordpress.org/download/) and [release archive](https://wordpress.org/download/releases/) list **7.1.4** as the latest stable release. The available local core also reports 7.1.4.
+- The scanner continues using core transients, `$wpdb`, AJAX hooks, nonce/capability checks, and JSON response conventions. No newer core-only API is introduced; minimum WordPress 5.8 remains unchanged.
+- Queue serialization uses MySQL/MariaDB `GET_LOCK`/`RELEASE_LOCK` without schema changes. The lock is released on normal/error paths and by the database when a nonpersistent connection closes. If locking is unavailable, the scan reports an explicit error rather than proceeding unlocked.
+- Run all unit/integration suites with `./vendor/bin/phpunit` and `/usr/bin/php8.2 ./vendor/bin/phpunit`. These suites mock WordPress and database calls; they are **not** a real-core browser/database integration certification.
+- Run `./vendor/bin/phpcs --standard=PHPCompatibilityWP --runtime-set testVersion 7.4- --extensions=php --ignore=vendor/*,svn/*,tests/* . -s` for the supported PHP syntax/API range, and `./tests/scan-false-positive-check.sh` for hosting-antivirus regressions.
+- Remaining live check: on WordPress 7.1.4, run quick and thorough scans on a disposable/test site, observe queue drainage between slices, attempt a second-tab step, and exercise cancel/resume plus gateway-failure recovery. Repeat the affected cPanel scan to measure actual duration. Automated timing fixtures do not establish hosting throughput.
+- Scanner invariant: normal budget exhaustion must never leave **unstarted** batch items leased; abandoned-work recovery is for interrupted requests only. Keep behavioral tests for this distinction, not just source-string assertions.
+
 ### Unit Tests (`tests/unit/`)
 
 Unit tests verify individual components in isolation using Brain/Monkey to mock WordPress functions.

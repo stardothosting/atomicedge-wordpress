@@ -7,7 +7,7 @@ WordPress firewall with cloud WAF rules, malware scanning, 2FA, vulnerability ch
 | Requires at least | WordPress 5.8 |
 | Tested up to | WordPress 7.1 |
 | Requires PHP | 7.4 |
-| Stable tag | 2.9.4 |
+| Stable tag | 2.9.5 |
 | License | GPLv2 or later |
 | License URI | [https://www.gnu.org/licenses/gpl-2.0.html](https://www.gnu.org/licenses/gpl-2.0.html) |
 
@@ -142,6 +142,15 @@ The plugin automatically detects and uses the best available option.
 9. Adaptive Defense dashboard showing AI-powered threat detections and automatic IP blocking
 
 ## Changelog
+
+### 2.9.5
+
+- FIX: Release unstarted scan queue claims immediately when a time slice ends, rather than waiting for abandoned-work recovery; use smaller adaptive batches.
+- FIX: Serialize scan steps across browser tabs with a connection-owned database lock, and surface queue database failures instead of treating them as empty work.
+- FIX: Preserve the root-directory cursor when a time slice expires before an entry is scanned.
+- FIX: Stop polling on terminal errors, after repeated connection failures, or after three minutes without observable progress. Connection/stall pauses preserve the running scan for resumption.
+- IMPROVEMENT: Show directory-discovery and queue counts, actual current files, per-step throughput and timings, and signature-fetch timing in diagnostics. Withhold ETA while directory discovery is incomplete.
+- COMPATIBILITY: Reviewed against WordPress 7.1.4; minimum WordPress 5.8 and PHP 7.4 requirements are unchanged. See [test coverage and compatibility scope](tests/README.md#295-scanner-regressions-and-compatibility) for verification details and live-testing limitations.
 
 ### 2.9.4
 

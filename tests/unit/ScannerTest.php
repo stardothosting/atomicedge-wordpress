@@ -608,6 +608,242 @@ class ScannerTest extends TestCase {
 		$this->assertNull( $this->get_option( 'atomicedge_scan_results', null ) );
 	}
 
+	public function test_expired_slice_releases_every_unstarted_claim_immediately() {
+		$db = $this->mock_queue_database();
+		$db->expects( $this->once() )->method( 'query' )->with( $this->callback( function ( $sql ) {
+			return false !== strpos( $sql, "SET status = 'pending'" ) && false !== strpos( $sql, '11,12' );
+		} ) )->willReturn( 2 );
+		$state = array();
+		$processed = 0;
+		$timing = array();
+		$method = new \ReflectionMethod( $this->scanner, 'process_claimed_batch' );
+		$method->setAccessible( true );
+		$method->invokeArgs( $this->scanner, array(
+			array( array( 'id' => 11 ), array( 'id' => 12 ) ), &$state, microtime( true ) - 2, 1, &$processed, &$timing,
+		) );
+		$this->assertSame( 0, $processed );
+	}
+
+	public function test_partial_slice_completes_started_work_and_releases_only_the_tail() {
+		$db = $this->mock_queue_database();
+		$queries = array();
+		$db->method( 'update' )->willReturnCallback( function () {
+			usleep( 20000 );
+			return 1;
+		} );
+		$db->method( 'query' )->willReturnCallback( function ( $sql ) use ( &$queries ) {
+			$queries[] = $sql;
+			return 1;
+		} );
+		$state = array();
+		$processed = 0;
+		$timing = array( 'discovery_ms' => 0 );
+		$method = new \ReflectionMethod( $this->scanner, 'process_claimed_batch' );
+		$method->setAccessible( true );
+		$method->invokeArgs( $this->scanner, array(
+			array(
+				array( 'id' => 11, 'item_type' => 'rootfiles', 'area' => 'root', 'path' => '/nonexistent-ae-scan-root/' ),
+				array( 'id' => 12, 'item_type' => 'file' ),
+			),
+			&$state, microtime( true ), 0.01, &$processed, &$timing,
+		) );
+		$this->assertSame( 1, $processed );
+		$this->assertCount( 1, $queries );
+		$this->assertStringContainsString( 'id IN (12)', $queries[0] );
+		$this->assertGreaterThan( 0, $timing['discovery_ms'] );
+	}
+
+	public function test_item_exception_still_releases_unstarted_claims() {
+		$db = $this->mock_queue_database();
+		$db->method( 'update' )->willThrowException( new \RuntimeException( 'write failed' ) );
+		$db->expects( $this->once() )->method( 'query' )->with( $this->callback( function ( $sql ) {
+			return false !== strpos( $sql, "SET status = 'pending'" ) && false !== strpos( $sql, 'id IN (12)' );
+		} ) )->willReturn( 1 );
+		$state = array();
+		$processed = 0;
+		$timing = array();
+		$method = new \ReflectionMethod( $this->scanner, 'process_claimed_batch' );
+		$method->setAccessible( true );
+		$this->expectExceptionMessage( 'write failed' );
+		$method->invokeArgs( $this->scanner, array(
+			array(
+				array( 'id' => 11, 'item_type' => 'rootfiles', 'path' => '/nonexistent-ae-scan-root/' ),
+				array( 'id' => 12 ),
+			),
+			&$state, microtime( true ), 1, &$processed, &$timing,
+		) );
+	}
+
+	public function test_database_read_failure_is_not_an_empty_queue() {
+		$db = $this->mock_queue_database();
+		$db->method( 'get_results' )->willReturn( null );
+		$method = new \ReflectionMethod( $this->scanner, 'claim_batch_queue_items' );
+		$method->setAccessible( true );
+		$this->expectException( \RuntimeException::class );
+		$method->invoke( $this->scanner, 'test-run', 5 );
+	}
+
+	public function test_failed_completion_write_keeps_pending_completion_ids() {
+		$db = $this->mock_queue_database();
+		$db->method( 'query' )->willReturn( false );
+		$property = new \ReflectionProperty( $this->scanner, 'pending_done_ids' );
+		$property->setAccessible( true );
+		$property->setValue( $this->scanner, array( 11 ) );
+		$method = new \ReflectionMethod( $this->scanner, 'flush_pending_done_items' );
+		$method->setAccessible( true );
+		try {
+			$method->invoke( $this->scanner );
+			$this->fail( 'A failed completion write must throw.' );
+		} catch ( \RuntimeException $e ) {
+			$this->assertSame( array( 11 ), $property->getValue( $this->scanner ) );
+		}
+	}
+
+	public function test_wordpress_empty_array_with_sql_error_is_not_a_clean_queue() {
+		$db = $this->mock_queue_database();
+		$db->last_error = 'Database connection lost';
+		$db->method( 'get_results' )->willReturn( array() );
+		$method = new \ReflectionMethod( $this->scanner, 'get_queue_counts' );
+		$method->setAccessible( true );
+		$this->expectException( \RuntimeException::class );
+		$method->invoke( $this->scanner, 'test-run' );
+	}
+
+	public function test_concurrent_step_returns_busy_without_claiming_work() {
+		$db = $this->mock_queue_database();
+		$db->method( 'get_var' )->willReturn( '0' );
+		$db->method( 'get_results' )->willReturn( array() );
+		$db->expects( $this->never() )->method( 'query' );
+		$this->set_transient( 'atomicedge_scan_run_state', array(
+			'run_id' => 'test-run', 'status' => 'running', 'results' => array( 'scan_stats' => array() ),
+		) );
+		$state = $this->scanner->step_resumable_scan( 'test-run' );
+		$this->assertTrue( $state['busy'] );
+		$this->assertSame( 'running', $state['status'] );
+	}
+
+	public function test_step_releases_connection_lock_after_queue_error() {
+		$db = $this->mock_queue_database();
+		$locks = array();
+		$db->method( 'get_var' )->willReturnCallback( function ( $sql ) use ( &$locks ) {
+			if ( false !== strpos( $sql, 'LOCK(' ) ) {
+				$locks[] = $sql;
+				return '1';
+			}
+			return 'wp_atomicedge_scan_queue';
+		} );
+		$db->method( 'query' )->willReturn( 0 );
+		$db->method( 'get_results' )->willReturn( null );
+		$this->set_transient( 'atomicedge_scan_run_state', array(
+			'run_id' => 'test-run', 'status' => 'running', 'stage' => 'queue',
+			'started_at' => date( 'Y-m-d H:i:s' ),
+			'results' => array( 'scan_stats' => array( 'files_scanned' => 0 ) ),
+		) );
+		$state = $this->scanner->step_resumable_scan( 'test-run' );
+		$this->assertSame( 'error', $state['status'] );
+		$this->assertStringContainsString( 'database operation failed', $state['error'] );
+		$this->assertCount( 2, $locks );
+		$this->assertStringContainsString( 'GET_LOCK(', $locks[0] );
+		$this->assertStringContainsString( 'RELEASE_LOCK(', $locks[1] );
+	}
+
+	public function test_successful_slice_saves_summary_timings_and_adaptive_batch_size() {
+		$db = $this->mock_queue_database();
+		$db->method( 'get_var' )->willReturnCallback( function ( $sql ) {
+			return false !== strpos( $sql, 'LOCK(' ) ? '1' : 'wp_atomicedge_scan_queue';
+		} );
+		$db->method( 'query' )->willReturn( 1 );
+		$claimed = false;
+		$db->method( 'get_results' )->willReturnCallback( function ( $sql ) use ( &$claimed ) {
+			if ( false !== strpos( $sql, 'COUNT(*)' ) ) {
+				return array( array( 'status' => 'pending', 'c' => 1, 'directories' => 1 ) );
+			}
+			if ( $claimed ) {
+				return array();
+			}
+			$claimed = true;
+			return array( array( 'id' => 11, 'item_type' => 'file', 'area' => 'plugins', 'path' => '/nonexistent-ae-scan-file.php' ) );
+		} );
+		$started = date( 'Y-m-d H:i:s', time() - 10 );
+		$this->set_transient( 'atomicedge_scan_run_state', array(
+			'run_id' => 'test-run', 'status' => 'running', 'stage' => 'queue', 'started_at' => $started,
+			'results' => array( 'started_at' => $started, 'scan_stats' => array( 'files_scanned' => 0, 'files_total' => 100 ) ),
+		) );
+		$state = $this->scanner->step_resumable_scan( 'test-run' );
+		$this->assertSame( 'running', $state['status'] );
+		$this->assertSame( 1, $state['step_stats']['items_processed'] );
+		$this->assertGreaterThan( 0, $state['step_stats']['elapsed_ms'] );
+		$this->assertArrayHasKey( 'queue_ms', $state['step_stats'] );
+		$this->assertArrayHasKey( 'scanning_ms', $state['step_stats'] );
+		$this->assertGreaterThanOrEqual( 1, $state['batch_size'] );
+		$this->assertLessThanOrEqual( 25, $state['batch_size'] );
+		$this->assertFalse( $state['discovery_complete'] );
+		$this->assertNull( $state['eta_seconds'] );
+		$this->assertStringContainsString( 'pending=1', implode( "\n", $state['log'] ) );
+		$this->assertSame( $state, $this->get_transient( 'atomicedge_scan_run_state' ) );
+	}
+
+	public function test_expired_root_slice_does_not_advance_past_an_unscanned_entry() {
+		$db = $this->mock_queue_database();
+		$dir = sys_get_temp_dir() . '/ae-root-' . uniqid();
+		mkdir( $dir );
+		file_put_contents( $dir . '/sample.php', '<?php echo "safe";' );
+		$db->expects( $this->once() )->method( 'update' )->with(
+			'wp_atomicedge_scan_queue',
+			$this->callback( function ( $data ) {
+				return 'pending' === $data['status'] && null === $data['meta'];
+			} ),
+			$this->anything(), $this->anything(), $this->anything()
+		)->willReturn( 1 );
+		$state = array();
+		$method = new \ReflectionMethod( $this->scanner, 'process_rootfiles_item' );
+		$method->setAccessible( true );
+		try {
+			$method->invokeArgs( $this->scanner, array( 11, 'root', $dir . '/', array(), &$state, microtime( true ) - 2, 1 ) );
+		} finally {
+			unlink( $dir . '/sample.php' );
+			rmdir( $dir );
+		}
+	}
+
+	public function test_eta_is_withheld_while_directory_discovery_is_incomplete() {
+		$method = new \ReflectionMethod( $this->scanner, 'calculate_eta_seconds' );
+		$method->setAccessible( true );
+		$state = array(
+			'discovery_complete' => false,
+			'results' => array(
+				'started_at' => date( 'Y-m-d H:i:s', time() - 120 ),
+				'scan_stats' => array( 'files_total' => 4000, 'files_scanned' => 200 ),
+			),
+		);
+		$this->assertNull( $method->invoke( $this->scanner, $state ) );
+		$state['discovery_complete'] = true;
+		$this->assertIsInt( $method->invoke( $this->scanner, $state ) );
+	}
+
+	private function mock_queue_database() {
+		global $wpdb;
+		if ( ! defined( 'ARRAY_A' ) ) {
+			define( 'ARRAY_A', 'ARRAY_A' );
+		}
+		$wpdb = $this->getMockBuilder( \stdClass::class )
+			->addMethods( array( 'get_results', 'get_var', 'prepare', 'query', 'update', 'insert' ) )->getMock();
+		$wpdb->prefix = 'wp_';
+		$wpdb->last_error = '';
+		$wpdb->method( 'prepare' )->willReturnCallback( function ( $sql, ...$args ) {
+			if ( isset( $args[0] ) && is_array( $args[0] ) ) {
+				$args = $args[0];
+			}
+			foreach ( $args as $arg ) {
+				$sql = preg_replace_callback( '/%[sd]/', function () use ( $arg ) {
+					return (string) $arg;
+				}, $sql, 1 );
+			}
+			return $sql;
+		} );
+		return $wpdb;
+	}
+
 	// =========================================================================
 	// File Analysis Tests
 	// =========================================================================

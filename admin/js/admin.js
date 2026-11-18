@@ -1106,7 +1106,6 @@
             var $logLines = $logSection.find('.atomicedge-scan-log-lines');
             var $progressText = $progress.find('.atomicedge-progress-text');
 
-            var hasRealProgress = false;
             var lastDisplayedProgress = 0;
 
             if (!this.state.scan) {
@@ -1118,6 +1117,8 @@
             this.state.scan.progressInterval = null;
             this.state.scan.timeBudget = 0;
             this.state.scan.gatewayRetries = 0;
+            this.state.scan.lastWork = null;
+            this.state.scan.lastWorkAt = Date.now();
 
             $button.prop('disabled', true);
             $cancelButton.prop('disabled', false);
@@ -1127,16 +1128,9 @@
             $logSection.show();
             $logLines.text('');
 
-            // Animate progress bar until we get real progress values.
             var $progressFill = $progress.find('.atomicedge-progress-fill');
             $progressFill.css('width', '0%');
-            
-            var progress = 0;
-            var progressInterval = setInterval(function() {
-                progress = Math.min(progress + Math.random() * 10, 90);
-                lastDisplayedProgress = Math.max(lastDisplayedProgress, progress);
-                $progressFill.css('width', lastDisplayedProgress + '%');
-            }, 500);
+            var progressInterval = null;
 
             this.state.scan.progressInterval = progressInterval;
 
@@ -1150,11 +1144,6 @@
                 if (stepData.progress !== undefined) {
                     var p = parseInt(stepData.progress, 10);
                     if (!isNaN(p)) {
-                        if (!hasRealProgress) {
-                            hasRealProgress = true;
-                            clearInterval(progressInterval);
-                        }
-
                         p = Math.min(Math.max(p, 0), 100);
                         lastDisplayedProgress = Math.max(lastDisplayedProgress, p);
                         $progressFill.css('width', lastDisplayedProgress + '%');
@@ -1180,11 +1169,18 @@
                     parts.push('Files: ' + scannedCount + '/' + totalCount);
                     parts.push('Remaining: ' + remainingCount);
                 }
+                var counts = stepData.queue_counts;
+                if (counts) {
+                    parts.push('Directories remaining: ' + (counts.directories_remaining || 0));
+                    parts.push('Queue: ' + counts.pending + ' pending, ' + counts.processing + ' claimed, ' + counts.done + ' done');
+                }
                 if (currentItem && currentItem.path) {
                     parts.push('Now: ' + currentItem.path);
                 }
                 if (stepData.eta_label) {
                     parts.push('ETA: ' + stepData.eta_label);
+                } else if (stepData.discovery_complete === false) {
+                    parts.push('ETA: discovering files...');
                 } else if (scanStats && scanStats.files_total) {
                     parts.push('ETA: calculating...');
                 }
@@ -1201,6 +1197,17 @@
                 }
             };
 
+            var stopPolling = function(message) {
+                clearInterval(progressInterval);
+                clearTimeout(self.state.scan.pollTimeout);
+                $button.prop('disabled', false);
+                $cancelButton.prop('disabled', false);
+                $resetButton.prop('disabled', false);
+                $progressText.text(message);
+                $logLines.text($logLines.text() + '\n' + message);
+                self.showNotice(message, 'error');
+            };
+
             var pollStep = function() {
                 if (self.state.scan && self.state.scan.cancelled) {
                     return;
@@ -1214,6 +1221,10 @@
                     }
                     renderStatus(stepData);
 
+                    if (!stepData || ['running', 'complete'].indexOf(stepData.status) === -1) {
+                        stopPolling((stepData && (stepData.error || stepData.message)) || 'Scan is no longer running. Start a new scan.');
+                        return;
+                    }
                     if (stepData && stepData.status === 'complete') {
                         clearInterval(progressInterval);
                         lastDisplayedProgress = 100;
@@ -1229,6 +1240,18 @@
                         return;
                     }
 
+                    var counts = stepData.queue_counts || {};
+                    var stats = stepData.results && stepData.results.scan_stats || {};
+                    var work = JSON.stringify([stepData.stage, stepData.core_offset, stepData.integrity_offset, stepData.discovery_cursor,
+                        counts.total, counts.done, stats.files_scanned]);
+                    if (work !== self.state.scan.lastWork) {
+                        self.state.scan.lastWork = work;
+                        self.state.scan.lastWorkAt = Date.now();
+                    } else if (Date.now() - self.state.scan.lastWorkAt >= 180000) {
+                        stopPolling('No scan progress for three minutes. Automatic scanning paused; run the scan again to resume, or inspect the server error/resource logs.');
+                        return;
+                    }
+
                     // Adaptive polling: wait a fraction of the server's time budget.
                     // For short budgets (5s), poll quickly (300ms).
                     // For longer budgets (20s), poll less frequently (800ms).
@@ -1240,19 +1263,17 @@
                     var isGatewayTimeout = status === 0 || status === 502 || status === 503 || status === 504;
                     if (isGatewayTimeout && self.state.scan && !self.state.scan.cancelled) {
                         self.state.scan.gatewayRetries = (self.state.scan.gatewayRetries || 0) + 1;
+                        if (self.state.scan.gatewayRetries > 5) {
+                            stopPolling('Repeated connection failures. Automatic scanning paused; run the scan again to resume. Check the server error/resource logs.');
+                            return;
+                        }
                         self.state.scan.timeBudget = 4;
                         $progressText.text('Connection timed out while scanning. Retrying with smaller steps...');
                         self.state.scan.pollTimeout = setTimeout(pollStep, Math.min(15000, 3000 * self.state.scan.gatewayRetries));
                         return;
                     }
 
-                    clearInterval(progressInterval);
-                    $progress.hide();
-                    $logSection.hide();
-                    $button.prop('disabled', false);
-                    $cancelButton.prop('disabled', true);
-                    $resetButton.prop('disabled', false);
-                    alert((err && err.message) ? err.message : atomicedgeAdmin.strings.error);
+                    stopPolling((err && err.message) ? err.message : atomicedgeAdmin.strings.error);
                 });
             };
 
@@ -1398,6 +1419,7 @@
                 url: atomicedgeAdmin.ajaxUrl,
                 type: 'POST',
                 data: data,
+                timeout: action === 'atomicedge_scan_step' ? 60000 : 0,
                 success: function(response) {
                     // Transparent nonce refresh: if the server flags a nonce
                     // error and this is not already a retry, fetch a fresh

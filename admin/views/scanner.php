@@ -377,7 +377,12 @@ $atomicedge_last_results = $atomicedge_scanner->get_last_results();
 									$atomicedge_indicators = is_array( $atomicedge_issue['indicators'] ?? null ) ? $atomicedge_issue['indicators'] : array();
 									?>
 									<tr class="atomicedge-finding" data-severity="<?php echo esc_attr( $atomicedge_severity ); ?>" data-rank="<?php echo esc_attr( AtomicEdge_Scanner::severity_rank( $atomicedge_severity ) ); ?>" data-state="<?php echo esc_attr( $atomicedge_state ); ?>" data-dismissed="<?php echo 'dismissed' === $atomicedge_state ? '1' : '0'; ?>">
-										<td><code><?php echo esc_html( $atomicedge_shown ); ?></code></td>
+										<td>
+											<code><?php echo esc_html( $atomicedge_shown ); ?></code>
+											<?php if ( isset( $atomicedge_issue['line'] ) ) : ?>
+												<br><span class="atomicedge-finding-line"><?php echo esc_html( sprintf( /* translators: %d: line number in the scanned file. */ __( 'Line %d', 'atomic-edge-security' ), (int) $atomicedge_issue['line'] ) ); ?></span>
+											<?php endif; ?>
+										</td>
 										<td class="atomicedge-finding-issue">
 											<?php echo esc_html( $atomicedge_detail ); ?>
 											<?php if ( isset( $atomicedge_classification_labels[ $atomicedge_class ] ) ) : ?>
@@ -388,7 +393,14 @@ $atomicedge_last_results = $atomicedge_scanner->get_last_results();
 													<summary><?php echo esc_html( sprintf( _n( '%d match', '%d matches', count( $atomicedge_indicators ), 'atomic-edge-security' ), count( $atomicedge_indicators ) ) ); ?></summary>
 													<ul>
 														<?php foreach ( $atomicedge_indicators as $atomicedge_indicator ) : ?>
-															<li><?php echo esc_html( (string) ( $atomicedge_indicator['pattern'] ?? '' ) ); ?> &mdash; <?php echo esc_html( ucfirst( (string) ( $atomicedge_indicator['severity'] ?? '' ) ) ); ?></li>
+															<?php $atomicedge_indicator_lines = is_array( $atomicedge_indicator['lines'] ?? null ) ? $atomicedge_indicator['lines'] : array(); ?>
+															<li>
+																<?php echo esc_html( (string) ( $atomicedge_indicator['pattern'] ?? '' ) ); ?>
+																<?php if ( ! empty( $atomicedge_indicator_lines ) ) : ?>
+																	&mdash; <?php echo esc_html( sprintf( /* translators: %s: comma-separated line numbers. */ __( 'lines %s', 'atomic-edge-security' ), implode( ', ', array_map( 'intval', $atomicedge_indicator_lines ) ) ) ); ?>
+																<?php endif; ?>
+																&mdash; <?php echo esc_html( ucfirst( (string) ( $atomicedge_indicator['severity'] ?? '' ) ) ); ?>
+															</li>
 														<?php endforeach; ?>
 													</ul>
 												</details>

@@ -603,6 +603,11 @@ tr.atomicedge-finding[data-state="dismissed"] {
 	cursor: pointer;
 }
 
+.atomicedge-finding-line {
+	color: #50575e;
+	font-size: 12px;
+}
+
 .atomicedge-severity {
 	display: inline-block;
 	padding: 3px 8px;

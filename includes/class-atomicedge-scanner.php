@@ -103,6 +103,11 @@ class AtomicEdge_Scanner {
 	private const MAX_MATCHES_PER_FILE = 200;
 
 	/**
+	 * Distinct line numbers recorded per indicator.
+	 */
+	private const MAX_LINES_PER_INDICATOR = 10;
+
+	/**
 	 * Functions that execute code or data. Encoding alone is informational without one of these.
 	 */
 	private const EXECUTION_FUNCTIONS = array(
@@ -3659,10 +3664,15 @@ class AtomicEdge_Scanner {
 
 		// Check for hidden PHP in image files.
 		if ( $check_php_in_image && $this->is_php_in_image( $filepath, $content ) ) {
+			$tag_line = 1;
+			if ( preg_match( '/<\?(?!xml)/i', $content, $tag, PREG_OFFSET_CAPTURE ) ) {
+				$tag_line = $this->line_number_for_offset( $this->build_line_index( $content ), (int) $tag[0][1] );
+			}
 			return array(
 				'type'     => 'php_in_image',
 				'severity' => 'critical',
 				'pattern'  => __( 'PHP code hidden in image file', 'atomic-edge-security' ),
+				'line'     => $tag_line,
 			);
 		}
 
@@ -3784,7 +3794,8 @@ class AtomicEdge_Scanner {
 	 * @return array<int, array{category: string, description: string, offset: int, severity: string}>
 	 */
 	private function collect_pattern_matches( $content, $pattern_groups ) {
-		$matches = array();
+		$matches     = array();
+		$line_starts = $this->build_line_index( $content );
 
 		foreach ( $this->get_combined_patterns( $pattern_groups ) as $group_name => $group_data ) {
 			$found = array();
@@ -3801,10 +3812,12 @@ class AtomicEdge_Scanner {
 					$descriptions[ $text ] = $this->identify_matched_pattern( $text, $pattern_groups[ $group_name ] );
 				}
 
+				$offset   = (int) $hit[1];
 				$matches[] = array(
 					'category'    => $group_name,
 					'description' => $descriptions[ $text ],
-					'offset'      => (int) $hit[1],
+					'offset'      => $offset,
+					'line'        => $this->line_number_for_offset( $line_starts, $offset ),
 					'severity'    => $severity,
 				);
 
@@ -3816,6 +3829,47 @@ class AtomicEdge_Scanner {
 
 		return $matches;
 	}
+
+	/**
+	 * Byte offsets at which each line of a file starts.
+	 *
+	 * Line 1 starts at offset 0. Each newline starts the next line, so \r\n and \n
+	 * endings both produce the same line numbers.
+	 *
+	 * @param string $content File content.
+	 * @return int[] Ascending line start offsets.
+	 */
+	private function build_line_index( $content ) {
+		$starts = array( 0 );
+		$offset = 0;
+		while ( false !== ( $newline = strpos( $content, "\n", $offset ) ) ) {
+			$starts[] = $newline + 1;
+			$offset   = $newline + 1;
+		}
+		return $starts;
+	}
+
+	/**
+	 * One-based line number containing a byte offset.
+	 *
+	 * @param int[] $line_starts Line start offsets from build_line_index().
+	 * @param int   $offset      Byte offset.
+	 * @return int
+	 */
+	private function line_number_for_offset( $line_starts, $offset ) {
+		$low  = 0;
+		$high = count( $line_starts ) - 1;
+		while ( $low < $high ) {
+			$mid = (int) ( ( $low + $high + 1 ) / 2 );
+			if ( $line_starts[ $mid ] <= $offset ) {
+				$low = $mid;
+			} else {
+				$high = $mid - 1;
+			}
+		}
+		return $low + 1;
+	}
+
 
 	/**
 	 * Build one finding for a file from its category matches.
@@ -3832,7 +3886,6 @@ class AtomicEdge_Scanner {
 	 */
 	private function build_pattern_finding( $content, $filepath, $matches ) {
 		$analysis   = $this->analyze_php_context( $content, $filepath );
-		$top        = null;
 		$indicators = array();
 
 		foreach ( $matches as $match ) {
@@ -3845,11 +3898,20 @@ class AtomicEdge_Scanner {
 					'category'       => $match['category'],
 					'severity'       => $effective['severity'],
 					'classification' => $effective['classification'],
+					'lines'          => array(),
 				);
 			}
 
-			if ( null === $top || self::severity_rank( $effective['severity'] ) > self::severity_rank( $top['severity'] ) ) {
-				$top = $indicators[ $key ];
+			$known_lines = $indicators[ $key ]['lines'];
+			if ( count( $known_lines ) < self::MAX_LINES_PER_INDICATOR && ! in_array( $match['line'], $known_lines, true ) ) {
+				$indicators[ $key ]['lines'][] = $match['line'];
+			}
+		}
+
+		$top = null;
+		foreach ( $indicators as $indicator ) {
+			if ( null === $top || self::severity_rank( $indicator['severity'] ) > self::severity_rank( $top['severity'] ) ) {
+				$top = $indicator;
 			}
 		}
 
@@ -3859,10 +3921,12 @@ class AtomicEdge_Scanner {
 			'pattern'        => $top['pattern'],
 			'category'       => $top['category'],
 			'classification' => $top['classification'],
+			'line'           => $top['lines'][0],
 			'indicators'     => array_slice( array_values( $indicators ), 0, 10 ),
 			'sha256'         => hash( 'sha256', $content ),
 		);
 	}
+
 
 	/**
 	 * Determine whether a match can execute, based on PHP token context.

@@ -52,6 +52,17 @@ tests/
 
 ## Test Categories
 
+### 2.9.8 line numbers and compatibility
+
+| Adjustment | Coverage evaluation |
+|---|---|
+| Line numbers for pattern findings | ScannerTest covers a match on a plain file, CRLF line endings, a match on a final line with no trailing newline, boundary lookup of offset to line, and the one-based line of each match. |
+| Distinct lines per pattern | ScannerTest covers repeated matches recording each distinct line in order, and the cap of 10 lines per pattern. |
+| Top-level line | ScannerTest confirms the finding's line is the first line of its most severe pattern, not the first match in the file. |
+| Hidden PHP in images | ScannerTest confirms the reported line is the first non-XML PHP tag. |
+| Results table | A temporary render check of the Scanner page confirmed the "Line N" label, the per-pattern line lists, and that file-level findings show no label. The check was deleted afterward. The automated tests do not render the view. |
+| Compatibility | No new WordPress API, option, or AJAX action. The line index is built once per file from the already-capped read, so cost stays linear. Findings stored before 2.9.8 have no line and display as before. |
+
 ### 2.9.7 scanner regressions and compatibility
 
 | Adjustment | Coverage evaluation |

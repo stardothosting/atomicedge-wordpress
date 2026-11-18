@@ -4,7 +4,7 @@ Tags: 2FA, Firewall, Malware, Scanner, Security
 Requires at least: 5.8
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 2.9.7
+Stable tag: 2.9.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -141,6 +141,10 @@ The plugin automatically detects and uses the best available option.
 9. Adaptive Defense dashboard showing AI-powered threat detections and automatic IP blocking
 
 == Changelog ==
+
+= 2.9.8 =
+* NEW: Malware scan findings show the line number of each match. The details view lists the lines for every pattern in a file. Hidden PHP in an image reports the line of its first PHP tag. Findings from scans run before 2.9.8 have no line numbers until the next scan.
+* COMPATIBILITY: Reviewed against WordPress 7.1.4; minimum WordPress 5.8 and PHP 7.4 requirements are unchanged. No new WordPress APIs, options, or AJAX actions. Verification uses isolated automated tests and static compatibility checks; a live WordPress and cPanel scan remains a separate release verification step.
 
 = 2.9.7 =
 * FIX: Ordinary encoding functions, such as base64_decode in encryption helpers, are informational when no execution function appears in executable code. They are no longer reported as high-severity obfuscation.

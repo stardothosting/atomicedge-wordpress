@@ -7,7 +7,7 @@ WordPress firewall with cloud WAF rules, malware scanning, 2FA, vulnerability ch
 | Requires at least | WordPress 5.8 |
 | Tested up to | WordPress 7.1 |
 | Requires PHP | 7.4 |
-| Stable tag | 2.9.7 |
+| Stable tag | 2.9.8 |
 | License | GPLv2 or later |
 | License URI | [https://www.gnu.org/licenses/gpl-2.0.html](https://www.gnu.org/licenses/gpl-2.0.html) |
 
@@ -146,6 +146,11 @@ Malware scanning uses pattern matching, so some legitimate code matches a patter
 9. Adaptive Defense dashboard showing AI-powered threat detections and automatic IP blocking
 
 ## Changelog
+
+### 2.9.8
+
+- NEW: Malware scan findings show the line number of each match. The details view lists the lines for every pattern in a file. Hidden PHP in an image reports the line of its first PHP tag. Findings from scans run before 2.9.8 have no line numbers until the next scan.
+- COMPATIBILITY: Reviewed against WordPress 7.1.4; minimum WordPress 5.8 and PHP 7.4 requirements are unchanged. No new WordPress APIs, options, or AJAX actions. See [test coverage and compatibility scope](tests/README.md#298-line-numbers-and-compatibility) for verification details and live-testing limitations.
 
 ### 2.9.7
 
@@ -601,4 +606,4 @@ Planned work that is not part of any current release. Revisit when priorities ar
 ### Release and verification
 
 - [ ] **Generate or retire the integrity manifest.** `admin/assets/integrity/atomicedge-manifest.json` has no generator in this repository and is stale for files changed since it was produced. Add a release step that regenerates it, or remove the manifest-based check.
-- [ ] **Live verification of 2.9.7 on WordPress 7.1.4.** On a test site, run quick and thorough scans, check queue drainage, sensitivity changes, dismiss and restore, and the sort and search toolbar. The automated tests don't exercise the jQuery wiring.
+- [ ] **Live verification of 2.9.8 on WordPress 7.1.4.** On a test site, run quick and thorough scans, check queue drainage, sensitivity changes, dismiss and restore, the sort and search toolbar, and the line numbers shown for findings. The automated tests don't exercise the jQuery wiring.

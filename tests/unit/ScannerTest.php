@@ -1034,6 +1034,96 @@ class ScannerTest extends TestCase {
 	}
 
 	/**
+	 * A finding reports the line of its match, counting from one.
+	 */
+	public function test_pattern_finding_reports_line_number_of_match() {
+		$finding = $this->scan_with_mock_patterns( $this->write_temp_file( 'line-three.php', "<?php\n\neval( \$x );\n" ) );
+
+		$this->assertSame( 3, $finding['line'] );
+		$this->assertSame( 3, $finding['indicators'][0]['lines'][0] );
+	}
+
+	/**
+	 * Line numbers are the same for CRLF and LF line endings.
+	 */
+	public function test_line_numbers_are_correct_with_crlf_endings() {
+		$finding = $this->scan_with_mock_patterns( $this->write_temp_file( 'crlf.php', "<?php\r\n\r\neval( \$x );\r\n" ) );
+
+		$this->assertSame( 3, $finding['line'] );
+	}
+
+	/**
+	 * Every distinct line of a repeated pattern is recorded, in order, without duplicates.
+	 */
+	public function test_repeated_pattern_records_each_distinct_line() {
+		$content = "<?php\neval( \$a );\neval( \$b );\n\neval( \$c );\n";
+		$finding = $this->scan_with_mock_patterns( $this->write_temp_file( 'repeated.php', $content ) );
+
+		$this->assertSame( 2, $finding['line'] );
+		$this->assertSame( array( 2, 3, 5 ), $finding['indicators'][0]['lines'] );
+	}
+
+	/**
+	 * Distinct lines per pattern are capped so large files keep findings compact.
+	 */
+	public function test_indicator_line_list_is_capped() {
+		$content = "<?php\n" . str_repeat( "eval( \$x );\n", 15 );
+		$finding = $this->scan_with_mock_patterns( $this->write_temp_file( 'many-lines.php', $content ) );
+
+		$this->assertCount( 10, $finding['indicators'][0]['lines'] );
+		$this->assertSame( 2, $finding['line'] );
+	}
+
+	/**
+	 * The top-level line is the first line of the most severe indicator, not the first match in the file.
+	 */
+	public function test_finding_line_follows_most_severe_indicator() {
+		$content = "<?php\n\$a = base64_decode( \$b );\nsystem( \$a );\n";
+		$patterns = array(
+			'obfuscation'     => array( 'base64_decode\s*\(' => 'Base64 decode' ),
+			'shell_execution' => array( 'system\s*\(' => 'System function' ),
+		);
+		$finding = $this->scan_with_mock_patterns( $this->write_temp_file( 'severe-line.php', $content ), $patterns );
+
+		$this->assertSame( 'critical', $finding['severity'] );
+		$this->assertSame( 3, $finding['line'] );
+	}
+
+	/**
+	 * A match on the final line without a trailing newline is still located.
+	 */
+	public function test_line_number_of_match_on_final_line_without_newline() {
+		$finding = $this->scan_with_mock_patterns( $this->write_temp_file( 'last-line.php', "<?php\n\neval( \$x );" ) );
+
+		$this->assertSame( 3, $finding['line'] );
+	}
+
+	/**
+	 * Offset-to-line lookup uses line starts, including boundaries and empty content.
+	 */
+	public function test_line_number_for_offset_uses_line_boundaries() {
+		$starts = array( 0, 6, 12 );
+
+		$this->assertSame( 1, $this->call_private( 'line_number_for_offset', $starts, 0 ) );
+		$this->assertSame( 1, $this->call_private( 'line_number_for_offset', $starts, 5 ) );
+		$this->assertSame( 2, $this->call_private( 'line_number_for_offset', $starts, 6 ) );
+		$this->assertSame( 2, $this->call_private( 'line_number_for_offset', $starts, 11 ) );
+		$this->assertSame( 3, $this->call_private( 'line_number_for_offset', $starts, 40 ) );
+		$this->assertSame( 1, $this->call_private( 'line_number_for_offset', array( 0 ), 0 ) );
+	}
+
+	/**
+	 * Hidden PHP in an image reports the line of its first PHP tag.
+	 */
+	public function test_php_in_image_reports_line_of_first_php_tag() {
+		$file   = $this->write_temp_file( 'avatar.gif', "GIF89a\nbinary-ish filler\n<?php echo 1; ?>\n" );
+		$result = $this->invoke_on( $this->scanner, 'scan_file_for_patterns', $file, array(), true );
+
+		$this->assertSame( 'php_in_image', $result['type'] );
+		$this->assertSame( 3, $result['line'] );
+	}
+
+	/**
 	 * Sensitivity defaults to standard and rejects unknown levels.
 	 */
 	public function test_sensitivity_defaults_to_standard_and_rejects_unknown_levels() {

@@ -585,3 +585,20 @@ The malware scanner fetches signature patterns from a public API endpoint.
 ### Data Storage
 
 All API responses are cached locally using WordPress transients to minimize external requests. Malware signature data is cached for 24 hours. Analytics data is fetched fresh on each page load but displayed quickly via JavaScript pagination.
+
+## TODO
+
+Planned work that is not part of any current release. Revisit when priorities are set.
+
+### Malware scanner
+
+- [ ] **Checksum verification for WordPress.org plugins.** Trust files whose SHA-256 matches the official per-version checksums at `https://downloads.wordpress.org/plugin-checksums/{slug}/{version}.json`, the same source `wp plugin verify-checksums` uses. Verified files would skip pattern matching. Modified or unlisted files would still be scanned and reported. Open questions: cache lifetime and invalidation per slug and version, behavior when the endpoint is unavailable or has no checksums (fall back to pattern scanning), and the privacy impact of sending plugin slugs and versions.
+- [ ] **Explore a centralized checksum cache on the Atomic Edge dashboard.** The dashboard would fetch and cache checksums once per slug and version, and sites would query it rather than WordPress.org. That reduces per-site requests and rate-limit exposure. Trade-offs to evaluate: the dashboard becomes part of the trust path (signed responses or pinned keys would be needed), availability depends on the dashboard, and the dashboard learns each site's plugin inventory.
+- [ ] **Tune server-side malware signatures.** Bare keywords such as `webshell`, `backdoor`, and `owned by` match prose. Add word boundaries or move them to a low-confidence category in the dashboard's `MalwareSignatureService`.
+- [ ] **Incremental quick scans.** Store a baseline of path, size, and modification time, and re-scan only changed files. This changes scan semantics, so it needs a decision first.
+- [ ] **Background scan execution.** Move long scans from browser-driven AJAX slices to WP-Cron, a loopback request, or WP-CLI, so a scan doesn't depend on an admin page staying open.
+
+### Release and verification
+
+- [ ] **Generate or retire the integrity manifest.** `admin/assets/integrity/atomicedge-manifest.json` has no generator in this repository and is stale for files changed since it was produced. Add a release step that regenerates it, or remove the manifest-based check.
+- [ ] **Live verification of 2.9.6 on WordPress 7.1.4.** On a test site, run quick and thorough scans, check queue drainage, sensitivity changes, dismiss and restore, and the sort and search toolbar. The automated tests don't exercise the jQuery wiring.

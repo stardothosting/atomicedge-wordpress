@@ -71,14 +71,10 @@ tests/
 | Results toolbar | `findings-filter.js`, run from JsSyntaxTest, covers state, status/severity/keyword filters, and severity/file/issue sorting. jQuery DOM wiring is not exercised by automated tests; verify it on a site. |
 | Calibration evidence | Verified outside the suite with the real Laravel signature set against the three reported files, using a temporary harness that was deleted afterward. `class-atomicedge-api.php` and `class-atomicedge-2fa-crypto.php`: base64 decoding high → low (`encoding_without_sink`). `admin/views/scanner.php`: keyword medium → low (`inert_context`). |
 | Compatibility | Adds one options-backed setting, one dismissal option, two AJAX actions, and `token_get_all()`, which requires the tokenizer extension bundled with PHP. Both options are removed in uninstall. No new WordPress APIs or minimum-version changes. |
-
-Known follow-ups (not in this release):
-
-- Server-side signature tuning belongs in the Laravel `MalwareSignatureService`. Bare keywords such as `webshell`, `backdoor`, and `owned by` match prose; they should use word boundaries or move to a low-confidence category.
-- Verify against the WordPress.org plugin checksums (the source of `wp plugin verify-checksums`) for WordPress.org-distributed plugins. That would trust matching files outright and needs a network-dependency and caching decision.
-- The shipped integrity manifest (`admin/assets/integrity/atomicedge-manifest.json`) has no generator in this repository and is stale for files changed since it was produced, so it is not used as a trust anchor.
 | Browser polling | `JsSyntaxTest.php` executes `scanner-polling.js` with Node's built-in assertions: terminal errors stop, gateway retries are bounded, unchanged work pauses, advancing work/cursors continue, completion stops, scan-step requests have a timeout, and progress is never synthetically animated. No npm dependencies or browser/network calls are needed. |
 | Release metadata | Version/compatibility declarations are updated together in the plugin entry file and both release readmes; no runtime behavior or minimum requirements change, so no constant-only tests were added. |
+
+Open follow-ups are tracked in the [TODO section of the repository README](../README.md#todo).
 
 Compatibility evaluation (2026-11-17):
 

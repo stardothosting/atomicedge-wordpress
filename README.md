@@ -7,7 +7,7 @@ WordPress firewall with cloud WAF rules, malware scanning, 2FA, vulnerability ch
 | Requires at least | WordPress 5.8 |
 | Tested up to | WordPress 7.1 |
 | Requires PHP | 7.4 |
-| Stable tag | 2.9.6 |
+| Stable tag | 2.9.7 |
 | License | GPLv2 or later |
 | License URI | [https://www.gnu.org/licenses/gpl-2.0.html](https://www.gnu.org/licenses/gpl-2.0.html) |
 
@@ -131,7 +131,7 @@ The plugin automatically detects and uses the best available option.
 
 ### Why does the malware scanner flag a file from my own plugin?
 
-Malware scanning uses pattern matching, so some legitimate code matches a pattern. Since 2.9.6, the scanner lowers the severity of matches that cannot run, such as text inside comments or string literals, and of encoding functions like base64_decode that are not combined with an execution function. Choose a sensitivity level on the Scanner page, and dismiss a finding after you have reviewed it. A dismissal applies only to that exact file version. If the file changes, the finding is reported again.
+Malware scanning uses pattern matching, so some legitimate code matches a pattern. Since 2.9.7, the scanner lowers the severity of matches that cannot run, such as text inside comments or string literals, and of encoding functions like base64_decode that are not combined with an execution function. Choose a sensitivity level on the Scanner page, and dismiss a finding after you have reviewed it. A dismissal applies only to that exact file version. If the file changes, the finding is reported again.
 
 ## Screenshots
 
@@ -147,7 +147,7 @@ Malware scanning uses pattern matching, so some legitimate code matches a patter
 
 ## Changelog
 
-### 2.9.6
+### 2.9.7
 
 - FIX: Ordinary encoding functions, such as base64_decode in encryption helpers, are informational when no execution function appears in executable code. They are no longer reported as high-severity obfuscation.
 - FIX: Matches that appear only inside comments, string literals, or inline text of .php files are informational, so documentation and interface text no longer triggers high-severity alerts.
@@ -164,7 +164,7 @@ Malware scanning uses pattern matching, so some legitimate code matches a patter
 - IMPROVEMENT: Discovery writes queued directories and PHP files with multi-row inserts. Duplicate rows from resumed directories are ignored, and a directory is only marked complete after its child rows are persisted. A failed write leaves the directory unfinished for retry.
 - IMPROVEMENT: Show directory-discovery and queue counts, actual current files, per-step throughput and timings, and signature-fetch timing in diagnostics.
 - IMPROVEMENT: During discovery, the ETA is an estimate from measured per-directory and per-file cost, labeled as an estimate, and counts only directories and files already queued.
-- COMPATIBILITY: Reviewed against WordPress 7.1.4; minimum WordPress 5.8 and PHP 7.4 requirements are unchanged. See [test coverage and compatibility scope](tests/README.md#296-scanner-regressions-and-compatibility) for verification details and live-testing limitations.
+- COMPATIBILITY: Reviewed against WordPress 7.1.4; minimum WordPress 5.8 and PHP 7.4 requirements are unchanged. See [test coverage and compatibility scope](tests/README.md#297-scanner-regressions-and-compatibility) for verification details and live-testing limitations.
 
 ### 2.9.4
 
@@ -601,4 +601,4 @@ Planned work that is not part of any current release. Revisit when priorities ar
 ### Release and verification
 
 - [ ] **Generate or retire the integrity manifest.** `admin/assets/integrity/atomicedge-manifest.json` has no generator in this repository and is stale for files changed since it was produced. Add a release step that regenerates it, or remove the manifest-based check.
-- [ ] **Live verification of 2.9.6 on WordPress 7.1.4.** On a test site, run quick and thorough scans, check queue drainage, sensitivity changes, dismiss and restore, and the sort and search toolbar. The automated tests don't exercise the jQuery wiring.
+- [ ] **Live verification of 2.9.7 on WordPress 7.1.4.** On a test site, run quick and thorough scans, check queue drainage, sensitivity changes, dismiss and restore, and the sort and search toolbar. The automated tests don't exercise the jQuery wiring.

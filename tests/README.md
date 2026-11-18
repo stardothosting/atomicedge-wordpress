@@ -52,7 +52,7 @@ tests/
 
 ## Test Categories
 
-### 2.9.6 scanner regressions and compatibility
+### 2.9.7 scanner regressions and compatibility
 
 | Adjustment | Coverage evaluation |
 |---|---|

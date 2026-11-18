@@ -4,7 +4,7 @@ Tags: 2FA, Firewall, Malware, Scanner, Security
 Requires at least: 5.8
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 2.9.6
+Stable tag: 2.9.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -95,7 +95,7 @@ Yes. When your site is connected to Atomic Edge, you can run a vulnerability sca
 
 = Why does the malware scanner flag a file from my own plugin? =
 
-Malware scanning uses pattern matching, so some legitimate code matches a pattern. Since 2.9.6, the scanner lowers the severity of matches that cannot run, such as text inside comments or string literals, and of encoding functions like base64_decode that are not combined with an execution function. Choose a sensitivity level on the Scanner page, and dismiss a finding after you have reviewed it. A dismissal applies only to that exact file version. If the file changes, the finding is reported again.
+Malware scanning uses pattern matching, so some legitimate code matches a pattern. Since 2.9.7, the scanner lowers the severity of matches that cannot run, such as text inside comments or string literals, and of encoding functions like base64_decode that are not combined with an execution function. Choose a sensitivity level on the Scanner page, and dismiss a finding after you have reviewed it. A dismissal applies only to that exact file version. If the file changes, the finding is reported again.
 
 = What attacks does the WAF block? =
 
@@ -142,7 +142,7 @@ The plugin automatically detects and uses the best available option.
 
 == Changelog ==
 
-= 2.9.6 =
+= 2.9.7 =
 * FIX: Ordinary encoding functions, such as base64_decode in encryption helpers, are informational when no execution function appears in executable code. They are no longer reported as high-severity obfuscation.
 * FIX: Matches that appear only inside comments, string literals, or inline text of .php files are informational, so documentation and interface text no longer triggers high-severity alerts.
 * FIX: Each suspicious file is reported at its highest effective severity, rather than the first matching category.

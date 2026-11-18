@@ -84,9 +84,20 @@ const running = () => ({
     assert.match(h.notices[0], /Repeated connection failures/);
 }
 {
+    const h = harness([running()]);
+    h.plugin.runScan();
+    const progressText = h.$('#atomicedge-scan-progress .atomicedge-progress-text').value;
+    assert.match(progressText, /Discovering: 2 directories left/);
+    assert.match(progressText, /ETA: calculating/);
+}
+{
+    const h = harness([Object.assign(running(), {eta_label: '3m 0s'})]);
+    h.plugin.runScan();
+    assert.match(h.$('#atomicedge-scan-progress .atomicedge-progress-text').value, /ETA: 3m 0s \(estimate, discovery ongoing\)/);
+}
+{
     const h = harness(Array.from({length: 4}, running));
     h.plugin.runScan();
-    assert.match(h.$('#atomicedge-scan-progress .atomicedge-progress-text').value, /discovering files/);
     for (let i = 0; i < 3; i++) h.advance(60000);
     assert.equal(h.timers.length, 0);
     assert.match(h.notices[0], /No scan progress/);

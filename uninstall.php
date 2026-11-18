@@ -20,6 +20,8 @@ $atomicedge_options_to_delete = array(
 	'atomicedge_site_data',
 	'atomicedge_last_scan',
 	'atomicedge_scan_results',
+	'atomicedge_scan_sensitivity',
+	'atomicedge_scan_dismissals',
 );
 
 foreach ( $atomicedge_options_to_delete as $atomicedge_option ) {

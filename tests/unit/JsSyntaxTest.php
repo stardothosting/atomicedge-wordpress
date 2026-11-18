@@ -69,6 +69,16 @@ class JsSyntaxTest extends TestCase {
 	}
 
 	/**
+	 * Findings toolbar: state, keyword/severity/status filters, and sorting behave as documented.
+	 */
+	public function test_findings_filter_and_sort_behavior() {
+		$output = array();
+		$code = 0;
+		exec( 'node ' . escapeshellarg( __DIR__ . '/findings-filter.js' ) . ' 2>&1', $output, $code );
+		$this->assertSame( 0, $code, implode( "\n", $output ) );
+	}
+
+	/**
 	 * Test adaptive-defense.js has valid JavaScript syntax.
 	 *
 	 * Regression test: a stray closing brace at line 373 broke ALL

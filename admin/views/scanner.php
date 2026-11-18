@@ -106,6 +106,18 @@ $atomicedge_last_results = $atomicedge_scanner->get_last_results();
 		<!-- Scan Results -->
 		<div id="atomicedge-scan-results" class="atomicedge-scan-results">
 			<?php if ( ! empty( $atomicedge_last_results ) ) : ?>
+				<?php
+				$atomicedge_scanner        = AtomicEdge::get_instance()->scanner;
+				$atomicedge_dismissals     = $atomicedge_scanner->get_scan_dismissals();
+				$atomicedge_threshold      = $atomicedge_scanner->get_sensitivity_threshold();
+				$atomicedge_sensitivity    = $atomicedge_scanner->get_scan_sensitivity();
+				$atomicedge_suspicious     = is_array( $atomicedge_last_results['suspicious'] ?? null ) ? $atomicedge_last_results['suspicious'] : array();
+				$atomicedge_finding_counts = $atomicedge_scanner->summarize_findings( $atomicedge_suspicious, $atomicedge_dismissals, $atomicedge_threshold );
+				$atomicedge_classification_labels = array(
+					'inert_context'         => __( 'matched only in comments or string literals', 'atomic-edge-security' ),
+					'encoding_without_sink' => __( 'encoding function with no execution in code', 'atomic-edge-security' ),
+				);
+				?>
 				<!-- Summary -->
 				<div class="atomicedge-results-summary">
 					<h2><?php esc_html_e( 'Scan Results', 'atomic-edge-security' ); ?></h2>
@@ -116,10 +128,10 @@ $atomicedge_last_results = $atomicedge_scanner->get_last_results();
 							<span class="atomicedge-summary-count"><?php echo esc_html( count( $atomicedge_last_results['core_files'] ?? array() ) ); ?></span>
 							<span class="atomicedge-summary-label"><?php esc_html_e( 'Modified Core Files', 'atomic-edge-security' ); ?></span>
 						</div>
-						<div class="atomicedge-summary-item <?php echo empty( $atomicedge_last_results['suspicious'] ) ? 'atomicedge-ok' : 'atomicedge-critical'; ?>">
-							<span class="dashicons <?php echo empty( $atomicedge_last_results['suspicious'] ) ? 'dashicons-yes-alt' : 'dashicons-dismiss'; ?>"></span>
-							<span class="atomicedge-summary-count"><?php echo esc_html( count( $atomicedge_last_results['suspicious'] ?? array() ) ); ?></span>
-							<span class="atomicedge-summary-label"><?php esc_html_e( 'Suspicious Files', 'atomic-edge-security' ); ?></span>
+						<div class="atomicedge-summary-item <?php echo 0 === $atomicedge_finding_counts['open'] ? 'atomicedge-ok' : 'atomicedge-critical'; ?>">
+							<span class="dashicons <?php echo 0 === $atomicedge_finding_counts['open'] ? 'dashicons-yes-alt' : 'dashicons-dismiss'; ?>"></span>
+							<span class="atomicedge-summary-count atomicedge-suspicious-count"><?php echo esc_html( $atomicedge_finding_counts['open'] ); ?></span>
+							<span class="atomicedge-summary-label"><?php esc_html_e( 'Suspicious Files (open)', 'atomic-edge-security' ); ?></span>
 						</div>
 						<?php if ( array_key_exists( 'integrity_issues', $atomicedge_last_results ) ) : ?>
 							<?php $atomicedge_integrity_issues = is_array( $atomicedge_last_results['integrity_issues'] ?? null ) ? $atomicedge_last_results['integrity_issues'] : array(); ?>
@@ -302,38 +314,97 @@ $atomicedge_last_results = $atomicedge_scanner->get_last_results();
 				<?php endif; ?>
 
 				<!-- Suspicious Files -->
-				<?php if ( ! empty( $atomicedge_last_results['suspicious'] ) ) : ?>
+				<?php if ( ! empty( $atomicedge_suspicious ) ) : ?>
 					<div class="atomicedge-results-section" data-paginate="true" data-per-page="10">
 						<h3>
 							<?php esc_html_e( 'Suspicious Files', 'atomic-edge-security' ); ?>
-							<span class="atomicedge-results-count">(<?php echo esc_html( count( $atomicedge_last_results['suspicious'] ) ); ?>)</span>
+							<span class="atomicedge-results-count">(<span class="atomicedge-findings-total"><?php echo esc_html( count( $atomicedge_suspicious ) ); ?></span>)</span>
 						</h3>
-						<p class="description"><?php esc_html_e( 'These files contain potentially malicious code patterns.', 'atomic-edge-security' ); ?></p>
-							<table class="wp-list-table widefat fixed striped atomicedge-paginated-table">
+						<p class="description">
+							<?php esc_html_e( 'These files contain potentially malicious code patterns. Findings below the selected sensitivity, and matches that only appear inside comments or string literals, are informational. Dismiss a finding to hide it for this exact file version; it returns automatically if the file changes.', 'atomic-edge-security' ); ?>
+						</p>
+						<div class="atomicedge-findings-toolbar" data-threshold-rank="<?php echo esc_attr( AtomicEdge_Scanner::severity_rank( $atomicedge_threshold ) ); ?>">
+							<label class="screen-reader-text" for="atomicedge-findings-search"><?php esc_html_e( 'Search findings', 'atomic-edge-security' ); ?></label>
+							<input type="search" id="atomicedge-findings-search" class="atomicedge-findings-search" placeholder="<?php esc_attr_e( 'Search file, issue, or severity', 'atomic-edge-security' ); ?>">
+							<label class="screen-reader-text" for="atomicedge-findings-severity"><?php esc_html_e( 'Filter by severity', 'atomic-edge-security' ); ?></label>
+							<select id="atomicedge-findings-severity" class="atomicedge-findings-severity">
+								<option value="all"><?php esc_html_e( 'All severities', 'atomic-edge-security' ); ?></option>
+								<option value="critical"><?php esc_html_e( 'Critical', 'atomic-edge-security' ); ?></option>
+								<option value="high"><?php esc_html_e( 'High', 'atomic-edge-security' ); ?></option>
+								<option value="medium"><?php esc_html_e( 'Medium', 'atomic-edge-security' ); ?></option>
+								<option value="low"><?php esc_html_e( 'Low', 'atomic-edge-security' ); ?></option>
+							</select>
+							<label class="screen-reader-text" for="atomicedge-findings-status"><?php esc_html_e( 'Filter by status', 'atomic-edge-security' ); ?></label>
+							<select id="atomicedge-findings-status" class="atomicedge-findings-status">
+								<option value="open"><?php esc_html_e( 'Open findings', 'atomic-edge-security' ); ?></option>
+								<option value="informational"><?php esc_html_e( 'Informational', 'atomic-edge-security' ); ?></option>
+								<option value="dismissed"><?php esc_html_e( 'Dismissed', 'atomic-edge-security' ); ?></option>
+								<option value="all"><?php esc_html_e( 'All', 'atomic-edge-security' ); ?></option>
+							</select>
+							<label class="screen-reader-text" for="atomicedge-findings-sort"><?php esc_html_e( 'Sort findings', 'atomic-edge-security' ); ?></label>
+							<select id="atomicedge-findings-sort" class="atomicedge-findings-sort">
+								<option value="severity"><?php esc_html_e( 'Sort: severity (high to low)', 'atomic-edge-security' ); ?></option>
+								<option value="file"><?php esc_html_e( 'Sort: file (A to Z)', 'atomic-edge-security' ); ?></option>
+								<option value="issue"><?php esc_html_e( 'Sort: issue (A to Z)', 'atomic-edge-security' ); ?></option>
+							</select>
+							<label class="screen-reader-text" for="atomicedge-findings-sensitivity"><?php esc_html_e( 'Scan sensitivity', 'atomic-edge-security' ); ?></label>
+							<select id="atomicedge-findings-sensitivity" class="atomicedge-findings-sensitivity">
+								<option value="essential" <?php selected( $atomicedge_sensitivity, 'essential' ); ?>><?php esc_html_e( 'Sensitivity: essential (high and critical)', 'atomic-edge-security' ); ?></option>
+								<option value="standard" <?php selected( $atomicedge_sensitivity, 'standard' ); ?>><?php esc_html_e( 'Sensitivity: standard (medium and above)', 'atomic-edge-security' ); ?></option>
+								<option value="thorough" <?php selected( $atomicedge_sensitivity, 'thorough' ); ?>><?php esc_html_e( 'Sensitivity: thorough (all findings)', 'atomic-edge-security' ); ?></option>
+							</select>
+							<span class="atomicedge-findings-match-count" aria-live="polite"></span>
+						</div>
+						<table class="wp-list-table widefat fixed striped atomicedge-paginated-table atomicedge-findings-table">
 							<thead>
 								<tr>
 									<th><?php esc_html_e( 'File', 'atomic-edge-security' ); ?></th>
 									<th><?php esc_html_e( 'Issue', 'atomic-edge-security' ); ?></th>
 									<th><?php esc_html_e( 'Severity', 'atomic-edge-security' ); ?></th>
+									<th><?php esc_html_e( 'Action', 'atomic-edge-security' ); ?></th>
 								</tr>
 							</thead>
 							<tbody>
-								<?php foreach ( $atomicedge_last_results['suspicious'] as $atomicedge_issue ) : ?>
-									<tr>
-										<td><code><?php echo esc_html( $atomicedge_issue['file_path'] ?? $atomicedge_issue['file'] ); ?></code></td>
-										<td>
-											<?php
-											if ( isset( $atomicedge_issue['pattern'] ) ) {
-												echo esc_html( $atomicedge_issue['pattern'] );
-											} elseif ( isset( $atomicedge_issue['reason'] ) ) {
-												echo esc_html( $atomicedge_issue['reason'] );
-											}
-											?>
+								<?php foreach ( $atomicedge_suspicious as $atomicedge_issue ) : ?>
+									<?php
+									$atomicedge_severity   = isset( $atomicedge_issue['severity'] ) ? (string) $atomicedge_issue['severity'] : 'medium';
+									$atomicedge_state      = $atomicedge_scanner->get_finding_state( $atomicedge_issue, $atomicedge_dismissals, $atomicedge_threshold );
+									$atomicedge_relative   = (string) ( $atomicedge_issue['file'] ?? '' );
+									$atomicedge_shown      = (string) ( $atomicedge_issue['file_path'] ?? $atomicedge_relative );
+									$atomicedge_hash       = (string) ( $atomicedge_issue['sha256'] ?? '' );
+									$atomicedge_detail     = isset( $atomicedge_issue['pattern'] ) ? (string) $atomicedge_issue['pattern'] : (string) ( $atomicedge_issue['reason'] ?? '' );
+									$atomicedge_class      = (string) ( $atomicedge_issue['classification'] ?? 'code' );
+									$atomicedge_indicators = is_array( $atomicedge_issue['indicators'] ?? null ) ? $atomicedge_issue['indicators'] : array();
+									?>
+									<tr class="atomicedge-finding" data-severity="<?php echo esc_attr( $atomicedge_severity ); ?>" data-rank="<?php echo esc_attr( AtomicEdge_Scanner::severity_rank( $atomicedge_severity ) ); ?>" data-state="<?php echo esc_attr( $atomicedge_state ); ?>" data-dismissed="<?php echo 'dismissed' === $atomicedge_state ? '1' : '0'; ?>">
+										<td><code><?php echo esc_html( $atomicedge_shown ); ?></code></td>
+										<td class="atomicedge-finding-issue">
+											<?php echo esc_html( $atomicedge_detail ); ?>
+											<?php if ( isset( $atomicedge_classification_labels[ $atomicedge_class ] ) ) : ?>
+												<span class="description">(<?php echo esc_html( $atomicedge_classification_labels[ $atomicedge_class ] ); ?>)</span>
+											<?php endif; ?>
+											<?php if ( count( $atomicedge_indicators ) > 1 ) : ?>
+												<details>
+													<summary><?php echo esc_html( sprintf( _n( '%d match', '%d matches', count( $atomicedge_indicators ), 'atomic-edge-security' ), count( $atomicedge_indicators ) ) ); ?></summary>
+													<ul>
+														<?php foreach ( $atomicedge_indicators as $atomicedge_indicator ) : ?>
+															<li><?php echo esc_html( (string) ( $atomicedge_indicator['pattern'] ?? '' ) ); ?> &mdash; <?php echo esc_html( ucfirst( (string) ( $atomicedge_indicator['severity'] ?? '' ) ) ); ?></li>
+														<?php endforeach; ?>
+													</ul>
+												</details>
+											<?php endif; ?>
 										</td>
 										<td>
-											<span class="atomicedge-severity atomicedge-severity-<?php echo esc_attr( $atomicedge_issue['severity'] ); ?>">
-												<?php echo esc_html( ucfirst( $atomicedge_issue['severity'] ) ); ?>
+											<span class="atomicedge-severity atomicedge-severity-<?php echo esc_attr( $atomicedge_severity ); ?>">
+												<?php echo esc_html( ucfirst( $atomicedge_severity ) ); ?>
 											</span>
+										</td>
+										<td>
+											<?php if ( '' !== $atomicedge_hash && '' !== $atomicedge_relative ) : ?>
+												<button type="button" class="button atomicedge-dismiss-finding" data-file="<?php echo esc_attr( $atomicedge_relative ); ?>" data-sha256="<?php echo esc_attr( $atomicedge_hash ); ?>">
+													<?php echo 'dismissed' === $atomicedge_state ? esc_html__( 'Restore', 'atomic-edge-security' ) : esc_html__( 'Dismiss', 'atomic-edge-security' ); ?>
+												</button>
+											<?php endif; ?>
 										</td>
 									</tr>
 								<?php endforeach; ?>

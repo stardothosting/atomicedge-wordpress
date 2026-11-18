@@ -58,6 +58,69 @@ class AtomicEdge_Scanner {
 	private const PROCESSING_ITEM_LEASE_SECONDS = 120;
 
 	/**
+	 * Maximum queue rows per multi-row INSERT during discovery.
+	 */
+	private const QUEUE_INSERT_CHUNK_SIZE = 200;
+
+	/**
+	 * Directory items needed before a queue ETA is shown during discovery.
+	 */
+	private const MIN_ETA_DIRECTORY_SAMPLES = 5;
+
+	/**
+	 * File items needed before remaining files contribute to a queue ETA.
+	 */
+	private const MIN_ETA_FILE_SAMPLES = 20;
+
+	/**
+	 * Option storing the admin-selected finding sensitivity.
+	 */
+	private const SENSITIVITY_OPTION = 'atomicedge_scan_sensitivity';
+
+	/**
+	 * Option storing dismissed findings, keyed by fingerprint.
+	 */
+	private const DISMISSALS_OPTION = 'atomicedge_scan_dismissals';
+
+	/**
+	 * Lowest severity shown as an open finding for each sensitivity level.
+	 */
+	private const SENSITIVITY_THRESHOLDS = array(
+		'essential' => 'high',
+		'standard'  => 'medium',
+		'thorough'  => 'low',
+	);
+
+	/**
+	 * Default sensitivity level.
+	 */
+	private const DEFAULT_SENSITIVITY = 'standard';
+
+	/**
+	 * Caps on matches recorded per category and per file.
+	 */
+	private const MAX_MATCHES_PER_CATEGORY = 50;
+	private const MAX_MATCHES_PER_FILE = 200;
+
+	/**
+	 * Functions that execute code or data. Encoding alone is informational without one of these.
+	 */
+	private const EXECUTION_FUNCTIONS = array(
+		'assert',
+		'call_user_func',
+		'call_user_func_array',
+		'create_function',
+		'exec',
+		'passthru',
+		'pcntl_exec',
+		'popen',
+		'proc_open',
+		'shell_exec',
+		'system',
+	);
+
+
+	/**
 	 * API instance for fetching signatures.
 	 *
 	 * @var AtomicEdge_API|null
@@ -225,6 +288,13 @@ class AtomicEdge_Scanner {
 	private $pending_done_ids = array();
 
 	/**
+	 * Discovered queue rows (run id, type, area, path) awaiting a bulk insert.
+	 *
+	 * @var array
+	 */
+	private $pending_queue_rows = array();
+
+	/**
 	 * Constructor.
 	 *
 	 * @param AtomicEdge_API|null $api Optional API instance for fetching signatures.
@@ -301,6 +371,7 @@ class AtomicEdge_Scanner {
 		$this->clear_scan_state();
 
 		// Save results.
+		$results = $this->attach_missing_finding_hashes( $results );
 		update_option( 'atomicedge_scan_results', $results );
 		update_option( 'atomicedge_last_scan', current_time( 'mysql' ) );
 
@@ -759,7 +830,13 @@ class AtomicEdge_Scanner {
 		$started = microtime( true );
 		$scanned_before = (int) $state['results']['scan_stats']['files_scanned'];
 		$items_processed = 0;
-		$timing = array( 'queue_ms' => 0, 'discovery_ms' => 0, 'scanning_ms' => 0 );
+		$timing = array(
+			'queue_ms'     => 0,
+			'discovery_ms' => 0,
+			'scanning_ms'  => 0,
+			'dir_items'    => 0,
+			'file_items'   => 0,
+		);
 
 		// Auto-detect optimal time budget based on server configuration.
 		if ( $time_budget_seconds <= 0 ) {
@@ -779,6 +856,7 @@ class AtomicEdge_Scanner {
 
 		// Reset pending done queue for this step.
 		$this->pending_done_ids = array();
+		$this->pending_queue_rows = array();
 
 		try {
 			$recovered = $this->recover_abandoned_processing_items( $state['run_id'], $time_budget_seconds );
@@ -842,6 +920,7 @@ class AtomicEdge_Scanner {
 			'items_processed' => $items_processed,
 			'files_scanned' => (int) $state['results']['scan_stats']['files_scanned'] - $scanned_before,
 		) );
+		$state['cost'] = $this->accumulate_scan_cost( isset( $state['cost'] ) ? $state['cost'] : array(), $state['step_stats'] );
 		$state['results']['scan_stats']['time_elapsed'] = max( 0, time() - strtotime( $state['started_at'] ) );
 		$state['results']['scan_stats']['memory_peak'] = memory_get_peak_usage( true );
 		$state['diagnostics'] = $this->scan_diagnostics;
@@ -883,8 +962,9 @@ class AtomicEdge_Scanner {
 				array_shift( $remaining );
 				$item_started = microtime( true );
 				$this->process_queue_item_batched( $item, $state, $started, $budget );
-				$key = 'file' === $item['item_type'] ? 'scanning_ms' : 'discovery_ms';
-				$timing[ $key ] += ( microtime( true ) - $item_started ) * 1000;
+				$is_file = 'file' === $item['item_type'];
+				$timing[ $is_file ? 'scanning_ms' : 'discovery_ms' ] += ( microtime( true ) - $item_started ) * 1000;
+				$timing[ $is_file ? 'file_items' : 'dir_items' ] = ( $timing[ $is_file ? 'file_items' : 'dir_items' ] ?? 0 ) + 1;
 				$processed++;
 			}
 		} finally {
@@ -1244,7 +1324,7 @@ class AtomicEdge_Scanner {
 	 */
 	private function calculate_eta_seconds( $state ) {
 		if ( isset( $state['discovery_complete'] ) && ! $state['discovery_complete'] ) {
-			return null;
+			return $this->calculate_discovery_eta_seconds( $state );
 		}
 		$total = isset( $state['results']['scan_stats']['files_total'] ) ? (int) $state['results']['scan_stats']['files_total'] : 0;
 		$scanned = isset( $state['results']['scan_stats']['files_scanned'] ) ? (int) $state['results']['scan_stats']['files_scanned'] : 0;
@@ -1266,6 +1346,41 @@ class AtomicEdge_Scanner {
 
 		$remaining = max( 0, $total - $scanned );
 		return (int) round( $remaining / $rate );
+	}
+
+	/**
+	 * Estimate remaining seconds from measured per-item cost while discovery is still running.
+	 *
+	 * The estimate covers directories and files already queued. Subdirectories that
+	 * have not been discovered yet are not counted, so this is a lower-bound estimate.
+	 *
+	 * @param array $state Scan state.
+	 * @return int|null
+	 */
+	private function calculate_discovery_eta_seconds( $state ) {
+		$cost   = isset( $state['cost'] ) && is_array( $state['cost'] ) ? $state['cost'] : array();
+		$counts = isset( $state['queue_counts'] ) && is_array( $state['queue_counts'] ) ? $state['queue_counts'] : array();
+
+		$dir_items = (int) ( $cost['dir_items'] ?? 0 );
+		$dir_ms    = (float) ( $cost['dir_ms'] ?? 0 );
+		if ( $dir_items < self::MIN_ETA_DIRECTORY_SAMPLES || $dir_ms <= 0 ) {
+			return null;
+		}
+
+		$remaining_ms = (int) ( $counts['directories_remaining'] ?? 0 ) * ( $dir_ms / $dir_items );
+
+		$file_items = (int) ( $cost['file_items'] ?? 0 );
+		if ( $file_items >= self::MIN_ETA_FILE_SAMPLES ) {
+			$remaining_ms += (int) ( $counts['files_remaining'] ?? 0 ) * ( (float) ( $cost['file_ms'] ?? 0 ) / $file_items );
+		}
+
+		// Claims and request overhead are not part of per-item cost; scale by measured wall time.
+		$busy_ms = $dir_ms + (float) ( $cost['file_ms'] ?? 0 ) + (float) ( $cost['queue_ms'] ?? 0 );
+		if ( $busy_ms > 0 && ! empty( $cost['elapsed_ms'] ) ) {
+			$remaining_ms *= max( 1.0, (float) $cost['elapsed_ms'] / $busy_ms );
+		}
+
+		return (int) round( $remaining_ms / 1000 );
 	}
 
 	/**
@@ -1984,6 +2099,75 @@ class AtomicEdge_Scanner {
 	}
 
 	/**
+	 * Buffer a discovered queue row for a bulk insert.
+	 *
+	 * @param string $run_id    Run id.
+	 * @param string $item_type Item type (dir or file).
+	 * @param string $area      Scan area.
+	 * @param string $path      Absolute path.
+	 * @return void
+	 */
+	private function buffer_queue_row( $run_id, $item_type, $area, $path ) {
+		$this->pending_queue_rows[] = array( $run_id, $item_type, $area, $path );
+		if ( count( $this->pending_queue_rows ) >= self::QUEUE_INSERT_CHUNK_SIZE ) {
+			$this->flush_pending_queue_rows();
+		}
+	}
+
+	/**
+	 * Insert buffered discovery rows using multi-row statements.
+	 *
+	 * ON DUPLICATE KEY keeps existing rows untouched, so a resumed directory that
+	 * rediscovers its children does not change their status or create duplicates.
+	 *
+	 * @return void
+	 */
+	private function flush_pending_queue_rows() {
+		if ( empty( $this->pending_queue_rows ) ) {
+			return;
+		}
+
+		global $wpdb;
+		$table_sql = $this->get_queue_table_name_sql();
+		if ( '' === $table_sql ) {
+			$this->check_queue_result( false );
+		}
+		$now = current_time( 'mysql' );
+
+		foreach ( array_chunk( $this->pending_queue_rows, self::QUEUE_INSERT_CHUNK_SIZE ) as $chunk ) {
+			$placeholders = array();
+			$values       = array();
+			foreach ( $chunk as $row ) {
+				list( $run_id, $item_type, $area, $path ) = $row;
+				$placeholders[] = "(%s, %s, %s, %s, %s, 'pending', NULL, %s, %s)";
+				array_push(
+					$values,
+					$run_id,
+					$item_type,
+					$area,
+					$path,
+					substr( hash( 'sha256', $item_type . '|' . $area . '|' . $path ), 0, 32 ),
+					$now,
+					$now
+				);
+			}
+
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			$result = $wpdb->query(
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter
+				$wpdb->prepare(
+					'INSERT INTO ' . $table_sql . ' (run_id, item_type, area, path, path_hash, status, meta, created_at, updated_at) VALUES '
+					. implode( ', ', $placeholders ) . ' ON DUPLICATE KEY UPDATE id = id',
+					$values
+				)
+			);
+			$this->check_queue_result( $result );
+		}
+
+		$this->pending_queue_rows = array();
+	}
+
+	/**
 	 * Claim the next pending queue item.
 	 *
 	 * @param string $run_id Run id.
@@ -2201,6 +2385,7 @@ class AtomicEdge_Scanner {
 			'done' => 0,
 			'error' => 0,
 			'directories_remaining' => 0,
+			'files_remaining' => 0,
 		);
 
 		foreach ( $rows as $row ) {
@@ -2215,7 +2400,40 @@ class AtomicEdge_Scanner {
 			}
 		}
 
+		$counts['files_remaining'] = max( 0, $counts['pending'] + $counts['processing'] - $counts['directories_remaining'] );
+
 		return $counts;
+	}
+
+	/**
+	 * Add one step's measured costs to the cumulative per-item cost totals.
+	 *
+	 * @param array $cost       Existing cumulative totals (may be empty).
+	 * @param array $step_stats Timing and counts for the completed step.
+	 * @return array Updated totals.
+	 */
+	private function accumulate_scan_cost( $cost, $step_stats ) {
+		$cost = is_array( $cost ) ? $cost : array();
+		$totals = array(
+			'dir_items'  => 0,
+			'dir_ms'     => 0.0,
+			'file_items' => 0,
+			'file_ms'    => 0.0,
+			'queue_ms'   => 0.0,
+			'elapsed_ms' => 0.0,
+		);
+		foreach ( $totals as $key => $default ) {
+			$totals[ $key ] = isset( $cost[ $key ] ) && is_numeric( $cost[ $key ] ) ? $cost[ $key ] + 0 : $default;
+		}
+
+		$totals['dir_items']  += (int) ( $step_stats['dir_items'] ?? 0 );
+		$totals['dir_ms']     += (float) ( $step_stats['discovery_ms'] ?? 0 );
+		$totals['file_items'] += (int) ( $step_stats['file_items'] ?? 0 );
+		$totals['file_ms']    += (float) ( $step_stats['scanning_ms'] ?? 0 );
+		$totals['queue_ms']   += (float) ( $step_stats['queue_ms'] ?? 0 );
+		$totals['elapsed_ms'] += (float) ( $step_stats['elapsed_ms'] ?? 0 );
+
+		return $totals;
 	}
 
 	/**
@@ -2420,7 +2638,9 @@ class AtomicEdge_Scanner {
 				$result['location_note'] = __( 'Suspicious pattern in wp-includes', 'atomic-edge-security' );
 			} elseif ( 'unknown' === $area ) {
 				$result['location_note'] = __( 'Suspicious file in non-standard directory (possible hidden malware)', 'atomic-edge-security' );
-				$result['severity'] = 'critical'; // Elevate severity for unknown directories.
+				if ( 'code' === ( $result['classification'] ?? 'code' ) ) {
+					$result['severity'] = 'critical'; // Elevate severity for unknown directories.
+				}
 			} elseif ( 'wp-content' === $area ) {
 				$result['location_note'] = __( 'Suspicious pattern in non-standard wp-content subdirectory', 'atomic-edge-security' );
 			}
@@ -2434,12 +2654,12 @@ class AtomicEdge_Scanner {
 				'reason'   => __( 'PHP file found in uploads directory', 'atomic-edge-security' ),
 			);
 		} elseif ( $is_unknown_area ) {
-			// Any PHP file in an unknown directory is suspicious, even without pattern matches.
+			// A PHP file in an unknown directory is worth review, but its presence alone is not evidence of compromise.
 			$state['results']['suspicious'][] = array(
 				'file'      => $relative_path,
 				'file_path' => $filepath,
 				'type'      => 'php_in_unknown_dir',
-				'severity'  => 'high',
+				'severity'  => 'medium',
 				'reason'    => __( 'PHP file found in non-standard directory (possible hidden malware)', 'atomic-edge-security' ),
 			);
 		}
@@ -2578,34 +2798,9 @@ class AtomicEdge_Scanner {
 				continue;
 			}
 
-			$child = rtrim( $dir, DIRECTORY_SEPARATOR ) . DIRECTORY_SEPARATOR . $entry;
-			$child_relative = $this->make_relative_to_root( $child );
 			$processed++;
 			$meta['last_entry'] = $entry;
-
-			if ( is_dir( $child ) ) {
-				if ( ! is_link( $child ) ) {
-					if ( $this->is_whitelisted_path( $child_relative . '/' ) ) {
-						continue;
-					}
-					if ( 'uploads' === $area && $this->is_legitimate_upload_cache( $child ) ) {
-						continue;
-					}
-					$this->enqueue_queue_item( $state['run_id'], 'dir', $area, $child, array() );
-				}
-			} elseif ( is_file( $child ) && preg_match( '/\.php$/i', $entry ) ) {
-				if ( $this->is_whitelisted_path( $child_relative ) ) {
-					$this->bump_diag_count( 'files_skipped_whitelist' );
-					continue;
-				}
-				if ( 'uploads' === $area && $this->is_legitimate_upload_cache( $child ) ) {
-					continue;
-				}
-				if ( isset( $this->scan_diagnostics['areas'][ $area ] ) ) {
-					$this->scan_diagnostics['areas'][ $area ]['php_files_found']++;
-				}
-				$this->enqueue_queue_item( $state['run_id'], 'file', $area, $child, array() );
-			}
+			$this->discover_directory_entry( $dir, $entry, $area, $state );
 
 			if ( $processed >= $max_entries || ( microtime( true ) - $started ) >= $time_budget_seconds ) {
 				break;
@@ -2615,8 +2810,11 @@ class AtomicEdge_Scanner {
 		$finished = ( false === $entry );
 		closedir( $handle );
 
+		// Child rows must be persisted before this directory's cursor or status moves.
+		$this->flush_pending_queue_rows();
+
 		if ( $finished ) {
-			$this->update_queue_item( $id, 'done' );
+			$this->queue_item_done( $id );
 			return;
 		}
 
@@ -2624,6 +2822,51 @@ class AtomicEdge_Scanner {
 		$this->update_queue_item( $id, 'pending', $meta );
 		$state['discovery_cursor'] = $relative_dir . '|' . ( $meta['last_entry'] ?? '' );
 	}
+
+	/**
+	 * Classify one directory entry and buffer it as a queue row when it needs scanning.
+	 *
+	 * @param string $dir   Parent directory path.
+	 * @param string $entry Entry name.
+	 * @param string $area  Scan area.
+	 * @param array  $state Run state.
+	 * @return void
+	 */
+	private function discover_directory_entry( $dir, $entry, $area, $state ) {
+		$child = rtrim( $dir, DIRECTORY_SEPARATOR ) . DIRECTORY_SEPARATOR . $entry;
+
+		if ( is_dir( $child ) ) {
+			if ( is_link( $child ) ) {
+				return;
+			}
+			$child_relative = $this->make_relative_to_root( $child );
+			if ( $this->is_whitelisted_path( $child_relative . '/' ) ) {
+				return;
+			}
+			if ( 'uploads' === $area && $this->is_legitimate_upload_cache( $child ) ) {
+				return;
+			}
+			$this->buffer_queue_row( $state['run_id'], 'dir', $area, $child );
+			return;
+		}
+
+		if ( ! preg_match( '/\.php$/i', $entry ) || ! is_file( $child ) ) {
+			return;
+		}
+		$child_relative = $this->make_relative_to_root( $child );
+		if ( $this->is_whitelisted_path( $child_relative ) ) {
+			$this->bump_diag_count( 'files_skipped_whitelist' );
+			return;
+		}
+		if ( 'uploads' === $area && $this->is_legitimate_upload_cache( $child ) ) {
+			return;
+		}
+		if ( isset( $this->scan_diagnostics['areas'][ $area ] ) ) {
+			$this->scan_diagnostics['areas'][ $area ]['php_files_found']++;
+		}
+		$this->buffer_queue_row( $state['run_id'], 'file', $area, $child );
+	}
+
 
 	/**
 	 * Process a file queue item.
@@ -2672,7 +2915,9 @@ class AtomicEdge_Scanner {
 				$result['location_note'] = __( 'Suspicious pattern in wp-includes', 'atomic-edge-security' );
 			} elseif ( 'unknown' === $area ) {
 				$result['location_note'] = __( 'Suspicious file in non-standard directory (possible hidden malware)', 'atomic-edge-security' );
-				$result['severity'] = 'critical'; // Elevate severity for unknown directories.
+				if ( 'code' === ( $result['classification'] ?? 'code' ) ) {
+					$result['severity'] = 'critical'; // Elevate severity for unknown directories.
+				}
 			} elseif ( 'wp-content' === $area ) {
 				$result['location_note'] = __( 'Suspicious pattern in non-standard wp-content subdirectory', 'atomic-edge-security' );
 			}
@@ -2686,12 +2931,12 @@ class AtomicEdge_Scanner {
 				'reason'   => __( 'PHP file found in uploads directory', 'atomic-edge-security' ),
 			);
 		} elseif ( $is_unknown_area ) {
-			// Any PHP file in an unknown directory is suspicious, even without pattern matches.
+			// A PHP file in an unknown directory is worth review, but its presence alone is not evidence of compromise.
 			$state['results']['suspicious'][] = array(
 				'file'      => $relative_path,
 				'file_path' => $filepath,
 				'type'      => 'php_in_unknown_dir',
-				'severity'  => 'high',
+				'severity'  => 'medium',
 				'reason'    => __( 'PHP file found in non-standard directory (possible hidden malware)', 'atomic-edge-security' ),
 			);
 		}
@@ -2796,6 +3041,7 @@ class AtomicEdge_Scanner {
 		$state['results']['scan_stats']['time_elapsed'] = time() - strtotime( $state['results']['started_at'] );
 		$state['results']['completed_at'] = current_time( 'mysql' );
 
+		$state['results'] = $this->attach_missing_finding_hashes( $state['results'] );
 		update_option( 'atomicedge_scan_results', $state['results'] );
 		update_option( 'atomicedge_last_scan', current_time( 'mysql' ) );
 
@@ -3450,28 +3696,8 @@ class AtomicEdge_Scanner {
 		// TIMING: Track regex time.
 		$regex_start = microtime( true );
 
-		// PERFORMANCE OPTIMIZATION: Use combined regex patterns per category.
-		// Instead of 100+ individual preg_match calls, use one per category.
-		$combined = $this->get_combined_patterns( $pattern_groups );
-
-		$result = false;
-		foreach ( $combined as $group_name => $group_data ) {
-			// Single regex match for entire category.
-			if ( preg_match( $group_data['regex'], $content, $matches ) ) {
-				// Find which specific pattern matched for the description.
-				$matched_pattern = isset( $matches[1] ) ? $matches[0] : $matches[0];
-				$description = $this->identify_matched_pattern( $matched_pattern, $pattern_groups[ $group_name ] );
-				$severity = $this->get_pattern_severity( $group_name );
-
-				$result = array(
-					'type'     => 'suspicious_pattern',
-					'severity' => $severity,
-					'pattern'  => $description,
-					'category' => $group_name,
-				);
-				break;
-			}
-		}
+		$matches = $this->collect_pattern_matches( $content, $pattern_groups );
+		$result  = empty( $matches ) ? false : $this->build_pattern_finding( $content, $filepath, $matches );
 
 		$regex_elapsed = ( microtime( true ) - $regex_start ) * 1000;
 		if ( isset( $this->scan_diagnostics['timing']['total_regex_ms'] ) ) {
@@ -3545,6 +3771,504 @@ class AtomicEdge_Scanner {
 
 		// Fallback if no specific pattern identified (shouldn't happen).
 		return __( 'Suspicious pattern detected', 'atomic-edge-security' );
+	}
+
+	/**
+	 * Collect every category match in a file, with byte offsets.
+	 *
+	 * All categories are evaluated (not first-match-wins), so the finding can report
+	 * the highest effective severity regardless of category order.
+	 *
+	 * @param string $content        File content.
+	 * @param array  $pattern_groups Pattern groups keyed by category.
+	 * @return array<int, array{category: string, description: string, offset: int, severity: string}>
+	 */
+	private function collect_pattern_matches( $content, $pattern_groups ) {
+		$matches = array();
+
+		foreach ( $this->get_combined_patterns( $pattern_groups ) as $group_name => $group_data ) {
+			$found = array();
+			preg_match_all( $group_data['regex'], $content, $found, PREG_OFFSET_CAPTURE );
+			if ( empty( $found[0] ) ) {
+				continue;
+			}
+
+			$severity     = $this->get_pattern_severity( $group_name );
+			$descriptions = array();
+			foreach ( array_slice( $found[0], 0, self::MAX_MATCHES_PER_CATEGORY ) as $hit ) {
+				$text = (string) $hit[0];
+				if ( ! isset( $descriptions[ $text ] ) ) {
+					$descriptions[ $text ] = $this->identify_matched_pattern( $text, $pattern_groups[ $group_name ] );
+				}
+
+				$matches[] = array(
+					'category'    => $group_name,
+					'description' => $descriptions[ $text ],
+					'offset'      => (int) $hit[1],
+					'severity'    => $severity,
+				);
+
+				if ( count( $matches ) >= self::MAX_MATCHES_PER_FILE ) {
+					return $matches;
+				}
+			}
+		}
+
+		return $matches;
+	}
+
+	/**
+	 * Build one finding for a file from its category matches.
+	 *
+	 * The finding's severity is the highest effective severity among its matches.
+	 * Matches are downgraded only when the surrounding PHP context shows they cannot
+	 * run (see classify_pattern_match()). The content hash lets a reviewer dismiss
+	 * this exact file version; a changed file produces a new, undismissed finding.
+	 *
+	 * @param string $content  File content (complete file).
+	 * @param string $filepath Absolute file path.
+	 * @param array  $matches  Matches from collect_pattern_matches().
+	 * @return array Finding.
+	 */
+	private function build_pattern_finding( $content, $filepath, $matches ) {
+		$analysis   = $this->analyze_php_context( $content, $filepath );
+		$top        = null;
+		$indicators = array();
+
+		foreach ( $matches as $match ) {
+			$effective = $this->classify_pattern_match( $match, $analysis );
+			$key       = $match['description'] . '|' . $effective['classification'];
+
+			if ( ! isset( $indicators[ $key ] ) ) {
+				$indicators[ $key ] = array(
+					'pattern'        => $match['description'],
+					'category'       => $match['category'],
+					'severity'       => $effective['severity'],
+					'classification' => $effective['classification'],
+				);
+			}
+
+			if ( null === $top || self::severity_rank( $effective['severity'] ) > self::severity_rank( $top['severity'] ) ) {
+				$top = $indicators[ $key ];
+			}
+		}
+
+		return array(
+			'type'           => 'suspicious_pattern',
+			'severity'       => $top['severity'],
+			'pattern'        => $top['pattern'],
+			'category'       => $top['category'],
+			'classification' => $top['classification'],
+			'indicators'     => array_slice( array_values( $indicators ), 0, 10 ),
+			'sha256'         => hash( 'sha256', $content ),
+		);
+	}
+
+	/**
+	 * Determine whether a match can execute, based on PHP token context.
+	 *
+	 * Returns:
+	 * - 'inert_context' when the match lies entirely in a comment or literal string of a
+	 *   .php file (documentation, UI text, or data that is not executed).
+	 * - 'encoding_without_sink' for encoding functions (base64_decode and similar) when
+	 *   no execution function appears in executable code.
+	 * - 'code' otherwise; the category severity is kept.
+	 *
+	 * Non-.php files and files without a PHP open tag are never downgraded.
+	 *
+	 * @param array $match    Match from collect_pattern_matches().
+	 * @param array $analysis Context from analyze_php_context().
+	 * @return array{severity: string, classification: string}
+	 */
+	private function classify_pattern_match( $match, $analysis ) {
+		if ( $analysis['inspectable'] && $this->offset_is_inert( $match['offset'], $analysis['inert_ranges'] ) ) {
+			return array(
+				'severity'       => 'low',
+				'classification' => 'inert_context',
+			);
+		}
+
+		if ( 'obfuscation' === $match['category'] && ! $analysis['has_sink'] ) {
+			return array(
+				'severity'       => 'low',
+				'classification' => 'encoding_without_sink',
+			);
+		}
+
+		return array(
+			'severity'       => $match['severity'],
+			'classification' => 'code',
+		);
+	}
+
+	/**
+	 * Tokenize a PHP file to find inert byte ranges and execution sinks.
+	 *
+	 * @param string $content  File content.
+	 * @param string $filepath File path (only .php files are analyzed).
+	 * @return array{inspectable: bool, inert_ranges: array, has_sink: bool}
+	 */
+	private function analyze_php_context( $content, $filepath ) {
+		// Without a PHP open tag the tokenizer result can depend on the short_open_tag
+		// setting, which may differ from the web server. Stay conservative in that case.
+		$analysis = array(
+			'inspectable'  => false,
+			'inert_ranges' => array(),
+			'has_sink'     => true,
+		);
+		if ( ! function_exists( 'token_get_all' ) || ! preg_match( '/\.php$/i', (string) $filepath ) || ! preg_match( '/<\?(?:php|=)/i', $content ) ) {
+			return $analysis;
+		}
+
+		$analysis['inspectable'] = true;
+		$analysis['has_sink']    = false;
+		$inert_types             = array( T_COMMENT, T_DOC_COMMENT, T_CONSTANT_ENCAPSED_STRING, T_ENCAPSED_AND_WHITESPACE, T_INLINE_HTML );
+		$offset                  = 0;
+
+		foreach ( token_get_all( $content ) as $token ) {
+			$type   = is_array( $token ) ? $token[0] : $token;
+			$text   = is_array( $token ) ? $token[1] : $token;
+			$length = strlen( $text );
+
+			if ( is_array( $token ) && in_array( $type, $inert_types, true ) ) {
+				$analysis['inert_ranges'][] = array( $offset, $offset + $length );
+			} elseif ( $this->is_execution_token( $token ) ) {
+				$analysis['has_sink'] = true;
+			}
+
+			$offset += $length;
+		}
+
+		return $analysis;
+	}
+
+	/**
+	 * Whether a token is an execution sink in executable code.
+	 *
+	 * @param array|string $token Token from token_get_all().
+	 * @return bool
+	 */
+	private function is_execution_token( $token ) {
+		if ( ! is_array( $token ) ) {
+			return '`' === $token;
+		}
+
+		$sink_types = array( T_EVAL, T_INCLUDE, T_INCLUDE_ONCE, T_REQUIRE, T_REQUIRE_ONCE );
+		if ( in_array( $token[0], $sink_types, true ) ) {
+			return true;
+		}
+
+		return T_STRING === $token[0] && in_array( strtolower( $token[1] ), self::EXECUTION_FUNCTIONS, true );
+	}
+
+	/**
+	 * Whether a byte offset falls inside any inert range.
+	 *
+	 * @param int   $offset Byte offset of the match.
+	 * @param array $ranges Inclusive-start, exclusive-end ranges.
+	 * @return bool
+	 */
+	private function offset_is_inert( $offset, $ranges ) {
+		foreach ( $ranges as $range ) {
+			if ( $offset >= $range[0] && $offset < $range[1] ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Numeric rank for a severity (higher is more severe).
+	 *
+	 * @param string $severity Severity name.
+	 * @return int 1 (low) to 4 (critical). Unknown values rank as medium.
+	 */
+	public static function severity_rank( $severity ) {
+		$ranks = array(
+			'critical' => 4,
+			'high'     => 3,
+			'medium'   => 2,
+			'low'      => 1,
+		);
+		return $ranks[ $severity ] ?? 2;
+	}
+
+	/**
+	 * Get the admin-selected sensitivity level.
+	 *
+	 * @return string One of the SENSITIVITY_THRESHOLDS keys.
+	 */
+	public function get_scan_sensitivity() {
+		$level = get_option( self::SENSITIVITY_OPTION, self::DEFAULT_SENSITIVITY );
+		return isset( self::SENSITIVITY_THRESHOLDS[ $level ] ) ? $level : self::DEFAULT_SENSITIVITY;
+	}
+
+	/**
+	 * Save the sensitivity level.
+	 *
+	 * @param string $level essential, standard, or thorough.
+	 * @return bool False when the level is not recognised.
+	 */
+	public function set_scan_sensitivity( $level ) {
+		if ( ! is_string( $level ) || ! isset( self::SENSITIVITY_THRESHOLDS[ $level ] ) ) {
+			return false;
+		}
+		update_option( self::SENSITIVITY_OPTION, $level, false );
+		return true;
+	}
+
+	/**
+	 * Lowest severity that is shown as an open finding at the current sensitivity.
+	 *
+	 * @return string
+	 */
+	public function get_sensitivity_threshold() {
+		return self::SENSITIVITY_THRESHOLDS[ $this->get_scan_sensitivity() ];
+	}
+
+	/**
+	 * Visibility state of a finding: dismissed, open, or informational.
+	 *
+	 * @param array      $finding    Finding from the scan results.
+	 * @param array|null $dismissals Dismissals map (loaded when null).
+	 * @param string|null $threshold Threshold severity (current setting when null).
+	 * @return string
+	 */
+	public function get_finding_state( $finding, $dismissals = null, $threshold = null ) {
+		if ( null === $dismissals ) {
+			$dismissals = $this->get_scan_dismissals();
+		}
+		if ( null === $threshold ) {
+			$threshold = $this->get_sensitivity_threshold();
+		}
+
+		if ( $this->is_finding_dismissed( $finding, $dismissals ) ) {
+			return 'dismissed';
+		}
+
+		$severity = isset( $finding['severity'] ) ? (string) $finding['severity'] : 'medium';
+		return self::severity_rank( $severity ) >= self::severity_rank( $threshold ) ? 'open' : 'informational';
+	}
+
+	/**
+	 * Count suspicious findings by visibility state.
+	 *
+	 * @param array      $suspicious Suspicious findings.
+	 * @param array|null $dismissals Dismissals map (loaded when null).
+	 * @param string|null $threshold Threshold severity (current setting when null).
+	 * @return array{open: int, informational: int, dismissed: int}
+	 */
+	public function summarize_findings( $suspicious, $dismissals = null, $threshold = null ) {
+		$counts = array(
+			'open'          => 0,
+			'informational' => 0,
+			'dismissed'     => 0,
+		);
+		if ( ! is_array( $suspicious ) ) {
+			return $counts;
+		}
+
+		foreach ( $suspicious as $finding ) {
+			++$counts[ $this->get_finding_state( $finding, $dismissals, $threshold ) ];
+		}
+		return $counts;
+	}
+
+	/**
+	 * Get dismissed findings keyed by fingerprint.
+	 *
+	 * @return array
+	 */
+	public function get_scan_dismissals() {
+		$dismissals = get_option( self::DISMISSALS_OPTION, array() );
+		return is_array( $dismissals ) ? $dismissals : array();
+	}
+
+	/**
+	 * Dismiss one finding for the exact file version that was scanned.
+	 *
+	 * @param string $file   Relative file path from the last scan.
+	 * @param string $sha256 SHA-256 of the file content at scan time.
+	 * @param string $reason Optional reviewer note.
+	 * @return array Status array: 'dismissed' or 'error' with message.
+	 */
+	public function dismiss_scan_finding( $file, $sha256, $reason = '' ) {
+		$sha256 = strtolower( (string) $sha256 );
+		if ( ! $this->is_valid_sha256( $sha256 ) ) {
+			return $this->finding_error( __( 'Invalid finding reference.', 'atomic-edge-security' ) );
+		}
+
+		if ( null === $this->find_scan_finding( $file, $sha256 ) ) {
+			return $this->finding_error( __( 'That finding is not in the last scan results. Run a scan first.', 'atomic-edge-security' ) );
+		}
+
+		$absolute = $this->resolve_scan_file( $file );
+		if ( false === $absolute ) {
+			return $this->finding_error( __( 'The file is no longer available. Run the scan again.', 'atomic-edge-security' ) );
+		}
+
+		$current = hash_file( 'sha256', $absolute );
+		if ( false === $current || ! hash_equals( $sha256, $current ) ) {
+			return $this->finding_error( __( 'The file changed after the scan. Run the scan again before dismissing it.', 'atomic-edge-security' ) );
+		}
+
+		$fingerprint = $this->finding_fingerprint( $file, $sha256 );
+		$dismissals  = $this->get_scan_dismissals();
+
+		$dismissals[ $fingerprint ] = array(
+			'file'         => $file,
+			'sha256'       => $sha256,
+			'reason'       => substr( sanitize_text_field( (string) $reason ), 0, 200 ),
+			'dismissed_at' => current_time( 'mysql' ),
+		);
+		update_option( self::DISMISSALS_OPTION, $dismissals, false );
+
+		AtomicEdge::log( 'Scan finding dismissed', array( 'file' => $file, 'sha256' => $sha256 ) );
+
+		return array(
+			'status'      => 'dismissed',
+			'fingerprint' => $fingerprint,
+		);
+	}
+
+	/**
+	 * Restore a dismissed finding so it counts again.
+	 *
+	 * @param string $file   Relative file path.
+	 * @param string $sha256 SHA-256 recorded for the finding.
+	 * @return array Status array: 'restored' or 'error' with message.
+	 */
+	public function restore_scan_finding( $file, $sha256 ) {
+		$sha256 = strtolower( (string) $sha256 );
+		if ( ! is_string( $file ) || '' === $file || ! $this->is_valid_sha256( $sha256 ) ) {
+			return $this->finding_error( __( 'Invalid finding reference.', 'atomic-edge-security' ) );
+		}
+
+		$fingerprint = $this->finding_fingerprint( $file, $sha256 );
+		$dismissals  = $this->get_scan_dismissals();
+		unset( $dismissals[ $fingerprint ] );
+		update_option( self::DISMISSALS_OPTION, $dismissals, false );
+
+		return array(
+			'status'      => 'restored',
+			'fingerprint' => $fingerprint,
+		);
+	}
+
+	/**
+	 * Fingerprint identifying one file version.
+	 *
+	 * @param string $file   Relative file path.
+	 * @param string $sha256 File content hash.
+	 * @return string
+	 */
+	public function finding_fingerprint( $file, $sha256 ) {
+		return hash( 'sha256', $file . "\0" . strtolower( (string) $sha256 ) );
+	}
+
+	/**
+	 * Whether a finding's exact file version has been dismissed.
+	 *
+	 * @param array $finding    Finding.
+	 * @param array $dismissals Dismissals map.
+	 * @return bool
+	 */
+	private function is_finding_dismissed( $finding, $dismissals ) {
+		if ( empty( $finding['file'] ) || empty( $finding['sha256'] ) || ! is_array( $dismissals ) ) {
+			return false;
+		}
+		return isset( $dismissals[ $this->finding_fingerprint( $finding['file'], $finding['sha256'] ) ] );
+	}
+
+	/**
+	 * Find a finding in the last scan results.
+	 *
+	 * @param string $file   Relative file path.
+	 * @param string $sha256 File content hash.
+	 * @return array|null
+	 */
+	private function find_scan_finding( $file, $sha256 ) {
+		$results = $this->get_last_results();
+		if ( empty( $results['suspicious'] ) || ! is_array( $results['suspicious'] ) ) {
+			return null;
+		}
+
+		foreach ( $results['suspicious'] as $finding ) {
+			if ( isset( $finding['file'], $finding['sha256'] ) && $finding['file'] === $file && hash_equals( (string) $finding['sha256'], $sha256 ) ) {
+				return $finding;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Resolve a scan-relative path to a real file inside the WordPress root.
+	 *
+	 * @param string $file Relative file path.
+	 * @return string|false Absolute real path, or false when unsafe or missing.
+	 */
+	private function resolve_scan_file( $file ) {
+		if ( ! is_string( $file ) || '' === $file || false !== strpos( $file, "\0" ) || false !== strpos( $file, '..' ) || '/' === $file[0] ) {
+			return false;
+		}
+
+		$root = realpath( $this->get_wp_root_path() );
+		$real = realpath( $this->get_wp_root_path() . $file );
+		if ( false === $root || false === $real || ! is_file( $real ) ) {
+			return false;
+		}
+
+		$root = rtrim( $root, '/\\' ) . DIRECTORY_SEPARATOR;
+		return 0 === strpos( $real, $root ) ? $real : false;
+	}
+
+	/**
+	 * Record a content hash for path-only findings (uploads PHP, unknown directories).
+	 *
+	 * Pattern findings already carry the hash of the content they were classified from.
+	 *
+	 * @param array $results Scan results.
+	 * @return array Results with hashes attached where a readable file exists.
+	 */
+	private function attach_missing_finding_hashes( $results ) {
+		if ( empty( $results['suspicious'] ) || ! is_array( $results['suspicious'] ) ) {
+			return $results;
+		}
+
+		foreach ( $results['suspicious'] as $index => $finding ) {
+			if ( ! empty( $finding['sha256'] ) || empty( $finding['file_path'] ) || ! is_file( $finding['file_path'] ) || ! is_readable( $finding['file_path'] ) ) {
+				continue;
+			}
+			$hash = hash_file( 'sha256', $finding['file_path'] );
+			if ( false !== $hash ) {
+				$results['suspicious'][ $index ]['sha256'] = $hash;
+			}
+		}
+
+		return $results;
+	}
+
+	/**
+	 * Whether a value is a 64-character hex SHA-256.
+	 *
+	 * @param string $value Candidate value.
+	 * @return bool
+	 */
+	private function is_valid_sha256( $value ) {
+		return (bool) preg_match( '/\A[a-f0-9]{64}\z/i', (string) $value );
+	}
+
+	/**
+	 * Build an error response for finding actions.
+	 *
+	 * @param string $message Message.
+	 * @return array
+	 */
+	private function finding_error( $message ) {
+		return array(
+			'status'  => 'error',
+			'message' => $message,
+		);
 	}
 
 	/**

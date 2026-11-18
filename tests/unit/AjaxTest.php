@@ -157,6 +157,68 @@ class AjaxTest extends TestCase {
 	}
 
 	// =========================================================================
+	// Malware Scan Finding AJAX Tests
+	// =========================================================================
+
+	/**
+	 * Finding actions reject anything other than dismiss or restore.
+	 */
+	public function test_update_scan_finding_rejects_unknown_action() {
+		$_POST['action_type'] = 'delete';
+		$_POST['file']        = 'wp-content/plugins/ae-test/a.php';
+		$_POST['sha256']      = str_repeat( 'a', 64 );
+
+		$this->assertSame( 'error', $this->capture_ajax_outcome( array( $this->ajax, 'ajax_update_scan_finding' ) ) );
+	}
+
+	/**
+	 * Dismissing a finding that is not in the last results returns an error.
+	 */
+	public function test_update_scan_finding_dismiss_requires_a_scanned_finding() {
+		$this->set_option( 'atomicedge_scan_results', array( 'suspicious' => array() ) );
+		$_POST['action_type'] = 'dismiss';
+		$_POST['file']        = 'wp-content/plugins/ae-test/a.php';
+		$_POST['sha256']      = str_repeat( 'a', 64 );
+
+		$this->assertSame( 'error', $this->capture_ajax_outcome( array( $this->ajax, 'ajax_update_scan_finding' ) ) );
+	}
+
+	/**
+	 * Sensitivity saves reject unknown levels.
+	 */
+	public function test_save_scan_sensitivity_rejects_unknown_level() {
+		$_POST['level'] = 'paranoid';
+
+		$this->assertSame( 'error', $this->capture_ajax_outcome( array( $this->ajax, 'ajax_save_scan_sensitivity' ) ) );
+		$this->assertFalse( $this->get_option( 'atomicedge_scan_sensitivity', false ) );
+	}
+
+	/**
+	 * Sensitivity saves persist a valid level.
+	 */
+	public function test_save_scan_sensitivity_persists_valid_level() {
+		$_POST['level'] = 'essential';
+
+		$this->assertSame( 'success', $this->capture_ajax_outcome( array( $this->ajax, 'ajax_save_scan_sensitivity' ) ) );
+		$this->assertSame( 'essential', $this->get_option( 'atomicedge_scan_sensitivity', false ) );
+	}
+
+	/**
+	 * Run an AJAX handler and report whether it sent a success or error response.
+	 *
+	 * @param callable $handler AJAX handler.
+	 * @return string 'success' or 'error'.
+	 */
+	private function capture_ajax_outcome( $handler ) {
+		try {
+			call_user_func( $handler );
+		} catch ( \AtomicEdge\Tests\AjaxExitException $e ) {
+			return $e->getMessage();
+		}
+		return 'none';
+	}
+
+	// =========================================================================
 	// Analytics AJAX Tests
 	// =========================================================================
 

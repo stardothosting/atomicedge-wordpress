@@ -4,7 +4,7 @@ Tags: 2FA, Firewall, Malware, Scanner, Security
 Requires at least: 5.8
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 2.9.5
+Stable tag: 2.9.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -93,6 +93,10 @@ If you are currently investigating high TTFB or Core Web Vitals regressions from
 
 Yes. When your site is connected to Atomic Edge, you can run a vulnerability scan of WordPress core, plugins, and themes from the Atomic Edge admin menu.
 
+= Why does the malware scanner flag a file from my own plugin? =
+
+Malware scanning uses pattern matching, so some legitimate code matches a pattern. Since 2.9.6, the scanner lowers the severity of matches that cannot run, such as text inside comments or string literals, and of encoding functions like base64_decode that are not combined with an execution function. Choose a sensitivity level on the Scanner page, and dismiss a finding after you have reviewed it. A dismissal applies only to that exact file version. If the file changes, the finding is reported again.
+
 = What attacks does the WAF block? =
 
 Atomic Edge uses the OWASP Core Rule Set to block:
@@ -138,13 +142,23 @@ The plugin automatically detects and uses the best available option.
 
 == Changelog ==
 
-= 2.9.5 =
+= 2.9.6 =
+* FIX: Ordinary encoding functions, such as base64_decode in encryption helpers, are informational when no execution function appears in executable code. They are no longer reported as high-severity obfuscation.
+* FIX: Matches that appear only inside comments, string literals, or inline text of .php files are informational, so documentation and interface text no longer triggers high-severity alerts.
+* FIX: Each suspicious file is reported at its highest effective severity, rather than the first matching category.
+* FIX: A PHP file in an unknown directory with no pattern match is medium severity. The elevation to critical now applies only to executable matches.
+* NEW: Scan sensitivity setting with Essential (high and critical), Standard (medium and above, the default), and Thorough (all findings).
+* NEW: Dismiss a reviewed finding for its exact file version. Dismissals stop applying when the file changes, and any dismissal can be restored.
+* NEW: Suspicious Files can be sorted by severity, file, or issue, searched by keyword, and filtered by severity and status (open, informational, dismissed). Pagination follows the filtered results.
+* IMPROVEMENT: The Suspicious Files count shows open findings at the selected sensitivity.
 * FIX: Release unstarted scan queue claims immediately when a time slice ends, rather than waiting for abandoned-work recovery; use smaller adaptive batches.
 * FIX: Serialize scan steps across browser tabs with a connection-owned database lock, and surface queue database failures instead of treating them as empty work.
 * FIX: Preserve the root-directory cursor when a time slice expires before an entry is scanned.
-* FIX: Stop polling on terminal errors, after repeated connection failures, or after three minutes without observable progress. Connection/stall pauses preserve the running scan for resumption.
-* IMPROVEMENT: Show directory-discovery and queue counts, actual current files, per-step throughput and timings, and signature-fetch timing in diagnostics. Withhold ETA while directory discovery is incomplete.
-* COMPATIBILITY: Reviewed against WordPress 7.1.4; minimum WordPress 5.8 and PHP 7.4 requirements are unchanged. Verification uses isolated automated tests and static compatibility checks; a live WordPress/cPanel scan remains a separate release verification step.
+* FIX: Stop polling on terminal errors, after repeated connection failures, or after three minutes without observable progress. Connection and stall pauses preserve the running scan for resumption.
+* IMPROVEMENT: Discovery writes queued directories and PHP files with multi-row inserts. Duplicate rows from resumed directories are ignored, and a directory is only marked complete after its child rows are persisted. A failed write leaves the directory unfinished for retry.
+* IMPROVEMENT: Show directory-discovery and queue counts, actual current files, per-step throughput and timings, and signature-fetch timing in diagnostics.
+* IMPROVEMENT: During discovery, the ETA is an estimate from measured per-directory and per-file cost, labeled as an estimate, and counts only directories and files already queued.
+* COMPATIBILITY: Reviewed against WordPress 7.1.4; minimum WordPress 5.8 and PHP 7.4 requirements are unchanged. Verification uses isolated automated tests and static compatibility checks; a live WordPress and cPanel scan remains a separate release verification step.
 
 = 2.9.4 =
 * FIX: Updated the WordPress.org release process to exclude development-only files such as vendor dependencies, test suites, Composer metadata, and PHPUnit configuration from SVN payloads

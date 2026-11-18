@@ -31,6 +31,20 @@ class ScannerTest extends TestCase {
 	private $scanner;
 
 	/**
+	 * Files created under the WordPress root by a test.
+	 *
+	 * @var string[]
+	 */
+	private $root_files = array();
+
+	/**
+	 * Temporary directories created by a test.
+	 *
+	 * @var string[]
+	 */
+	private $temp_paths = array();
+
+	/**
 	 * Set up before each test.
 	 *
 	 * @return void
@@ -52,6 +66,32 @@ class ScannerTest extends TestCase {
 		);
 
 		$this->scanner = $this->create_scanner_instance();
+	}
+
+	/**
+	 * Remove files and directories created by a test.
+	 *
+	 * @return void
+	 */
+	protected function tear_down() {
+		foreach ( $this->root_files as $path ) {
+			if ( is_file( $path ) ) {
+				unlink( $path );
+			}
+		}
+		$this->root_files = array();
+
+		foreach ( $this->temp_paths as $dir ) {
+			foreach ( glob( $dir . '/*' ) ?: array() as $path ) {
+				unlink( $path );
+			}
+			if ( is_dir( $dir ) ) {
+				rmdir( $dir );
+			}
+		}
+		$this->temp_paths = array();
+
+		parent::tear_down();
 	}
 
 	// =========================================================================
@@ -772,6 +812,8 @@ class ScannerTest extends TestCase {
 		$state = $this->scanner->step_resumable_scan( 'test-run' );
 		$this->assertSame( 'running', $state['status'] );
 		$this->assertSame( 1, $state['step_stats']['items_processed'] );
+		$this->assertSame( 1, $state['cost']['file_items'] );
+		$this->assertSame( 0, $state['cost']['dir_items'] );
 		$this->assertGreaterThan( 0, $state['step_stats']['elapsed_ms'] );
 		$this->assertArrayHasKey( 'queue_ms', $state['step_stats'] );
 		$this->assertArrayHasKey( 'scanning_ms', $state['step_stats'] );
@@ -806,19 +848,514 @@ class ScannerTest extends TestCase {
 		}
 	}
 
-	public function test_eta_is_withheld_while_directory_discovery_is_incomplete() {
-		$method = new \ReflectionMethod( $this->scanner, 'calculate_eta_seconds' );
-		$method->setAccessible( true );
+	public function test_discovery_eta_is_withheld_until_directories_are_sampled() {
 		$state = array(
 			'discovery_complete' => false,
-			'results' => array(
-				'started_at' => date( 'Y-m-d H:i:s', time() - 120 ),
-				'scan_stats' => array( 'files_total' => 4000, 'files_scanned' => 200 ),
+			'queue_counts'       => array( 'directories_remaining' => 100, 'files_remaining' => 0 ),
+			'cost'               => array( 'dir_items' => 4, 'dir_ms' => 800, 'file_items' => 0, 'file_ms' => 0, 'queue_ms' => 0, 'elapsed_ms' => 800 ),
+		);
+
+		$this->assertNull( $this->call_private( 'calculate_eta_seconds', $state ) );
+	}
+
+	public function test_discovery_eta_uses_measured_directory_cost_and_remaining_queue() {
+		$state = array(
+			'discovery_complete' => false,
+			'queue_counts'       => array( 'directories_remaining' => 100, 'files_remaining' => 0 ),
+			'cost'               => array( 'dir_items' => 10, 'dir_ms' => 2000, 'file_items' => 0, 'file_ms' => 0, 'queue_ms' => 0, 'elapsed_ms' => 2000 ),
+		);
+
+		// 100 directories at 200 ms each.
+		$this->assertSame( 20, $this->call_private( 'calculate_eta_seconds', $state ) );
+
+		// Slice overhead outside item processing lengthens the estimate.
+		$state['cost']['elapsed_ms'] = 4000;
+		$this->assertSame( 40, $this->call_private( 'calculate_eta_seconds', $state ) );
+	}
+
+	public function test_discovery_eta_adds_remaining_files_once_file_cost_is_sampled() {
+		$state = array(
+			'discovery_complete' => false,
+			'queue_counts'       => array( 'directories_remaining' => 100, 'files_remaining' => 1000 ),
+			'cost'               => array( 'dir_items' => 10, 'dir_ms' => 2000, 'file_items' => 25, 'file_ms' => 25, 'queue_ms' => 0, 'elapsed_ms' => 2025 ),
+		);
+
+		// 20 s of directories plus 1,000 files at 1 ms each.
+		$this->assertSame( 21, $this->call_private( 'calculate_eta_seconds', $state ) );
+	}
+
+	public function test_scan_cost_totals_accumulate_across_steps() {
+		$first  = $this->call_private( 'accumulate_scan_cost', array(), array( 'dir_items' => 3, 'discovery_ms' => 600, 'file_items' => 2, 'scanning_ms' => 4, 'queue_ms' => 10, 'elapsed_ms' => 700 ) );
+		$second = $this->call_private( 'accumulate_scan_cost', $first, array( 'dir_items' => 1, 'discovery_ms' => 200, 'file_items' => 0, 'scanning_ms' => 0, 'queue_ms' => 5, 'elapsed_ms' => 300 ) );
+
+		$this->assertSame( 4, $second['dir_items'] );
+		$this->assertEqualsWithDelta( 800.0, $second['dir_ms'], 0.001 );
+		$this->assertSame( 2, $second['file_items'] );
+		$this->assertEqualsWithDelta( 1000.0, $second['elapsed_ms'], 0.001 );
+	}
+
+	public function test_discovered_children_are_inserted_in_one_multi_row_statement() {
+		$db = $this->mock_queue_database();
+		$db->expects( $this->never() )->method( 'insert' );
+		$db->expects( $this->once() )->method( 'query' )->with( $this->callback( function ( $sql ) {
+			return 4 === substr_count( $sql, "'pending', NULL" )
+				&& false !== strpos( $sql, 'ON DUPLICATE KEY UPDATE id = id' );
+		} ) )->willReturn( 4 );
+
+		$dir   = $this->make_temp_tree( array( 'alpha', 'beta' ), array( 'one.php', 'two.php', 'notes.txt' ) );
+		$state = array( 'run_id' => 'test-run' );
+		$method = new \ReflectionMethod( $this->scanner, 'process_dir_item' );
+		$method->setAccessible( true );
+		try {
+			$method->invokeArgs( $this->scanner, array( 11, 'unknown', $dir, array(), &$state, microtime( true ), 5 ) );
+		} finally {
+			$this->remove_temp_tree( $dir );
+		}
+
+		$this->assertSame( array( 11 ), $this->get_private_value( 'pending_done_ids' ) );
+		$this->assertSame( array(), $this->get_private_value( 'pending_queue_rows' ) );
+	}
+
+	public function test_failed_child_insert_keeps_directory_unfinished() {
+		$db = $this->mock_queue_database();
+		$db->method( 'query' )->willReturn( false );
+
+		$dir   = $this->make_temp_tree( array( 'child' ), array() );
+		$state = array( 'run_id' => 'test-run' );
+		$method = new \ReflectionMethod( $this->scanner, 'process_dir_item' );
+		$method->setAccessible( true );
+		try {
+			$method->invokeArgs( $this->scanner, array( 11, 'unknown', $dir, array(), &$state, microtime( true ), 5 ) );
+			$this->fail( 'A failed child insert must not mark its directory complete.' );
+		} catch ( \RuntimeException $e ) {
+			$this->assertSame( array(), $this->get_private_value( 'pending_done_ids' ) );
+		} finally {
+			$this->remove_temp_tree( $dir );
+		}
+	}
+
+	public function test_queue_rows_are_flushed_in_bounded_chunks() {
+		$db = $this->mock_queue_database();
+		$db->expects( $this->exactly( 3 ) )->method( 'query' )->willReturn( 1 );
+
+		$this->set_private_value( 'pending_queue_rows', array_fill( 0, 450, array( 'test-run', 'file', 'plugins', '/tmp/example.php' ) ) );
+		$this->call_private( 'flush_pending_queue_rows' );
+
+		$this->assertSame( array(), $this->get_private_value( 'pending_queue_rows' ) );
+	}
+
+	public function test_queue_counts_separate_directories_from_remaining_files() {
+		$db = $this->mock_queue_database();
+		$db->method( 'get_results' )->willReturn(
+			array(
+				array( 'status' => 'pending', 'c' => 10, 'directories' => 3 ),
+				array( 'status' => 'processing', 'c' => 2, 'directories' => 1 ),
+				array( 'status' => 'done', 'c' => 5, 'directories' => 0 ),
+			)
+		);
+
+		$counts = $this->call_private( 'get_queue_counts', 'test-run' );
+
+		$this->assertSame( 4, $counts['directories_remaining'] );
+		$this->assertSame( 8, $counts['files_remaining'] );
+	}
+
+	/**
+	 * Decode-only matches with no execution function are informational, not high.
+	 */
+	public function test_decode_without_execution_sink_is_informational() {
+		$file    = $this->write_temp_file( 'decode-only.php', '<?php' . "\n" . '$payload = base64_decode( $blob );' . "\n" . 'echo $payload;' . "\n" );
+		$finding = $this->scan_with_mock_patterns( $file );
+
+		$this->assertSame( 'low', $finding['severity'] );
+		$this->assertSame( 'encoding_without_sink', $finding['classification'] );
+		$this->assertSame( 'obfuscation', $finding['category'] );
+	}
+
+	/**
+	 * Decoding that feeds an execution function keeps the category severity.
+	 */
+	public function test_decode_feeding_execution_keeps_category_severity() {
+		$file    = $this->write_temp_file( 'decode-exec.php', '<?php' . "\n" . 'eval( base64_decode( $_POST["x"] ) );' . "\n" );
+		$finding = $this->scan_with_mock_patterns( $file );
+
+		$this->assertSame( 'critical', $finding['severity'] );
+		$this->assertSame( 'code', $finding['classification'] );
+	}
+
+	/**
+	 * Matches that appear only inside comments or string literals are informational.
+	 */
+	public function test_matches_only_inside_comments_and_strings_are_informational() {
+		$content = '<?php' . "\n"
+			. '// Do not run system( or eval( here' . "\n"
+			. '$doc = \'base64_decode( is a function name\';' . "\n"
+			. 'echo $doc;' . "\n";
+		$finding = $this->scan_with_mock_patterns( $this->write_temp_file( 'inert.php', $content ) );
+
+		$this->assertSame( 'low', $finding['severity'] );
+		$this->assertSame( 'inert_context', $finding['classification'] );
+	}
+
+	/**
+	 * Only .php files get the inert-context downgrade; other extensions keep their severity.
+	 */
+	public function test_same_text_in_a_non_php_file_keeps_category_severity() {
+		$finding = $this->scan_with_mock_patterns( $this->write_temp_file( 'notes.txt', '<?php echo "system(";' ) );
+
+		$this->assertSame( 'critical', $finding['severity'] );
+		$this->assertSame( 'code', $finding['classification'] );
+	}
+
+	/**
+	 * The reported severity is the highest one, regardless of category order.
+	 */
+	public function test_finding_reports_highest_severity_regardless_of_category_order() {
+		$content = '<?php' . "\n" . '$a = base64_decode( $b );' . "\n" . 'system( $a );' . "\n";
+		$patterns = array(
+			'obfuscation'     => array( 'base64_decode\s*\(' => 'Base64 decode' ),
+			'shell_execution' => array( 'system\s*\(' => 'System function' ),
+		);
+		$finding = $this->scan_with_mock_patterns( $this->write_temp_file( 'ordering.php', $content ), $patterns );
+
+		$this->assertSame( 'critical', $finding['severity'] );
+		$this->assertSame( 'shell_execution', $finding['category'] );
+		$this->assertCount( 2, $finding['indicators'] );
+	}
+
+	/**
+	 * A finding records the hash of the content it was classified from.
+	 */
+	public function test_finding_records_hash_of_scanned_content() {
+		$content = '<?php' . "\n" . 'eval( $x );' . "\n";
+		$finding = $this->scan_with_mock_patterns( $this->write_temp_file( 'hashed.php', $content ) );
+
+		$this->assertSame( hash( 'sha256', $content ), $finding['sha256'] );
+	}
+
+	/**
+	 * Sensitivity defaults to standard and rejects unknown levels.
+	 */
+	public function test_sensitivity_defaults_to_standard_and_rejects_unknown_levels() {
+		$this->assertSame( 'standard', $this->scanner->get_scan_sensitivity() );
+		$this->assertSame( 'medium', $this->scanner->get_sensitivity_threshold() );
+
+		$this->assertFalse( $this->scanner->set_scan_sensitivity( 'paranoid' ) );
+		$this->assertSame( 'standard', $this->scanner->get_scan_sensitivity() );
+
+		$this->assertTrue( $this->scanner->set_scan_sensitivity( 'essential' ) );
+		$this->assertSame( 'high', $this->scanner->get_sensitivity_threshold() );
+	}
+
+	/**
+	 * Visibility depends on sensitivity threshold and dismissal.
+	 */
+	public function test_finding_state_follows_sensitivity_and_dismissals() {
+		$hash   = str_repeat( 'a', 64 );
+		$medium = array( 'file' => 'a.php', 'sha256' => $hash, 'severity' => 'medium' );
+		$low    = array( 'file' => 'a.php', 'sha256' => $hash, 'severity' => 'low' );
+
+		$this->assertSame( 'informational', $this->scanner->get_finding_state( $low, array(), 'medium' ) );
+		$this->assertSame( 'open', $this->scanner->get_finding_state( $medium, array(), 'medium' ) );
+		$this->assertSame( 'informational', $this->scanner->get_finding_state( $medium, array(), 'high' ) );
+
+		$dismissals = array( $this->scanner->finding_fingerprint( 'a.php', $hash ) => array() );
+		$this->assertSame( 'dismissed', $this->scanner->get_finding_state( $medium, $dismissals, 'medium' ) );
+	}
+
+	/**
+	 * Summary counts split findings into open, informational, and dismissed.
+	 */
+	public function test_summary_counts_split_findings_by_state() {
+		$hash = str_repeat( 'c', 64 );
+		$findings = array(
+			array( 'file' => 'one.php', 'sha256' => $hash, 'severity' => 'critical' ),
+			array( 'file' => 'two.php', 'sha256' => $hash, 'severity' => 'low' ),
+			array( 'file' => 'three.php', 'sha256' => $hash, 'severity' => 'high' ),
+		);
+		$dismissals = array( $this->scanner->finding_fingerprint( 'three.php', $hash ) => array() );
+
+		$this->assertSame(
+			array( 'open' => 1, 'informational' => 1, 'dismissed' => 1 ),
+			$this->scanner->summarize_findings( $findings, $dismissals, 'medium' )
+		);
+	}
+
+	/**
+	 * Dismissal requires the finding to exist in the last scan results.
+	 */
+	public function test_dismiss_rejects_findings_not_in_last_results() {
+		$this->set_option( 'atomicedge_scan_results', array( 'suspicious' => array() ) );
+
+		$result = $this->scanner->dismiss_scan_finding( 'wp-content/plugins/ae-test/a.php', str_repeat( 'b', 64 ) );
+
+		$this->assertSame( 'error', $result['status'] );
+		$this->assertSame( array(), $this->scanner->get_scan_dismissals() );
+	}
+
+	/**
+	 * A file edited after the scan cannot be dismissed against the old result.
+	 */
+	public function test_dismiss_rejects_file_changed_since_scan() {
+		$relative = 'wp-content/plugins/ae-test/changed.php';
+		$this->make_root_file( $relative, '<?php eval( $old );' );
+		$this->set_scan_result( $relative, hash( 'sha256', '<?php eval( $old );' ) );
+		file_put_contents( rtrim( ABSPATH, '/' ) . '/' . $relative, '<?php eval( $new );' );
+
+		$result = $this->scanner->dismiss_scan_finding( $relative, hash( 'sha256', '<?php eval( $old );' ) );
+
+		$this->assertSame( 'error', $result['status'] );
+		$this->assertStringContainsString( 'changed', $result['message'] );
+	}
+
+	/**
+	 * Dismiss applies to one file version and restore brings the finding back.
+	 */
+	public function test_dismiss_then_restore_round_trip() {
+		$relative = 'wp-content/plugins/ae-test/round-trip.php';
+		$content  = '<?php echo base64_decode( $x );';
+		$this->make_root_file( $relative, $content );
+		$hash = hash( 'sha256', $content );
+		$this->set_scan_result( $relative, $hash );
+		$finding = array( 'file' => $relative, 'sha256' => $hash, 'severity' => 'high' );
+
+		$dismissed = $this->scanner->dismiss_scan_finding( $relative, $hash, 'Vendor crypto helper' );
+		$this->assertSame( 'dismissed', $dismissed['status'] );
+		$this->assertSame( 'dismissed', $this->scanner->get_finding_state( $finding ) );
+
+		$stored = $this->scanner->get_scan_dismissals();
+		$this->assertSame( 'Vendor crypto helper', $stored[ $dismissed['fingerprint'] ]['reason'] );
+
+		$restored = $this->scanner->restore_scan_finding( $relative, $hash );
+		$this->assertSame( 'restored', $restored['status'] );
+		$this->assertSame( 'open', $this->scanner->get_finding_state( $finding ) );
+	}
+
+	/**
+	 * Dismissal refuses paths that try to leave the WordPress root.
+	 */
+	public function test_dismiss_rejects_paths_outside_the_root() {
+		$hash = str_repeat( 'd', 64 );
+		$this->set_scan_result( '../../etc/passwd', $hash );
+
+		$result = $this->scanner->dismiss_scan_finding( '../../etc/passwd', $hash );
+
+		$this->assertSame( 'error', $result['status'] );
+		$this->assertSame( array(), $this->scanner->get_scan_dismissals() );
+	}
+
+	/**
+	 * Unknown-directory findings are elevated only for executable matches.
+	 */
+	public function test_unknown_directory_findings_are_calibrated_by_context() {
+		$db = $this->mock_queue_database();
+		$db->method( 'update' )->willReturn( 1 );
+
+		$scanner = $this->create_scanner_with_mocked_api();
+		$this->set_private_on( $scanner, 'scan_diagnostics', $this->invoke_on( $scanner, 'get_default_scan_diagnostics' ) );
+		$method = new \ReflectionMethod( $scanner, 'process_file_item' );
+		$method->setAccessible( true );
+
+		$inert = $this->write_temp_file( 'inert-unknown.php', '<?php // eval( only in a comment' . "\n" );
+		$code  = $this->write_temp_file( 'code-unknown.php', '<?php eval( $x );' . "\n" );
+		$plain = $this->write_temp_file( 'plain-unknown.php', '<?php echo 1;' . "\n" );
+
+		$state = array( 'results' => array( 'scan_stats' => array( 'files_scanned' => 0 ), 'suspicious' => array() ) );
+		$method->invokeArgs( $scanner, array( 1, 'unknown', $inert, &$state ) );
+		$method->invokeArgs( $scanner, array( 2, 'unknown', $code, &$state ) );
+		$method->invokeArgs( $scanner, array( 3, 'unknown', $plain, &$state ) );
+
+		$this->assertSame( 'low', $state['results']['suspicious'][0]['severity'] );
+		$this->assertSame( 'critical', $state['results']['suspicious'][1]['severity'] );
+		$this->assertSame( 'php_in_unknown_dir', $state['results']['suspicious'][2]['type'] );
+		$this->assertSame( 'medium', $state['results']['suspicious'][2]['severity'] );
+	}
+
+	/**
+	 * Path-only findings get a content hash so they can be dismissed for this file version.
+	 */
+	public function test_path_only_findings_receive_content_hashes() {
+		$file    = $this->write_temp_file( 'uploaded.php', '<?php echo 1;' );
+		$results = array(
+			'suspicious' => array(
+				array( 'file' => 'wp-content/uploads/uploaded.php', 'file_path' => $file, 'type' => 'php_in_uploads', 'severity' => 'high' ),
 			),
 		);
-		$this->assertNull( $method->invoke( $this->scanner, $state ) );
-		$state['discovery_complete'] = true;
-		$this->assertIsInt( $method->invoke( $this->scanner, $state ) );
+
+		$updated = $this->invoke_on( $this->scanner, 'attach_missing_finding_hashes', $results );
+
+		$this->assertSame( hash_file( 'sha256', $file ), $updated['suspicious'][0]['sha256'] );
+	}
+
+	/**
+	 * Call a private scanner method on a given object.
+	 *
+	 * @param object $object Target object.
+	 * @param string $method Method name.
+	 * @param mixed  ...$args Arguments.
+	 * @return mixed
+	 */
+	private function invoke_on( $object, $method, ...$args ) {
+		$reflection = new \ReflectionMethod( $object, $method );
+		$reflection->setAccessible( true );
+		return $reflection->invokeArgs( $object, $args );
+	}
+
+	/**
+	 * Scan one file with a scanner whose signatures come from the mocked API.
+	 *
+	 * @param string     $file     Absolute file path.
+	 * @param array|null $patterns Pattern groups (defaults to the mocked API patterns).
+	 * @return array|false
+	 */
+	private function scan_with_mock_patterns( $file, $patterns = null ) {
+		$scanner = $this->create_scanner_with_mocked_api();
+		$this->set_private_on( $scanner, 'scan_diagnostics', $this->invoke_on( $scanner, 'get_default_scan_diagnostics' ) );
+
+		if ( null === $patterns ) {
+			$patterns = array(
+				'code_execution'  => array( 'eval\s*\(' => 'Eval function' ),
+				'shell_execution' => array( 'system\s*\(' => 'System function' ),
+				'obfuscation'     => array( 'base64_decode\s*\(' => 'Base64 decode' ),
+			);
+		}
+
+		return $this->invoke_on( $scanner, 'scan_file_for_patterns', $file, $patterns, false );
+	}
+
+	/**
+	 * Write a temporary PHP-related file for a scan test.
+	 *
+	 * @param string $name    File name.
+	 * @param string $content File content.
+	 * @return string Absolute path.
+	 */
+	private function write_temp_file( $name, $content ) {
+		$dir = sys_get_temp_dir() . '/ae-classify-' . uniqid();
+		mkdir( $dir );
+		$path = $dir . '/' . $name;
+		file_put_contents( $path, $content );
+		$this->temp_paths[] = $dir;
+		return $path;
+	}
+
+	/**
+	 * Create a file under the WordPress root for dismissal tests.
+	 *
+	 * @param string $relative Path relative to ABSPATH.
+	 * @param string $content  File content.
+	 * @return void
+	 */
+	private function make_root_file( $relative, $content ) {
+		$absolute = rtrim( ABSPATH, '/' ) . '/' . $relative;
+		if ( ! is_dir( dirname( $absolute ) ) ) {
+			mkdir( dirname( $absolute ), 0777, true );
+		}
+		file_put_contents( $absolute, $content );
+		$this->root_files[] = $absolute;
+	}
+
+	/**
+	 * Store last scan results containing one suspicious finding.
+	 *
+	 * @param string $relative File path relative to ABSPATH.
+	 * @param string $hash     Content hash recorded for the finding.
+	 * @return void
+	 */
+	private function set_scan_result( $relative, $hash ) {
+		$this->set_option( 'atomicedge_scan_results', array(
+			'suspicious' => array(
+				array(
+					'file'     => $relative,
+					'severity' => 'high',
+					'sha256'   => $hash,
+				),
+			),
+		) );
+	}
+
+	/**
+	 * Set a private property on a given object.
+	 *
+	 * @param object $object Target object.
+	 * @param string $name   Property name.
+	 * @param mixed  $value  Property value.
+	 * @return void
+	 */
+	private function set_private_on( $object, $name, $value ) {
+		$property = new \ReflectionProperty( $object, $name );
+		$property->setAccessible( true );
+		$property->setValue( $object, $value );
+	}
+
+	/**
+	 * Call a private scanner method by name.
+	 *
+	 * @param string $method Method name.
+	 * @param mixed  ...$args Arguments.
+	 * @return mixed
+	 */
+	private function call_private( $method, ...$args ) {
+		$reflection = new \ReflectionMethod( $this->scanner, $method );
+		$reflection->setAccessible( true );
+		return $reflection->invokeArgs( $this->scanner, $args );
+	}
+
+	/**
+	 * Read a private scanner property.
+	 *
+	 * @param string $name Property name.
+	 * @return mixed
+	 */
+	private function get_private_value( $name ) {
+		$property = new \ReflectionProperty( $this->scanner, $name );
+		$property->setAccessible( true );
+		return $property->getValue( $this->scanner );
+	}
+
+	/**
+	 * Set a private scanner property.
+	 *
+	 * @param string $name  Property name.
+	 * @param mixed  $value Property value.
+	 * @return void
+	 */
+	private function set_private_value( $name, $value ) {
+		$property = new \ReflectionProperty( $this->scanner, $name );
+		$property->setAccessible( true );
+		$property->setValue( $this->scanner, $value );
+	}
+
+	/**
+	 * Create a small directory tree for discovery tests.
+	 *
+	 * @param array $dirs  Child directory names.
+	 * @param array $files Child file names.
+	 * @return string Absolute root path.
+	 */
+	private function make_temp_tree( array $dirs, array $files ) {
+		$root = sys_get_temp_dir() . '/ae-discovery-' . uniqid();
+		mkdir( $root );
+		foreach ( $dirs as $dir ) {
+			mkdir( $root . '/' . $dir );
+		}
+		foreach ( $files as $file ) {
+			file_put_contents( $root . '/' . $file, '<?php' );
+		}
+		return $root;
+	}
+
+	/**
+	 * Remove a tree created by make_temp_tree().
+	 *
+	 * @param string $root Absolute root path.
+	 * @return void
+	 */
+	private function remove_temp_tree( $root ) {
+		foreach ( glob( $root . '/*' ) ?: array() as $path ) {
+			is_dir( $path ) ? rmdir( $path ) : unlink( $path );
+		}
+		rmdir( $root );
 	}
 
 	private function mock_queue_database() {

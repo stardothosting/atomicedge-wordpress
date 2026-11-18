@@ -65,6 +65,8 @@ class AtomicEdge_Ajax {
 		add_action( 'wp_ajax_atomicedge_get_scan_results', array( $this, 'ajax_get_scan_results' ) );
 		add_action( 'wp_ajax_atomicedge_cancel_scan', array( $this, 'ajax_cancel_scan' ) );
 		add_action( 'wp_ajax_atomicedge_reset_scan', array( $this, 'ajax_reset_scan' ) );
+		add_action( 'wp_ajax_atomicedge_update_scan_finding', array( $this, 'ajax_update_scan_finding' ) );
+		add_action( 'wp_ajax_atomicedge_save_scan_sensitivity', array( $this, 'ajax_save_scan_sensitivity' ) );
 		add_action( 'wp_ajax_atomicedge_scan_debug_test', array( $this, 'ajax_scan_debug_test' ) );
 
 		// Vulnerability Scanner.
@@ -506,6 +508,55 @@ class AtomicEdge_Ajax {
 		$scanner = AtomicEdge::get_instance()->scanner;
 		$state = $scanner->reset_resumable_scan();
 		wp_send_json_success( $state );
+	}
+
+	/**
+	 * Dismiss or restore one malware scan finding for its scanned file version.
+	 *
+	 * @return void
+	 */
+	public function ajax_update_scan_finding() {
+		$post = $this->get_verified_post_fields( array( 'file', 'sha256', 'action_type', 'reason' ) );
+
+		$file        = isset( $post['file'] ) ? (string) $post['file'] : '';
+		$sha256      = isset( $post['sha256'] ) ? (string) $post['sha256'] : '';
+		$action_type = isset( $post['action_type'] ) ? (string) $post['action_type'] : '';
+		$reason      = isset( $post['reason'] ) ? (string) $post['reason'] : '';
+
+		$scanner = AtomicEdge::get_instance()->scanner;
+		if ( 'dismiss' === $action_type ) {
+			$result = $scanner->dismiss_scan_finding( $file, $sha256, $reason );
+		} elseif ( 'restore' === $action_type ) {
+			$result = $scanner->restore_scan_finding( $file, $sha256 );
+		} else {
+			wp_send_json_error( array( 'message' => __( 'Invalid finding action.', 'atomic-edge-security' ) ) );
+		}
+
+		if ( 'error' === $result['status'] ) {
+			wp_send_json_error( array( 'message' => $result['message'] ) );
+		}
+
+		wp_send_json_success( $result );
+	}
+
+	/**
+	 * Save the malware scan sensitivity level.
+	 *
+	 * @return void
+	 */
+	public function ajax_save_scan_sensitivity() {
+		$post  = $this->get_verified_post_fields( array( 'level' ) );
+		$level = isset( $post['level'] ) ? (string) $post['level'] : '';
+
+		$scanner = AtomicEdge::get_instance()->scanner;
+		if ( ! $scanner->set_scan_sensitivity( $level ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid sensitivity level.', 'atomic-edge-security' ) ) );
+		}
+
+		wp_send_json_success( array(
+			'level'     => $scanner->get_scan_sensitivity(),
+			'threshold' => $scanner->get_sensitivity_threshold(),
+		) );
 	}
 
 	/**
